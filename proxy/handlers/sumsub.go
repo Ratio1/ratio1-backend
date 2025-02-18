@@ -9,6 +9,7 @@ import (
 	"hash"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -194,6 +195,10 @@ func (h *sumsubHandler) processEvents(c *gin.Context) {
 		return
 	}
 
+	if checkIfBeneficiaryUUID(kycEvent.ExternalUserID) {
+		model.JsonResponse(c, http.StatusOK, "External user id found", nodeAddress, "")
+	}
+
 	uuid, err := uuid.Parse(kycEvent.ExternalUserID)
 	if err != nil {
 		log.Error("error while parsing user uuid: " + err.Error())
@@ -250,4 +255,11 @@ func _calculateHMAC(message []byte, secret string, hashFunc func() hash.Hash) st
 	h := hmac.New(hashFunc, []byte(secret))
 	h.Write(message)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func checkIfBeneficiaryUUID(uuidAsString string) bool {
+	if strings := strings.Split(uuidAsString, "-"); strings[0] == "beneficiary" {
+		return true
+	}
+	return false
 }
