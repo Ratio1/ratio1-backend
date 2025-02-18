@@ -114,7 +114,7 @@ func ConfirmEmail(token string) (*model.Account, error) {
 	kyc := model.Kyc{
 		Email:          *account.Email,
 		Uuid:           uuid.New(),
-		KycStatus:      model.StatusInit,
+		KycStatus:      model.StatusAccountCreated,
 		ReceiveUpdates: &receiveUpdates,
 	}
 	account.PendingReceiveUpdates = false
