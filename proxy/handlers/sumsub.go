@@ -127,9 +127,9 @@ func (h *sumsubHandler) initSession(c *gin.Context) {
 	//User never init kyc
 	if kyc.ApplicantType == "" {
 		if req.UserType == model.BusinessCustomer {
-			kyc.ApplicantType = config.Config.Sumsub.BusinessLevelName
+			kyc.ApplicantType = model.BusinessCustomer
 		} else if req.UserType == model.IndividualCustomer {
-			kyc.ApplicantType = config.Config.Sumsub.CustomerLevelName
+			kyc.ApplicantType = model.IndividualCustomer
 		} else {
 			log.Error("wrong request parametere sent")
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "wrong request parameter sent")
