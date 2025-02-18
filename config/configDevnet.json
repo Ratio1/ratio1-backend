@@ -24,7 +24,7 @@
   "Mail": {
     "ApiUrl": "https://api.postmarkapp.com",
     "ApiKey": "",
-    "ConfirmUrl": "https://testnet-app.ratio1.ai/confirm-email?token=%s",
+    "ConfirmUrl": "https://devnet-app.ratio1.ai/confirm-email?token=%s",
     "FromEmail": "noreply@ratio1.ai"
   },
   "Sumsub": {
