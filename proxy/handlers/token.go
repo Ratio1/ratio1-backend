@@ -48,7 +48,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 	}
 
 	if config.Config.Api.DevTesting {
-		model.JsonResponse(c, http.StatusBadGateway, nil, nodeAddress, "node is not on mainnet")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "node is not on mainnet")
 		return
 	}
 

@@ -23,7 +23,7 @@ type TokenSupplyInfo struct {
 func GetTokenSupplyInfo(tokenAddress common.Address) (*TokenSupplyInfo, error) {
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
-		return nil, errors.New("error while dialing client: " + err.Error())
+		return nil, errors.New("error while dialing client")
 	}
 	defer client.Close()
 
@@ -31,7 +31,7 @@ func GetTokenSupplyInfo(tokenAddress common.Address) (*TokenSupplyInfo, error) {
 
 	latestBlock, err := client.BlockNumber(ctx)
 	if err != nil {
-		return nil, errors.New("error while retrieving block number: " + err.Error())
+		return nil, errors.New("error while retrieving block number")
 	}
 
 	fromBlock := big.NewInt(0)
@@ -55,7 +55,7 @@ func GetTokenSupplyInfo(tokenAddress common.Address) (*TokenSupplyInfo, error) {
 
 	mintedLogs, err := client.FilterLogs(ctx, mintedQuery)
 	if err != nil {
-		return nil, errors.New("error while filtering minted logs: " + err.Error())
+		return nil, errors.New("error while filtering minted logs")
 	}
 
 	mintedTotal := big.NewInt(0)
@@ -81,7 +81,7 @@ func GetTokenSupplyInfo(tokenAddress common.Address) (*TokenSupplyInfo, error) {
 
 	burnedLogs, err := client.FilterLogs(ctx, burnedQuery)
 	if err != nil {
-		return nil, errors.New("error while filtering burned logs: " + err.Error())
+		return nil, errors.New("error while filtering burned logs")
 	}
 
 	burnedTotal := big.NewInt(0)
@@ -112,7 +112,7 @@ func GetTokenSupplyInfo(tokenAddress common.Address) (*TokenSupplyInfo, error) {
 
 	result, err := client.CallContract(context.Background(), msg, nil)
 	if err != nil {
-		return nil, errors.New("error while calling contract: " + err.Error())
+		return nil, errors.New("error while calling contract")
 	}
 
 	var totalSupply *big.Int
