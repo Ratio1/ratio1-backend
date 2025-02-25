@@ -12,7 +12,7 @@ import (
 
 var (
 	Config         GeneralConfig
-	BackendVersion = "1.0.4"
+	BackendVersion = "1.0.5"
 	_              = Config
 )
 
@@ -28,6 +28,7 @@ type GeneralConfig struct {
 	Oblio              Oblio
 	Infura             Infura
 	NDContractAddress  string
+	R1ContractAddress  string
 	CronJobTiming      map[string]string
 	AdminAddresses     []string
 	EmailTemplatesPath string

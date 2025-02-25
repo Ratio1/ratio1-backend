@@ -62,6 +62,7 @@
     "Secret": ""
   },
   "NDContractAddress": "0xE20198EE2B76eED916A568a47cdea9681f7c79BF",
+  "R1ContractAddress": "0xc992DcaB6D3F8783fBf0c935E7bCeB20aa50A6f1",
   "CronJobTiming": {
     "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "0 */2 * * *",
     "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "0 1-23/2 * * *"

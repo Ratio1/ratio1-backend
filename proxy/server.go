@@ -40,6 +40,7 @@ func NewWebServer() (*WebServer, error) {
 	handlers.NewLaunchpadHandler(groupHandler)
 	handlers.NewAccountHandler(groupHandler)
 	handlers.NewSumsubHandler(groupHandler)
+	handlers.NewTokenHandler(groupHandler)
 
 	groupHandler.RegisterEndpoints(router)
 
