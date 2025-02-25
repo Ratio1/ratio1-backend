@@ -58,7 +58,7 @@
     "EventSignature": ""
   },
   "Infura": {
-    "ApiUrl": "https://base.infura.io/v3/",
+    "ApiUrl": "https://base-mainnet.infura.io/v3/",
     "Secret": ""
   },
   "NDContractAddress": "0xE20198EE2B76eED916A568a47cdea9681f7c79BF",
