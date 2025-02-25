@@ -95,11 +95,11 @@ type InvoiceWebHookRequest struct {
 }
 
 type Event struct {
-	Address      string `json:"address"`
-	InvoiceID    string `json:"invoiceID"`
-	NumLicenses  int    `json:"numLicenses"`
-	UnitUsdPrice int    `json:"unitUsdPrice"`
-	TokenPaid    int    `json:"tokenPaid"`
-	TxHash       string `json:"txHash"`
-	BlockNumber  int64  `json:"blockNumber"`
+	Address      string  `json:"address"`
+	InvoiceID    string  `json:"invoiceID"`
+	NumLicenses  int     `json:"numLicenses"`
+	UnitUsdPrice int     `json:"unitUsdPrice"`
+	TokenPaid    float64 `json:"tokenPaid"`
+	TxHash       string  `json:"txHash"`
+	BlockNumber  int64   `json:"blockNumber"`
 }

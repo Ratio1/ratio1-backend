@@ -14,12 +14,12 @@ import (
 )
 
 func Test_oblio(t *testing.T) {
-	name := "John"
-	surname := "Doe"
+	name := "Alberto"
+	surname := "Bastianello"
+
 	//companyName := "ACME"
-	userEmail := "alberto.bast2001@gmail.com"
-	numLicenses := 1
-	unitsUsdPrice := 500
+	userEmail := "aledef0302@gmail.com"
+	hash := "0x2e5b12d06d36e30fa41aaee7337d9102da686966775a22ff1b59a5bb0de20452"
 	status := model.InvoiceStatusPending
 	invoiceData := model.InvoiceClient{
 		Uuid:               nil,
@@ -27,22 +27,23 @@ func Test_oblio(t *testing.T) {
 		Surname:            &surname,
 		CompanyName:        nil,
 		UserEmail:          &userEmail,
-		IdentificationCode: "1234",
-		Address:            "1234 Main St",
-		State:              "CA",
-		City:               "San Francisco",
-		Country:            "USA",
+		IdentificationCode: "BSTLRT01M29I403H",
+		Address:            "Via Montereale, 10",
+		State:              "PN",
+		City:               "Pordenone",
+		Country:            "ITA",
 
 		IsCompany: false,
 		Status:    &status,
 	}
 
 	InvoiceRequest := model.Event{
-		Address:      "0x1234",
-		InvoiceID:    "1234",
-		NumLicenses:  numLicenses,
-		UnitUsdPrice: unitsUsdPrice,
-		TokenPaid:    15000,
+		Address:      "0xc959bDE89AB0D92f038292023775bA49bEaD8f91",
+		InvoiceID:    "140e2af3cbdd4505bbe1318f9657647f",
+		NumLicenses:  1,
+		UnitUsdPrice: 500,
+		TokenPaid:    2781.22,
+		TxHash:       hash,
 	}
 	url, invoiceNumber, err := generateInvoice(invoiceData, InvoiceRequest)
 	require.Nil(t, err)

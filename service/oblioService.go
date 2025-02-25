@@ -144,14 +144,18 @@ func decodeLogs(vLog types.Log) (*model.Event, error) {
 	}
 
 	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
-	tokenAmount := event.TotalR1Spent.Div(event.TotalR1Spent, oneToken).Int64()
 
+	totalR1Float := new(big.Float).SetInt(event.TotalR1Spent)
+	oneTokenFloat := new(big.Float).SetInt(oneToken)
+
+	tokenAmount := new(big.Float).Quo(totalR1Float, oneTokenFloat)
+	tokenAmountAsFloat, _ := tokenAmount.Float64()
 	result := model.Event{
 		Address:      to.Hex(),
 		InvoiceID:    string(invoiceUuidAsBytes),
 		NumLicenses:  int(event.TokenCount.Int64()),
 		UnitUsdPrice: int(event.UnitUsdPrice.Int64()),
-		TokenPaid:    int(tokenAmount),
+		TokenPaid:    tokenAmountAsFloat,
 		TxHash:       vLog.TxHash.Hex(),
 		BlockNumber:  int64(vLog.BlockNumber),
 	}
@@ -177,9 +181,9 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		name = *invoiceData.Name + " " + *invoiceData.Surname
 	}
 
-	pricePerToken := float64(invoiceRequest.UnitUsdPrice) / float64(invoiceRequest.TokenPaid)
+	pricePerToken := float64(invoiceRequest.UnitUsdPrice) / invoiceRequest.TokenPaid
 
-	var mentions = "Amount paid: " + strconv.Itoa(invoiceRequest.TokenPaid) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD"
+	var mentions = "Amount paid: " + strconv.FormatFloat(invoiceRequest.TokenPaid, 'f', 2, 64) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD"
 
 	var client = model.OblioInvoiceClient{
 		CIF:     invoiceData.IdentificationCode,
@@ -196,10 +200,8 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Price:         int64(invoiceRequest.UnitUsdPrice),
 		Quantity:      int64(invoiceRequest.NumLicenses),
 		MeasuringUnit: "unit",
-		VatPercentage: 0,
-		VatIncluded:   0,
-
-		Currency: "USD",
+		VatIncluded:   1,
+		Currency:      "USD",
 	}
 
 	var collect = model.InvoiceCollect{

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"math/big"
 	"net/http"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -65,13 +66,18 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		return
 	}
 
+	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
+	trimmedSuply := big.NewInt(0).Div(supply.Supply, oneToken)
+	trimmedMinted := big.NewInt(0).Div(supply.Minted, oneToken)
+	trimmedBurned := big.NewInt(0).Div(supply.Burned, oneToken)
+
 	response := tokenSupplyResponse{
 		InitilaMinted:     "0",
-		Supply:            supply.Supply.String(),
-		CirculatingSupply: supply.Supply.String(),
-		Burned:            supply.Burned.String(),
-		Minted:            supply.Minted.String(),
+		Supply:            trimmedSuply.String(),
+		CirculatingSupply: trimmedSuply.String(),
+		Burned:            trimmedBurned.String(),
+		Minted:            trimmedMinted.String(),
 	}
 
-	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
+	c.JSON(http.StatusOK, response)
 }

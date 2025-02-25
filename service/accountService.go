@@ -176,6 +176,10 @@ func UnsubscribeEmail(kyc *model.Kyc) error {
 
 func NewAccountDto(account *model.Account, kyc *model.Kyc) *model.AccountDto {
 	if kyc == nil {
+		UsdBuyLimit := 0
+		if config.Config.Api.DevTesting {
+			UsdBuyLimit = config.Config.BuyLimitUSD.Individual
+		}
 		return &model.AccountDto{
 			Email:             StringOrEmpty(account.Email),
 			EmailConfirmed:    account.EmailConfirmed,
@@ -188,7 +192,7 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) *model.AccountDto {
 			IsActive:          false,
 			IsBlacklisted:     account.IsBlacklisted,
 			BlacklistedReason: account.BlacklistedReason,
-			UsdBuyLimit:       0,
+			UsdBuyLimit:       UsdBuyLimit,
 		}
 	}
 	limit := 0
