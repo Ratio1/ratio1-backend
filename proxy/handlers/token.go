@@ -1,16 +1,12 @@
 package handlers
 
 import (
-	"errors"
-	"math/big"
 	"net/http"
 	"sync"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/service"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 )
 
@@ -63,66 +59,35 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		return
 	}
 
-	contractAddress := common.HexToAddress(config.Config.R1ContractAddress)
-	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
-
-	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
-	if err != nil {
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while dialing client") //ERROR is not returned because it can expose secret key
-	}
-	defer client.Close()
-
 	token, ok := c.GetQuery("extract")
 	if ok && token != "" {
 		switch token {
 		case "circulatingSupply", "totalSupply":
-			latestBlock, err := service.GetLastBlockNumber(client)
+			totalSupply, err := service.GetTotalSupply()
 			if err != nil {
 				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 				return
 			}
 
-			totalSupply, err := service.GetTotalSupply(client, latestBlock, contractAddress)
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedSuply := big.NewInt(0).Div(totalSupply, oneToken)
-			c.String(http.StatusOK, "%d", trimmedSuply.Int64())
+			c.String(http.StatusOK, "%d", totalSupply)
 			return
 		case "minted":
-			latestBlock, err := service.GetLastBlockNumber(client)
+			totalMinted, err := service.GetTotalMintedAmount()
 			if err != nil {
 				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 				return
 			}
 
-			totalMinted, err := service.GetTotalMintedAmount(client, latestBlock, contractAddress)
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedMinted := big.NewInt(0).Div(totalMinted, oneToken)
-			c.String(http.StatusOK, "%d", trimmedMinted.Int64())
+			c.String(http.StatusOK, "%d", totalMinted)
 			return
 		case "burned":
-			latestBlock, err := service.GetLastBlockNumber(client)
+			totalBurned, err := service.GetTotalBurnedAmount()
 			if err != nil {
 				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 				return
 			}
 
-			totalBurned, err := service.GetTotalBurnedAmount(client, latestBlock, contractAddress)
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedBurned := big.NewInt(0).Div(totalBurned, oneToken)
-			//c.JSON(http.StatusOK, trimmedBurned)
-			c.String(http.StatusOK, "%d", trimmedBurned.Int64())
+			c.String(http.StatusOK, "%d", totalBurned)
 			return
 		case "initailMinted":
 			c.String(http.StatusOK, "%d", 0)
@@ -133,59 +98,35 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		}
 	}
 
-	latestBlock, err := service.GetLastBlockNumber(client)
-	if err != nil {
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
-	}
-	var trimmedSupply, trimmedMinted, trimmedBurned *big.Int
+	var trimmedSupply, trimmedMinted, trimmedBurned int64
 	var wg sync.WaitGroup
-	var syncErr error
 	wg.Add(3)
 	go func() {
 		defer wg.Done()
-		totalSupply, err := service.GetTotalSupply(client, latestBlock, contractAddress)
-		if err != nil {
-			syncErr = errors.New("error while retrieving total supply: " + err.Error())
-			return
-		}
-
-		trimmedSupply = big.NewInt(0).Div(totalSupply, oneToken)
+		trimmedSupply, err = service.GetTotalSupply()
 	}()
 	go func() {
 		defer wg.Done()
-		totalMinted, err := service.GetTotalMintedAmount(client, latestBlock, contractAddress)
-		if err != nil {
-			syncErr = errors.New("error while retrieving minted supply: " + err.Error())
-			return
-		}
-
-		trimmedMinted = big.NewInt(0).Div(totalMinted, oneToken)
+		trimmedMinted, err = service.GetTotalMintedAmount()
 	}()
 	go func() {
 		defer wg.Done()
-		totalBurned, err := service.GetTotalBurnedAmount(client, latestBlock, contractAddress)
-		if err != nil {
-			syncErr = errors.New("error while retrieving burned supply: " + err.Error())
-			return
-		}
-
-		trimmedBurned = big.NewInt(0).Div(totalBurned, oneToken)
+		trimmedBurned, err = service.GetTotalBurnedAmount()
 	}()
 	wg.Wait()
 
-	if syncErr != nil {
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, syncErr.Error())
+	if err != nil {
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
 
 	response := tokenSupplyResponse{
 		InitilaMinted:     0,
 		MaxSupply:         161803398,
-		TotalSupply:       trimmedSupply.Int64(),
-		CirculatingSupply: trimmedSupply.Int64(),
-		Burned:            trimmedBurned.Int64(),
-		Minted:            trimmedMinted.Int64(),
+		TotalSupply:       trimmedSupply,
+		CirculatingSupply: trimmedSupply,
+		Burned:            trimmedBurned,
+		Minted:            trimmedMinted,
 	}
 
 	c.JSON(http.StatusOK, response)
