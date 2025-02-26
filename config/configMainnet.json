@@ -71,5 +71,8 @@
   "BuyLimitUSD": {
     "Individual": 5000,
     "Company": 5000
+  },
+  "ViesApi": {
+    "BaseUrl": "https://viesapi.eu/api"
   }
 }

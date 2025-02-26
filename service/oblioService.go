@@ -188,14 +188,27 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Country: invoiceData.Country,
 		Email:   *invoiceData.UserEmail,
 	}
-
-	var product = model.InvoiceProduct{
-		Name:          "License",
-		Price:         int64(invoiceRequest.UnitUsdPrice),
-		Quantity:      int64(invoiceRequest.NumLicenses),
-		MeasuringUnit: "unit",
-		VatIncluded:   1,
-		Currency:      "USD",
+	var product model.InvoiceProduct
+	if invoiceData.ReverseCharge {
+		product = model.InvoiceProduct{
+			Name:          "License",
+			Price:         int64(invoiceRequest.UnitUsdPrice),
+			Quantity:      int64(invoiceRequest.NumLicenses),
+			MeasuringUnit: "unit",
+			VatIncluded:   1,
+			VatPercentage: 0,
+			VatName:       "Taxare inversa",
+			Currency:      "USD",
+		}
+	} else {
+		product = model.InvoiceProduct{
+			Name:          "License",
+			Price:         int64(invoiceRequest.UnitUsdPrice),
+			Quantity:      int64(invoiceRequest.NumLicenses),
+			MeasuringUnit: "unit",
+			VatIncluded:   1,
+			Currency:      "USD",
+		}
 	}
 
 	var collect = model.InvoiceCollect{

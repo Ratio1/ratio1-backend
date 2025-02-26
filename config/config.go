@@ -33,6 +33,7 @@ type GeneralConfig struct {
 	AdminAddresses     []string
 	EmailTemplatesPath string
 	BuyLimitUSD        BuyLimitUSDConfig
+	ViesApi            ViesConfig
 }
 
 type ApiConfig struct {
@@ -107,6 +108,12 @@ type Infura struct {
 type BuyLimitUSDConfig struct {
 	Individual int
 	Company    int
+}
+
+type ViesConfig struct {
+	BaseUrl  string
+	User     string
+	Password string
 }
 
 func (d DatabaseConfig) Url() string {
@@ -256,6 +263,16 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 			return nil, errors.New("ADMIN_ADDRESSES is not set")
 		}
 		cfg.AdminAddresses = strings.Split(adminAddressesString, ",")
+
+		/* VIES ENV VARIABLES	*/
+		cfg.ViesApi.User = os.Getenv("VIES_USER")
+		if cfg.ViesApi.User == "" {
+			return nil, errors.New("VIES_USER is not set")
+		}
+		cfg.ViesApi.Password = os.Getenv("VIES_PASSWORD")
+		if cfg.ViesApi.Password == "" {
+			return nil, errors.New("VIES_PASSWORD is not set")
+		}
 	}
 
 	/* GENERAL ENV VARIABLES */

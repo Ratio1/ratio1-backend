@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
-	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 )
 
 func init() {
@@ -76,5 +75,5 @@ func init() {
 	config.Config.BuyLimitUSD.Individual = 10000
 	config.Config.BuyLimitUSD.Company = 200000
 
-	storage.Connect()
+	//storage.Connect()
 }

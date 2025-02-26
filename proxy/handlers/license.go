@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const COUNTRY_CODE = "ROU"
 const (
 	launchpadBaseEndpoint = "/license"
 	mintTokensEndpoint    = "/buy"
@@ -135,6 +136,11 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			return
 		}
 	}
+
+	if client.IsCompany && client.Country != COUNTRY_CODE {
+		client.ReverseCharge = service.IsCompanyRegistered(client.Country, client.IdentificationCode)
+	}
+
 	newUuid := uuid.New()
 	newString := strings.ReplaceAll(newUuid.String(), "-", "")
 	status := model.InvoiceStatusPending
