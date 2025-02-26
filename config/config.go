@@ -12,7 +12,7 @@ import (
 
 var (
 	Config         GeneralConfig
-	BackendVersion = "1.1.5"
+	BackendVersion = "1.1.6"
 	_              = Config
 )
 

@@ -88,6 +88,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 		kyc.HasBeenDeleted = true
 
 	case model.ApplicantReset:
+		kyc.KycStatus = event.ReviewStatus
 		kyc.HasBeenDeleted = false
 
 	default:
