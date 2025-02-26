@@ -89,7 +89,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			}
 
 			trimmedSuply := big.NewInt(0).Div(totalSupply, oneToken)
-			c.JSON(http.StatusOK, trimmedSuply)
+			c.String(http.StatusOK, "%d", trimmedSuply.Int64())
 			return
 		case "minted":
 			latestBlock, err := service.GetLastBlockNumber(client)
@@ -105,7 +105,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			}
 
 			trimmedMinted := big.NewInt(0).Div(totalMinted, oneToken)
-			c.JSON(http.StatusOK, trimmedMinted)
+			c.String(http.StatusOK, "%d", trimmedMinted.Int64())
 			return
 		case "burned":
 			latestBlock, err := service.GetLastBlockNumber(client)
@@ -121,13 +121,14 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			}
 
 			trimmedBurned := big.NewInt(0).Div(totalBurned, oneToken)
-			c.JSON(http.StatusOK, trimmedBurned)
+			//c.JSON(http.StatusOK, trimmedBurned)
+			c.String(http.StatusOK, "%d", trimmedBurned.Int64())
 			return
 		case "initailMinted":
-			c.JSON(http.StatusOK, 0)
+			c.String(http.StatusOK, "%d", 0)
 			return
 		case "maxSupply":
-			c.JSON(http.StatusOK, 161803398)
+			c.String(http.StatusOK, "%d", 161803398)
 			return
 		}
 	}
