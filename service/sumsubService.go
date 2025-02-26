@@ -71,13 +71,12 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
 			status = model.StatusApproved
+			err = SendKycConfirmedEmail(kyc.Email)
+			if err != nil {
+				return errors.New("error while sending email: " + err.Error())
+			}
 		}
-
 		kyc.KycStatus = status
-		err = SendKycConfirmedEmail(kyc.Email)
-		if err != nil {
-			return errors.New("error while sending email: " + err.Error())
-		}
 
 	case model.ApplicantActivated:
 		kyc.IsActive = true

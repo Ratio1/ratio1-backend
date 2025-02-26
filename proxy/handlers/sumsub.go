@@ -217,7 +217,7 @@ func (h *sumsubHandler) processEvents(c *gin.Context) {
 		return
 	}
 
-	if kyc.KycStatus == model.StatusFinalRejected {
+	if kyc.KycStatus == model.StatusFinalRejected && kycEvent.Type != model.ApplicantReset {
 		log.Error("user is final rejected, cannot retry")
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "user is final rejected, cannot retry")
 		return
