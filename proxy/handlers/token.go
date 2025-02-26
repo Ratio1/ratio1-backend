@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"errors"
 	"math/big"
 	"net/http"
+	"sync"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -18,12 +20,12 @@ const (
 )
 
 type tokenSupplyResponse struct {
-	CirculatingSupply string `json:"circulatingSupply"`
-	TotalSupply       string `json:"totalSupply"`
-	MaxSupply         string `json:"maxSupply"`
-	Minted            string `json:"minted"`
-	Burned            string `json:"burned"`
-	InitilaMinted     string `json:"initialMinted"`
+	CirculatingSupply int64 `json:"circulatingSupply"`
+	TotalSupply       int64 `json:"totalSupply"`
+	MaxSupply         int64 `json:"maxSupply"`
+	Minted            int64 `json:"minted"`
+	Burned            int64 `json:"burned"`
+	InitilaMinted     int64 `json:"initialMinted"`
 }
 
 type tokenHandler struct{}
@@ -123,6 +125,65 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		case "maxSupply":
 			c.JSON(http.StatusOK, 161803398)
 		default:
+			latestBlock, err := service.GetLastBlockNumber(client)
+			if err != nil {
+				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+				return
+			}
+			var trimmedSupply, trimmedMinted, trimmedBurned *big.Int
+			var wg sync.WaitGroup
+			var syncErr error
+			wg.Add(3)
+			go func() {
+				defer wg.Done()
+				totalSupply, err := service.GetTotalSupply(client, latestBlock, contractAddress)
+				if err != nil {
+					syncErr = errors.New("error while retrieving total supply: " + err.Error())
+					return
+				}
+
+				trimmedSupply = big.NewInt(0).Div(totalSupply, oneToken)
+			}()
+			go func() {
+				defer wg.Done()
+				totalMinted, err := service.GetTotalMintedAmount(client, latestBlock, contractAddress)
+				if err != nil {
+					syncErr = errors.New("error while retrieving minted supply: " + err.Error())
+					return
+				}
+
+				trimmedMinted = big.NewInt(0).Div(totalMinted, oneToken)
+			}()
+			go func() {
+				defer wg.Done()
+				totalBurned, err := service.GetTotalBurnedAmount(client, latestBlock, contractAddress)
+				if err != nil {
+					syncErr = errors.New("error while retrieving burned supply: " + err.Error())
+					return
+				}
+
+				trimmedBurned = big.NewInt(0).Div(totalBurned, oneToken)
+			}()
+			wg.Wait()
+
+			if syncErr != nil {
+				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+				return
+			}
+
+			response := tokenSupplyResponse{
+				InitilaMinted:     0,
+				MaxSupply:         161803398,
+				TotalSupply:       trimmedSupply.Int64(),
+				CirculatingSupply: trimmedSupply.Int64(),
+				Burned:            trimmedBurned.Int64(),
+				Minted:            trimmedMinted.Int64(),
+			}
+
+			c.JSON(http.StatusOK, response)
+		}
+	} else {
+		/*
 			supply, err := service.GetTokenSupplyInfo(contractAddress)
 			if err != nil {
 				log.Error("error while retrieving token informations: " + err.Error())
@@ -140,30 +201,63 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				TotalSupply:       trimmedSuply.String(),
 				CirculatingSupply: trimmedSuply.String(),
 				Burned:            trimmedBurned.String(),
-				Minted:            trimmedMinted.String(),
+				Minted:            trimmedMinted.String(), //TODO add total supply 161803398
 			}
 
-			c.JSON(http.StatusOK, response)
-		}
-	} else {
-		supply, err := service.GetTokenSupplyInfo(contractAddress)
+			c.JSON(http.StatusOK, response)*/
+		latestBlock, err := service.GetLastBlockNumber(client)
 		if err != nil {
-			log.Error("error while retrieving token informations: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		var trimmedSupply, trimmedMinted, trimmedBurned *big.Int
+		var wg sync.WaitGroup
+		var syncErr error
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			totalSupply, err := service.GetTotalSupply(client, latestBlock, contractAddress)
+			if err != nil {
+				syncErr = errors.New("error while retrieving total supply: " + err.Error())
+				return
+			}
+
+			trimmedSupply = big.NewInt(0).Div(totalSupply, oneToken)
+		}()
+		go func() {
+			defer wg.Done()
+			totalMinted, err := service.GetTotalMintedAmount(client, latestBlock, contractAddress)
+			if err != nil {
+				syncErr = errors.New("error while retrieving minted supply: " + err.Error())
+				return
+			}
+
+			trimmedMinted = big.NewInt(0).Div(totalMinted, oneToken)
+		}()
+		go func() {
+			defer wg.Done()
+			totalBurned, err := service.GetTotalBurnedAmount(client, latestBlock, contractAddress)
+			if err != nil {
+				syncErr = errors.New("error while retrieving burned supply: " + err.Error())
+				return
+			}
+
+			trimmedBurned = big.NewInt(0).Div(totalBurned, oneToken)
+		}()
+		wg.Wait()
+
+		if syncErr != nil {
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 			return
 		}
 
-		trimmedSuply := big.NewInt(0).Div(supply.Supply, oneToken)
-		trimmedMinted := big.NewInt(0).Div(supply.Minted, oneToken)
-		trimmedBurned := big.NewInt(0).Div(supply.Burned, oneToken)
-
 		response := tokenSupplyResponse{
-			InitilaMinted:     "0",
-			MaxSupply:         "161803398",
-			TotalSupply:       trimmedSuply.String(),
-			CirculatingSupply: trimmedSuply.String(),
-			Burned:            trimmedBurned.String(),
-			Minted:            trimmedMinted.String(), //TODO add total supply 161803398
+			InitilaMinted:     0,
+			MaxSupply:         161803398,
+			TotalSupply:       trimmedSupply.Int64(),
+			CirculatingSupply: trimmedSupply.Int64(),
+			Burned:            trimmedBurned.Int64(),
+			Minted:            trimmedMinted.Int64(),
 		}
 
 		c.JSON(http.StatusOK, response)
