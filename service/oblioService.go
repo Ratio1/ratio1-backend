@@ -80,22 +80,16 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 
 	contractAddress := common.HexToAddress(config.Config.NDContractAddress)
 
-	latestBlock, err := client.BlockNumber(context.Background())
-	if err != nil {
-		return nil, errors.New("error while retrieving block number: " + err.Error())
-	}
 	var fromBlock *big.Int
 	if latestSeenBlock != nil {
 		fromBlock = big.NewInt(*latestSeenBlock)
 	}
-	toBlock := big.NewInt(int64(latestBlock))
 
 	eventSignatureAsBytes := []byte(config.Config.Oblio.EventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
 		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: []common.Address{contractAddress},
 		Topics:    [][]common.Hash{{eventHash}},
 	}

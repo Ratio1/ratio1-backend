@@ -42,14 +42,6 @@ func GetTotalMintedAmount() (int64, error) {
 	}
 	defer client.Close()
 
-	latestBlock, err := getLastBlockNumber(client)
-	if err != nil {
-		return 0, err
-	}
-
-	fromBlock := big.NewInt(0)
-	toBlock := big.NewInt(latestBlock)
-
 	transferEventSignature := []byte("Transfer(address,address,uint256)")
 	transferEventSigHash := crypto.Keccak256Hash(transferEventSignature)
 
@@ -57,8 +49,6 @@ func GetTotalMintedAmount() (int64, error) {
 	zeroTopic := common.BytesToHash(zeroAddress.Bytes())
 
 	mintedQuery := ethereum.FilterQuery{
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: []common.Address{tokenAddress},
 		Topics: [][]common.Hash{
 			{transferEventSigHash},
@@ -101,14 +91,6 @@ func GetTotalBurnedAmount() (int64, error) {
 	}
 	defer client.Close()
 
-	latestBlock, err := getLastBlockNumber(client)
-	if err != nil {
-		return 0, err
-	}
-
-	fromBlock := big.NewInt(0)
-	toBlock := big.NewInt(latestBlock)
-
 	transferEventSignature := []byte("Transfer(address,address,uint256)")
 	transferEventSigHash := crypto.Keccak256Hash(transferEventSignature)
 
@@ -116,8 +98,6 @@ func GetTotalBurnedAmount() (int64, error) {
 	zeroTopic := common.BytesToHash(zeroAddress.Bytes())
 
 	burnedQuery := ethereum.FilterQuery{
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: []common.Address{tokenAddress},
 		Topics: [][]common.Hash{
 			{transferEventSigHash},
@@ -195,14 +175,6 @@ func GetTotalSupply() (int64, error) {
 	})
 
 	return trimmedSupply.Int64(), nil
-}
-
-func getLastBlockNumber(client *ethclient.Client) (int64, error) {
-	latestBlock, err := client.BlockNumber(context.Background())
-	if err != nil {
-		return 0, errors.New("error while retrieving block number")
-	}
-	return int64(latestBlock), nil
 }
 
 func getFromSupplyData(key string) (isValid bool, value int64) {

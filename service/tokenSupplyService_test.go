@@ -14,6 +14,5 @@ func Test_GetTokenSupply(t *testing.T) {
 	require.Nil(t, err)
 	totalBurned, err := GetTotalBurnedAmount()
 	require.Nil(t, err)
-
 	fmt.Println(totalSupply, totalMinted, totalBurned)
 }
