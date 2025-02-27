@@ -60,10 +60,10 @@ type VIESResponse struct {
 	} `xml:"error"`
 }
 
-func IsCompanyRegistered(countryCode, vat string) bool {
+func IsCompanyRegisteredAndUE(countryCode, vat string) (idRegistered bool, isUe bool) {
 	twoLetter, ok := euCountries[strings.ToUpper(countryCode)]
 	if !ok {
-		return false
+		return false, false
 	}
 
 	vat = strings.ToUpper(strings.TrimSpace(vat))
@@ -76,25 +76,25 @@ func IsCompanyRegistered(countryCode, vat string) bool {
 	resp, err := http.Get(authURL)
 	if err != nil {
 		log.Error("error while calling api: " + err.Error())
-		return false
+		return false, true
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error("error while reading response: " + err.Error())
-		return false
+		return false, true
 	}
 
 	var viesResp VIESResponse
 	if err := xml.Unmarshal(body, &viesResp); err != nil {
 		log.Error("error while parsing response: " + err.Error())
-		return false
+		return false, true
 	}
 	if viesResp.Error.Code != "" {
 		log.Error("error code: " + viesResp.Error.Code + " with description: " + viesResp.Error.Description + " details: " + viesResp.Error.Details)
-		return false
+		return false, true
 	}
 
-	return viesResp.Vies.Valid
+	return viesResp.Vies.Valid, true
 }

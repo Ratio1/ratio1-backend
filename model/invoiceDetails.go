@@ -25,6 +25,7 @@ type InvoiceClient struct {
 	TxHash             *string `gorm:"default:null"`
 	BlockNumber        *int64  `gorm:"default:null"`
 	ReverseCharge      bool    `gorm:"default:false"`
+	IsUe               bool    `gorm:"default:true"`
 }
 
 type AuthRequest struct {
@@ -63,7 +64,7 @@ type InvoiceProduct struct {
 
 	MeasuringUnit string `json:"measuringUnit,omitempty"`
 	VatName       string `json:"vatName,omitempty"`
-	VatPercentage int    `json:"vatPercentage,omitempty"`
+	VatPercentage int    `json:"vatPercentage"`
 	VatIncluded   int    `json:"vatIncluded,omitempty"`
 
 	Quantity int64  `json:"quantity,omitempty"`

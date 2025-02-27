@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
@@ -177,7 +179,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 
 	pricePerToken := float64(invoiceRequest.UnitUsdPrice) / invoiceRequest.TokenPaid
 
-	var mentions = "Amount paid: " + strconv.FormatFloat(invoiceRequest.TokenPaid, 'f', 2, 64) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD"
+	var mentions = "Amount paid: " + strconv.FormatFloat(invoiceRequest.TokenPaid, 'f', 2, 64) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD" + "\nTxHash: " + invoiceRequest.TxHash
 
 	var client = model.OblioInvoiceClient{
 		CIF:     invoiceData.IdentificationCode,
@@ -188,26 +190,24 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Country: invoiceData.Country,
 		Email:   *invoiceData.UserEmail,
 	}
-	var product model.InvoiceProduct
-	if invoiceData.ReverseCharge {
-		product = model.InvoiceProduct{
-			Name:          "License",
-			Price:         int64(invoiceRequest.UnitUsdPrice),
-			Quantity:      int64(invoiceRequest.NumLicenses),
-			MeasuringUnit: "unit",
-			VatIncluded:   1,
-			VatPercentage: 0,
-			VatName:       "Taxare inversa",
-			Currency:      "USD",
-		}
-	} else {
-		product = model.InvoiceProduct{
-			Name:          "License",
-			Price:         int64(invoiceRequest.UnitUsdPrice),
-			Quantity:      int64(invoiceRequest.NumLicenses),
-			MeasuringUnit: "unit",
-			VatIncluded:   1,
-			Currency:      "USD",
+
+	product := model.InvoiceProduct{
+		Name:          "License",
+		Price:         int64(invoiceRequest.UnitUsdPrice),
+		Quantity:      int64(invoiceRequest.NumLicenses),
+		MeasuringUnit: "unit",
+		Currency:      "USD",
+		VatPercentage: 19,
+		VatIncluded:   1,
+	}
+
+	if invoiceData.IsCompany && invoiceData.Country != "ROU" {
+		if invoiceData.ReverseCharge {
+			product.VatPercentage = 0
+			product.VatName = "Taxare inversa"
+		} else if !invoiceData.IsUe {
+			product.VatPercentage = 0
+			product.VatName = "Scutita"
 		}
 	}
 
@@ -228,6 +228,9 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Product:    []model.InvoiceProduct{product},
 		Collect:    collect,
 	}
+
+	data, _ := json.Marshal(invoice)
+	fmt.Println(string(data))
 
 	var oblioResponse model.OblioInvoiceResponse
 	err = process.HttpPost(config.Config.Oblio.InvoiceUrl, invoice, &oblioResponse, headers...)

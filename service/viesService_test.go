@@ -13,6 +13,8 @@ func Test_ViesIntegration(t *testing.T) {
 		User:     "test_id",
 		Password: "test_key",
 	}
-	isValid := IsCompanyRegistered("POL", "7171642051")
+	isValid, isUe := IsCompanyRegisteredAndUE("POL", "7171642051")
+	require.True(t, isUe)
 	require.True(t, isValid)
+
 }

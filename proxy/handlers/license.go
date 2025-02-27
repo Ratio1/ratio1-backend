@@ -138,7 +138,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	}
 
 	if client.IsCompany && client.Country != COUNTRY_CODE {
-		client.ReverseCharge = service.IsCompanyRegistered(client.Country, client.IdentificationCode)
+		client.ReverseCharge, client.IsUe = service.IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
 	}
 
 	newUuid := uuid.New()
