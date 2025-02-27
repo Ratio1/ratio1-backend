@@ -17,8 +17,9 @@ import (
 )
 
 type supplyData struct {
-	timestamp time.Time
-	value     int64
+	timestamp       time.Time //last time this value was updated
+	value           int64     //last value saved
+	lastBlockNumber int64     //last block number seen
 }
 
 var (
@@ -31,8 +32,14 @@ var mu sync.Mutex
 var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
 
 func GetTotalMintedAmount() (int64, error) {
-	if valid, value := getFromSupplyData(MintedKey); valid {
+	var fromBlock *big.Int
+	startingValue := int64(0)
+
+	if valid, value, lastBlock := getFromSupplyData(MintedKey); valid {
 		return value, nil
+	} else {
+		startingValue += value
+		fromBlock = big.NewInt(lastBlock)
 	}
 
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
@@ -48,42 +55,68 @@ func GetTotalMintedAmount() (int64, error) {
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
 	zeroTopic := common.BytesToHash(zeroAddress.Bytes())
 
-	mintedQuery := ethereum.FilterQuery{
-		Addresses: []common.Address{tokenAddress},
-		Topics: [][]common.Hash{
-			{transferEventSigHash},
-			{zeroTopic},
-		},
-	}
-
-	mintedLogs, err := client.FilterLogs(context.Background(), mintedQuery)
-	if err != nil {
-		return 0, errors.New("error while filtering minted logs")
-	}
-
 	mintedTotal := big.NewInt(0)
-	for _, vLog := range mintedLogs {
-		if len(vLog.Data) != 32 {
-			return 0, errors.New("unexpected data length in minted log")
+	alreadySeen := make(map[string]bool)
+
+	for {
+		mintedQuery := ethereum.FilterQuery{
+			FromBlock: fromBlock,
+			Addresses: []common.Address{tokenAddress},
+			Topics: [][]common.Hash{
+				{transferEventSigHash},
+				{zeroTopic},
+			},
 		}
 
-		amount := new(big.Int).SetBytes(vLog.Data)
-		mintedTotal.Add(mintedTotal, amount)
+		mintedLogs, err := client.FilterLogs(context.Background(), mintedQuery)
+		if err != nil {
+			return 0, errors.New("error while filtering minted logs")
+		}
+
+		for _, vLog := range mintedLogs {
+			if _, exist := alreadySeen[vLog.TxHash.String()]; exist {
+				continue
+			}
+
+			if len(vLog.Data) != 32 {
+				return 0, errors.New("unexpected data length in minted log")
+			}
+
+			amount := new(big.Int).SetBytes(vLog.Data)
+			mintedTotal.Add(mintedTotal, amount)
+			alreadySeen[vLog.TxHash.String()] = true
+
+			if vLog.BlockNumber > fromBlock.Uint64() {
+				fromBlock = big.NewInt(int64(vLog.BlockNumber))
+			}
+		}
+
+		if len(mintedLogs) < 10000 {
+			break
+		}
 	}
 
 	trimmedMinted := big.NewInt(0).Div(mintedTotal, oneToken)
 	setInSupplyData(MintedKey, supplyData{
-		timestamp: time.Now(),
-		value:     trimmedMinted.Int64(),
+		timestamp:       time.Now(),
+		value:           trimmedMinted.Int64() + startingValue,
+		lastBlockNumber: fromBlock.Int64(),
 	})
 
 	return trimmedMinted.Int64(), nil
 }
 
 func GetTotalBurnedAmount() (int64, error) {
-	if valid, value := getFromSupplyData(BurnedKey); valid {
+	var fromBlock *big.Int
+	startingValue := int64(0)
+
+	if valid, value, lastBlock := getFromSupplyData(BurnedKey); valid {
 		return value, nil
+	} else {
+		startingValue += value
+		fromBlock = big.NewInt(lastBlock)
 	}
+
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -97,43 +130,63 @@ func GetTotalBurnedAmount() (int64, error) {
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
 	zeroTopic := common.BytesToHash(zeroAddress.Bytes())
 
-	burnedQuery := ethereum.FilterQuery{
-		Addresses: []common.Address{tokenAddress},
-		Topics: [][]common.Hash{
-			{transferEventSigHash},
-			nil,
-			{zeroTopic},
-		},
-	}
-
-	burnedLogs, err := client.FilterLogs(context.Background(), burnedQuery)
-	if err != nil {
-		return 0, errors.New("error while filtering burned logs")
-	}
-
 	burnedTotal := big.NewInt(0)
-	for _, vLog := range burnedLogs {
-		if len(vLog.Data) != 32 {
-			return 0, errors.New("unexpected data length in burned log")
+	alreadySeen := make(map[string]bool)
+
+	for {
+		burnedQuery := ethereum.FilterQuery{
+			FromBlock: fromBlock,
+			Addresses: []common.Address{tokenAddress},
+			Topics: [][]common.Hash{
+				{transferEventSigHash},
+				nil,
+				{zeroTopic},
+			},
 		}
 
-		amount := new(big.Int).SetBytes(vLog.Data)
-		burnedTotal.Add(burnedTotal, amount)
+		burnedLogs, err := client.FilterLogs(context.Background(), burnedQuery)
+		if err != nil {
+			return 0, errors.New("error while filtering burned logs")
+		}
+
+		for _, vLog := range burnedLogs {
+			if _, exist := alreadySeen[vLog.TxHash.String()]; exist {
+				continue
+			}
+
+			if len(vLog.Data) != 32 {
+				return 0, errors.New("unexpected data length in burned log")
+			}
+
+			amount := new(big.Int).SetBytes(vLog.Data)
+			burnedTotal.Add(burnedTotal, amount)
+			alreadySeen[vLog.TxHash.String()] = true
+
+			if vLog.BlockNumber > fromBlock.Uint64() {
+				fromBlock = big.NewInt(int64(vLog.BlockNumber))
+			}
+		}
+
+		if len(burnedLogs) < 10000 {
+			break
+		}
 	}
 
 	trimmedBurned := big.NewInt(0).Div(burnedTotal, oneToken)
 	setInSupplyData(BurnedKey, supplyData{
-		timestamp: time.Now(),
-		value:     trimmedBurned.Int64(),
+		timestamp:       time.Now(),
+		value:           trimmedBurned.Int64() + startingValue,
+		lastBlockNumber: fromBlock.Int64(),
 	})
 
 	return trimmedBurned.Int64(), nil
 }
 
 func GetTotalSupply() (int64, error) {
-	if valid, value := getFromSupplyData(SupplyKey); valid {
+	if valid, value, _ := getFromSupplyData(SupplyKey); valid {
 		return value, nil
 	}
+
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -177,17 +230,17 @@ func GetTotalSupply() (int64, error) {
 	return trimmedSupply.Int64(), nil
 }
 
-func getFromSupplyData(key string) (isValid bool, value int64) {
+func getFromSupplyData(key string) (isValid bool, value, blockNumber int64) {
 	mu.Lock()
 	defer mu.Unlock()
 	if v, found := tokenSupplyData[key]; found {
 		if time.Since(v.timestamp).Minutes() <= 10 {
-			return true, v.value
+			return true, v.value, v.lastBlockNumber
 		} else {
-			return false, 0
+			return false, v.value, v.lastBlockNumber
 		}
 	} else {
-		return false, 0
+		return false, 0, 0
 	}
 }
 
