@@ -92,7 +92,29 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 		kyc.HasBeenDeleted = false
 
 	default:
-		kyc.KycStatus = event.ReviewStatus
+		status := event.ReviewStatus
+		if event.ReviewResult.ReviewAnswer == "RED" {
+			if event.ReviewResult.ReviewRejectType == "FINAL" {
+				status = model.StatusFinalRejected
+				err = SendKycFinalRejectedEmail(kyc.Email)
+				if err != nil {
+					return errors.New("error while sending email: " + err.Error())
+				}
+			} else {
+				status = model.StatusRejected
+				err = SendStepRejectedEmail(kyc.Email)
+				if err != nil {
+					return errors.New("error while sending email: " + err.Error())
+				}
+			}
+		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
+			status = model.StatusApproved
+			err = SendKycConfirmedEmail(kyc.Email)
+			if err != nil {
+				return errors.New("error while sending email: " + err.Error())
+			}
+		}
+		kyc.KycStatus = status
 	}
 
 	err = storage.CreateOrUpdateKyc(&kyc)
