@@ -13,6 +13,7 @@ var (
 	kycConfirmedEmailTemplate     *template.Template
 	rejectedStepEmailTemplate     *template.Template
 	kycFinalRejectedEmailTemplate *template.Template
+	accountResettedEmailTemplate  *template.Template
 )
 
 func LoadAndCacheTemplates() {
@@ -37,12 +38,17 @@ func LoadAndCacheTemplates() {
 		if err != nil {
 			panic(err)
 		}
+		accountResetted, err := LoadAccountResettedEmailTemplate()
+		if err != nil {
+			panic(err)
+		}
 
 		confirmEmailTemplate = confirm
 		blacklistedEmailTemplate = blacklisted
 		kycConfirmedEmailTemplate = finalStatus
 		rejectedStepEmailTemplate = stepReject
 		kycFinalRejectedEmailTemplate = finalReject
+		accountResettedEmailTemplate = accountResetted
 	})
 }
 
@@ -64,6 +70,10 @@ func GetBlacklistedEmailTemplate() (*template.Template, error) {
 
 func GetKycConfirmedEmailTemplate() (*template.Template, error) {
 	return getOrSetTemplate(LoadKycConfirmedEmailTemplate, kycConfirmedEmailTemplate)
+}
+
+func GetAccountResettedEmailTemplate() (*template.Template, error) {
+	return getOrSetTemplate(LoadAccountResettedEmailTemplate, accountResettedEmailTemplate)
 }
 
 func getOrSetTemplate(

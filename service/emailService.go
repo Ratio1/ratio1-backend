@@ -20,6 +20,7 @@ const (
 	subjectEmailKycFinalRejected = "Sorry - You did not pass the Ratio1 KYC"
 	subjectEmailKycConfirmed     = "Congratulations - Ratio1 Technical KYC Completed"
 	subjectEmailStepRejected     = "Check your KYC documentation uploads"
+	subjectEmailAccountResetted  = "Your KYC has been resetted"
 	subjectAddressBlacklisted    = "Address is blacklisted"
 )
 
@@ -135,6 +136,21 @@ func SendBlacklistedEmail(email string) error {
 	}
 
 	return callSendEmail(email, subjectAddressBlacklisted, body.String())
+}
+
+func SendAccountResettedEmail(email string) error {
+	template, err := templates.GetAccountResettedEmailTemplate()
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	var body bytes.Buffer
+	err = template.Execute(&body, struct{}{})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectEmailAccountResetted, body.String())
 }
 
 func callSendEmail(email, subject, htmlBody string) error {

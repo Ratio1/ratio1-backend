@@ -90,6 +90,10 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 	case model.ApplicantReset:
 		kyc.KycStatus = event.ReviewStatus
 		kyc.HasBeenDeleted = false
+		err = SendAccountResettedEmail(kyc.Email)
+		if err != nil {
+			return errors.New("error while sending email: " + err.Error())
+		}
 
 	default:
 		status := event.ReviewStatus

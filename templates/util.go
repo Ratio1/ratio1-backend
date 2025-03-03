@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	emailConfirmFile      = "email.confirm.html"
-	emailKycRejectedFile  = "email.final.rejected.html"
-	emailStepRejectedFile = "email.step.rejected.html"
-	emailBlacklistedFile  = "email.blacklisted.html"
-	emailKycConfirmedFile = "email.kyc.confirmed.html"
+	emailConfirmFile         = "email.confirm.html"
+	emailKycRejectedFile     = "email.final.rejected.html"
+	emailStepRejectedFile    = "email.step.rejected.html"
+	emailBlacklistedFile     = "email.blacklisted.html"
+	emailKycConfirmedFile    = "email.kyc.confirmed.html"
+	emailAccountResettedFile = "email.account.resetted.html"
 )
 
 func LoadConfirmEmailTemplate() (*template.Template, error) {
@@ -32,6 +33,10 @@ func LoadBlacklistedEmailTemplate() (*template.Template, error) {
 
 func LoadKycConfirmedEmailTemplate() (*template.Template, error) {
 	return loadTemplate(emailKycConfirmedFile)
+}
+
+func LoadAccountResettedEmailTemplate() (*template.Template, error) {
+	return loadTemplate(emailAccountResettedFile)
 }
 
 func loadTemplate(filename string) (*template.Template, error) {
