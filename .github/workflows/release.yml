@@ -27,25 +27,6 @@ jobs:
             - name: Archive executable and HTML files
               run: tar -czvf ratio1-backend.tar.gz cmd/backend templates/html/*.html
 
-            - name: Upload Build as Artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: ratio1-backend
-                  path: ratio1-backend.tar.gz
-
-    release:
-        name: Create GitHub Release
-        runs-on: ubuntu-latest
-        needs: build
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-
-            - name: Download All Artifacts
-              uses: actions/download-artifact@v4
-              with:
-                  path: builds
-
             - name: Generate version from commit hash
               id: version
               run: |
