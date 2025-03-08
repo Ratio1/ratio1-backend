@@ -1,0 +1,67 @@
+name: Build and Release Ratio1 Backend
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        name: Build Go App
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: "1.21"
+
+            - name: Build Go executable from cmd/
+              run: |
+                  go mod tidy
+                  cd cmd
+                  go build -o backend
+
+            - name: Archive executable and HTML files
+              run: tar -czvf ratio1-backend.tar.gz cmd/backend templates/html/*.html
+
+            - name: Upload Build as Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ratio1-backend
+                  path: ratio1-backend.tar.gz
+
+    release:
+        name: Create GitHub Release
+        runs-on: ubuntu-latest
+        needs: build
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Download All Artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: builds
+
+            - name: Generate version from commit hash
+              id: version
+              run: |
+                  echo "VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+                  echo "VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+            - name: List downloaded files
+              run: ls -R builds
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: latest
+                  name: Release v-${{ steps.version.outputs.VERSION }}
+                  draft: false
+                  prerelease: false
+                  files: builds/**
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
