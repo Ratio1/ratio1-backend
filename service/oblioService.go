@@ -201,7 +201,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		VatIncluded:   1,
 	}
 
-	if invoiceData.IsCompany && invoiceData.Country != "ROU" {
+	if invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
 		if invoiceData.ReverseCharge {
 			product.VatPercentage = 0
 			product.VatName = "Taxare inversa"
@@ -209,7 +209,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 			product.VatPercentage = 0
 			product.VatName = "Scutita"
 		}
-	} else if !invoiceData.IsCompany && invoiceData.Country != "ROU" {
+	} else if !invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
 		vat := IsUserAnEUCitizen(invoiceData.Country)
 		if vat != nil {
 			product.VatPercentage = *vat
@@ -235,8 +235,9 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Collect:    collect,
 	}
 
-	if invoiceData.Country == "ROU" {
+	if invoiceData.Country == model.ROU_ID {
 		invoice.Language = "RO"
+		invoice.SeriesName = model.InvoiceROUSeriesName
 	}
 
 	data, _ := json.Marshal(invoice)

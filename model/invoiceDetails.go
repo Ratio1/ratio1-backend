@@ -3,8 +3,12 @@ package model
 const InvoiceStatusPending = "pending"
 const InvoiceStatusPaid = "paid"
 
-const InvoiceCif = "50252500"
-const InvoiceSeriesName = "NAE"
+const (
+	InvoiceCif           = "50252500"
+	InvoiceSeriesName    = "NAE"
+	InvoiceROUSeriesName = "NAERO"
+	ROU_ID               = "ROU"
+)
 
 // uuid nome+cognome o ragione sociale, cif o cnp (identificationCode), address, state, city,country,
 type InvoiceClient struct {
