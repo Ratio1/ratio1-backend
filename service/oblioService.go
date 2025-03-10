@@ -209,6 +209,12 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 			product.VatPercentage = 0
 			product.VatName = "Scutita"
 		}
+	} else if !invoiceData.IsCompany && invoiceData.Country != "ROU" {
+		vat := IsUserAnEUCitizen(invoiceData.Country)
+		if vat != nil {
+			product.VatPercentage = *vat
+			product.VatName = "VAT " + invoiceData.Country
+		}
 	}
 
 	var collect = model.InvoiceCollect{
@@ -227,6 +233,10 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Client:     client,
 		Product:    []model.InvoiceProduct{product},
 		Collect:    collect,
+	}
+
+	if invoiceData.Country == "ROU" {
+		invoice.Language = "RO"
 	}
 
 	data, _ := json.Marshal(invoice)

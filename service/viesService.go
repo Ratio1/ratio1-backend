@@ -39,6 +39,36 @@ var euCountries = map[string]string{
 	"SWE": "SE",
 }
 
+var euCountriesVat = map[string]float64{
+	"AUT": 20,
+	"BEL": 21,
+	"BGR": 20, //GREAT BRITAIN
+	"HRV": 25,
+	"CYP": 19,
+	"CZE": 21,
+	"DNK": 25,
+	"EST": 22,
+	"FIN": 26,
+	"FRA": 20,
+	"DEU": 19,
+	"GRC": 24,
+	"HUN": 27,
+	"IRL": 23,
+	"ITA": 22,
+	"LVA": 21,
+	"LTU": 21,
+	"LUX": 17,
+	"MLT": 18,
+	"NLD": 21,
+	"POL": 23,
+	"PRT": 23,
+	"ROU": 19,
+	"SVK": 23,
+	"SVN": 22,
+	"ESP": 21,
+	"SWE": 25,
+}
+
 type VIESResponse struct {
 	XMLName xml.Name `xml:"result"`
 	Vies    struct {
@@ -97,4 +127,12 @@ func IsCompanyRegisteredAndUE(countryCode, vat string) (idRegistered bool, isUe 
 	}
 
 	return viesResp.Vies.Valid, true
+}
+
+func IsUserAnEUCitizen(countryCode string) *float64 {
+	vat, ok := euCountriesVat[strings.ToUpper(countryCode)]
+	if !ok {
+		return nil
+	}
+	return &vat
 }
