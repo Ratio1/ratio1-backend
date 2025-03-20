@@ -1,0 +1,385 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/proxy/middleware"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/service"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	baseAccountEndpoint   = "/accounts"
+	getAccountEndpoint    = "/account"
+	registerEmailEndpoint = "/email/register"
+	confirmEmailEndpoint  = "/email/confirm"
+	subscribeEndpoint     = "/subscribe"
+	unsubscribeEndpoint   = "/unsubscribe"
+	blacklistEndpoint     = "/blacklist"
+)
+
+type registerEmailRequest struct {
+	Email          string `json:"email"`
+	ReceiveUpdates bool   `json:"receiveUpdates"`
+}
+
+type blaclistUserRequest struct {
+	Address string `json:"address"`
+	Reasons string `json:"reasons"`
+}
+
+type accountHandler struct{}
+
+func NewAccountHandler(groupHandler *groupHandler) {
+	h := accountHandler{}
+
+	publicEndpoints := []EndpointHandler{
+		{Method: http.MethodGet, Path: confirmEmailEndpoint, HandlerFunc: h.confirmEmail},
+	}
+
+	publicEndpointsGroupHandler := EndpointGroupHandler{
+		Root:             baseAccountEndpoint,
+		Middleware:       []gin.HandlerFunc{},
+		EndpointHandlers: publicEndpoints,
+	}
+	groupHandler.AddEndpointGroupHandler(publicEndpointsGroupHandler)
+
+	authEndpoints := []EndpointHandler{
+		{Method: http.MethodGet, Path: getAccountEndpoint, HandlerFunc: h.getOrCreateAccount},
+		{Method: http.MethodPost, Path: registerEmailEndpoint, HandlerFunc: h.registerEmail},
+		{Method: http.MethodGet, Path: subscribeEndpoint, HandlerFunc: h.subscribe},
+		{Method: http.MethodGet, Path: unsubscribeEndpoint, HandlerFunc: h.unsubscribe},
+		{Method: http.MethodPost, Path: blacklistEndpoint, HandlerFunc: h.blackListAccount},
+	}
+
+	auth := middleware.Authorization(config.Config.Jwt.Secret)
+	authEndpointGroupHandler := EndpointGroupHandler{
+		Root:             baseAccountEndpoint,
+		Middleware:       []gin.HandlerFunc{auth},
+		EndpointHandlers: authEndpoints,
+	}
+	groupHandler.AddEndpointGroupHandler(authEndpointGroupHandler)
+}
+
+func (h *accountHandler) getOrCreateAccount(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if account.IsBlacklisted {
+		if account.BlacklistedReason != nil {
+			log.Error("account: " + address + " is blacklisted with reason: " + *account.BlacklistedReason)
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted with reason:"+*account.BlacklistedReason)
+			return
+		} else {
+			log.Error("account: " + address + " is blacklisted!")
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted")
+			return
+		}
+	}
+
+	var kyc *model.Kyc
+	if account.Email != nil {
+		kyc, _, err = storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+	}
+
+	accountDto := service.NewAccountDto(account, kyc)
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) registerEmail(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	var req registerEmailRequest
+	err = c.Bind(&req)
+	if err != nil {
+		log.Error("error while binding request: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.RegisterEmail(address, req.Email, req.ReceiveUpdates)
+	if err != nil {
+		log.Error("error while register email: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	var kyc *model.Kyc
+	if account.Email != nil {
+		kyc, _, err = storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+	}
+
+	accountDto := service.NewAccountDto(account, kyc)
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) confirmEmail(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	token, ok := c.GetQuery("token")
+	if !ok {
+		log.Error("error while retrieving token from params")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "empty or invalid token query")
+		return
+	}
+
+	account, err := service.ConfirmEmail(token)
+	if err != nil {
+		log.Error("error while confirming email: " + err.Error())
+		model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, err.Error())
+		return
+	}
+
+	kyc, _, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		log.Error("error while retrieving kyc information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	accountDto := service.NewAccountDto(account, kyc)
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) subscribe(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if !account.EmailConfirmed {
+		log.Error("email is not confirmed")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "email is not confirmed")
+		return
+	}
+
+	if account.IsBlacklisted {
+		if account.BlacklistedReason != nil {
+			log.Error("account: " + address + " is blacklisted with reason: " + *account.BlacklistedReason)
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted with reason:"+*account.BlacklistedReason)
+			return
+		} else {
+			log.Error("account: " + address + " is blacklisted!")
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted")
+			return
+		}
+	}
+
+	kyc, found, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		log.Error("error while retrieving kyc information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	} else if !found {
+		log.Error("kyc not found in storage")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+		return
+	}
+
+	err = service.SubscribeEmail(kyc)
+	if err != nil {
+		log.Error("error while subribing user: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	accountDto := service.NewAccountDto(account, kyc)
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) unsubscribe(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if !account.EmailConfirmed {
+		log.Error("email is not confirmed")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "email is not confirmed")
+		return
+	}
+
+	if account.IsBlacklisted {
+		if account.BlacklistedReason != nil {
+			log.Error("account: " + address + " is blacklisted with reason: " + *account.BlacklistedReason)
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted with reason:"+*account.BlacklistedReason)
+			return
+		} else {
+			log.Error("account: " + address + " is blacklisted!")
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted")
+			return
+		}
+	}
+
+	kyc, found, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		log.Error("error while retrieving kyc information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	} else if !found {
+		log.Error("kyc not found in storage")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+		return
+	}
+
+	err = service.UnsubscribeEmail(kyc)
+	if err != nil {
+		log.Error("error while unsubscribing user: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	accountDto := service.NewAccountDto(account, kyc)
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) blackListAccount(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	isAdmin := false
+	for _, admin := range config.Config.AdminAddresses {
+		if address == admin {
+			isAdmin = true
+			break
+		}
+	}
+
+	if !isAdmin {
+		log.Error("address not authorized, user is not admin!")
+		model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "not authorized")
+		return
+	}
+
+	var blockAccount blaclistUserRequest
+	err = c.Bind(&blockAccount)
+	if err != nil {
+		log.Error("error while binding request: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(blockAccount.Address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account.IsBlacklisted = true
+	account.BlacklistedReason = &blockAccount.Reasons
+
+	err = service.SendBlacklistedEmail(*account.Email)
+	if err != nil {
+		log.Error("error while sending blacklisted email: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	kyc, _, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		log.Error("error while retrieving kyc information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	accountDto := service.NewAccountDto(account, kyc)
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}

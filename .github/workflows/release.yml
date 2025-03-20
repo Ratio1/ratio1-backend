@@ -1,0 +1,50 @@
+name: Build and Release Ratio1 Backend
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        name: Build Go App
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: "1.21"
+
+            - name: Generate Semantic Version
+              id: version
+              uses: PaulHatch/semantic-version@v5.4.0
+              with:
+                  tag_prefix: "v"
+                  major_pattern: "(MAJOR)"
+                  minor_pattern: "(feat|feature)"
+                  version_format: "${major}.${minor}.${patch}"
+
+            - name: Build Go executable from cmd/
+              run: |
+                  go mod tidy
+                  cd cmd
+                  go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${{ steps.version.outputs.version }}'" -o backend
+
+            - name: Archive executable and needed files
+              run: zip -r ratio1-backend.zip cmd/backend templates/html/*.html config/*.json
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ steps.version.outputs.version_tag }}
+                  name: v${{ steps.version.outputs.version }}
+                  draft: false
+                  prerelease: false
+                  files: ratio1-backend.zip
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

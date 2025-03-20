@@ -1,0 +1,42 @@
+# Binaries, plugins, libs
+*.dll
+*.dylib
+*.exe
+*.exe~
+*.so
+
+# Testing
+*.test
+*.tmp
+config/private_key.pem
+
+# User specific
+.idea
+.idea/*
+
+# Env variables
+/.env
+/.env.dev
+/.env.testing
+
+.vscode
+
+.env
+.env.dev
+.env.testing
+
+logs
+vendor
+
+# dbs, logs, other generated files
+**.db
+cmd/launchpad-app
+cmd/launchpad-api
+cmd/app
+
+
+*.log
+
+.DS_Store
+
+config/bhat_common.pem

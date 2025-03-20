@@ -1,0 +1,60 @@
+{
+  "Api": {
+    "Address": "localhost:5000",
+    "DevTesting": true
+  },
+  "Database": {
+    "User": "",
+    "Password": "",
+    "Host": "",
+    "Port": 0,
+    "DbName": "",
+    "MaxOpenConns": 100,
+    "MaxIdleConns": 50,
+    "SslMode": "disable"
+  },
+  "Jwt": {
+    "ExpiryMins": 1440,
+    "Issuer": "localhost:5000",
+    "KeySeedHex": "",
+    "Secret": "",
+    "ConfirmSecret": "",
+    "ConfirmExpiryMins": 10080
+  },
+  "Mail": {
+    "ApiUrl": "https://api.postmarkapp.com",
+    "ApiKey": "",
+    "ConfirmUrl": "https://devnet-app.ratio1.ai/confirm-email?token=%s",
+    "FromEmail": "noreply@ratio1.ai"
+  },
+  "Sumsub": {
+    "ApiUrl": "https://api.sumsub.com",
+    "ApiEndpoint": "/resources/accessTokens/sdk",
+    "CustomerLevelName": "id-and-liveness-ratio1",
+    "BusinessLevelName": "basic-kyb-level-ratio1",
+    "SumsubAppToken": "",
+    "SumsubSecretKey": "",
+    "SumsubJwtSecretKey": ""
+  },
+  "MailerLite": {
+    "Url": "https://connect.mailerlite.com/api",
+    "GroupId": "",
+    "ApiKey": ""
+  },
+  "acceptedDomains": {
+    "Inner": [
+      {
+        "domain": "localhost:3000"
+      },
+      {
+        "domain": "devnet-app.ratio1.ai"
+      }
+    ]
+  },
+  "CronJobTiming": {},
+  "ChainID": 84532,
+  "BuyLimitUSD": {
+    "Individual": 10000,
+    "Company": 200000
+  }
+}

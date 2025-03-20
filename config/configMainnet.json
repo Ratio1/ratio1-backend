@@ -1,0 +1,78 @@
+{
+  "Api": {
+    "Address": "localhost:5000",
+    "DevTesting": false
+  },
+  "Database": {
+    "User": "",
+    "Password": "",
+    "Host": "",
+    "Port": 0,
+    "DbName": "",
+    "MaxOpenConns": 100,
+    "MaxIdleConns": 50,
+    "SslMode": "disable"
+  },
+  "Jwt": {
+    "ExpiryMins": 1440,
+    "Issuer": "localhost:5000",
+    "KeySeedHex": "",
+    "Secret": "",
+    "ConfirmSecret": "",
+    "ConfirmExpiryMins": 10080
+  },
+  "Mail": {
+    "ApiUrl": "https://api.postmarkapp.com",
+    "ApiKey": "",
+    "ConfirmUrl": "https://app.ratio1.ai/confirm-email?token=%s",
+    "FromEmail": "noreply@ratio1.ai"
+  },
+  "Sumsub": {
+    "ApiUrl": "https://api.sumsub.com",
+    "ApiEndpoint": "/resources/accessTokens/sdk",
+    "CustomerLevelName": "id-and-liveness-ratio1",
+    "BusinessLevelName": "basic-kyb-level-ratio1",
+    "SumsubAppToken": "",
+    "SumsubSecretKey": "",
+    "SumsubJwtSecretKey": ""
+  },
+  "MailerLite": {
+    "Url": "https://connect.mailerlite.com/api",
+    "GroupId": "",
+    "ApiKey": ""
+  },
+  "acceptedDomains": {
+    "Inner": [
+      {
+        "domain": "localhost:3000"
+      },
+      {
+        "domain": "app.ratio1.ai"
+      }
+    ]
+  },
+  "Oblio": {
+    "AuthUrl": "https://www.oblio.eu/api/authorize/token",
+    "InvoiceUrl": "https://www.oblio.eu/api/docs/invoice",
+    "ClientSecret": "",
+    "EventSignature": ""
+  },
+  "Infura": {
+    "ApiUrl": "https://base-mainnet.infura.io/v3/",
+    "Secret": ""
+  },
+  "NDContractAddress": "0xE20198EE2B76eED916A568a47cdea9681f7c79BF",
+  "R1ContractAddress": "0xc992DcaB6D3F8783fBf0c935E7bCeB20aa50A6f1",
+  "CronJobTiming": {
+    "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "0 */2 * * *",
+    "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "0 1-23/2 * * *"
+  },
+  "ChainID": 8453,
+  "BuyLimitUSD": {
+    "Individual": 5000,
+    "Company": 5000
+  },
+  "ViesApi": {
+    "BaseUrl": "https://viesapi.eu/api"
+  }
+}
