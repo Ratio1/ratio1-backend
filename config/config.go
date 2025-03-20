@@ -269,6 +269,10 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		if cfg.ViesApi.User == "" {
 			return nil, errors.New("VIES_USER is not set")
 		}
+		cfg.ViesApi.BaseUrl = os.Getenv("VIES_BASE_URL")
+		if cfg.ViesApi.BaseUrl == "" {
+			return nil, errors.New("VIES_BASE_URL is not set")
+		}
 		cfg.ViesApi.Password = os.Getenv("VIES_PASSWORD")
 		if cfg.ViesApi.Password == "" {
 			return nil, errors.New("VIES_PASSWORD is not set")
