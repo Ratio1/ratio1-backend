@@ -40,3 +40,4 @@ cmd/app
 .DS_Store
 
 config/bhat_common.pem
+cmd/cmd
