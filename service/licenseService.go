@@ -9,11 +9,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func NewBuyLicenseTxTemplate(walletAddress, userUuid string, amount int) (string, int, error) {
+func NewBuyLicenseTxTemplate(walletAddress, userUuid string, amount int, vatPercentage int64) (string, error) {
 
 	privKey, err := GetBackendPrivKey()
 	if err != nil {
-		return "", 0, errors.New("error while retrieving private key: " + err.Error())
+		return "", errors.New("error while retrieving private key: " + err.Error())
 	}
 
 	sig, err := ConstructAndSignClaim(
@@ -21,17 +21,18 @@ func NewBuyLicenseTxTemplate(walletAddress, userUuid string, amount int) (string
 		[]byte(walletAddress),
 		[]byte(userUuid),
 		amount,
+		vatPercentage,
 	)
 
 	if err != nil {
-		return "", 0, errors.New("error while signing message: " + err.Error())
+		return "", errors.New("error while signing message: " + err.Error())
 	}
 
-	return hex.EncodeToString(sig), amount, nil
+	return hex.EncodeToString(sig), nil
 }
 
-func ConstructAndSignClaim(privKey *ecdsa.PrivateKey, walletAddress, uuid []byte, amount int) ([]byte, error) {
-	claim, err := constructClaim(walletAddress, uuid, amount)
+func ConstructAndSignClaim(privKey *ecdsa.PrivateKey, walletAddress, uuid []byte, amount int, vatPercentage int64) ([]byte, error) {
+	claim, err := constructClaim(walletAddress, uuid, amount, vatPercentage)
 	if err != nil {
 		return nil, errors.New("error while constructing claims: " + err.Error())
 	}
@@ -54,7 +55,7 @@ func ConstructAndSignClaim(privKey *ecdsa.PrivateKey, walletAddress, uuid []byte
 	return sig, nil
 }
 
-func constructClaim(walletAddress, uuid []byte, amount int) ([]byte, error) {
+func constructClaim(walletAddress, uuid []byte, amount int, vatPercentage int64) ([]byte, error) {
 	addressBytes := walletAddress
 	if len(walletAddress) == 42 && walletAddress[0] == '0' && walletAddress[1] == 'x' {
 		addressBytes = walletAddress[2:] //remove "0x" if present
@@ -77,6 +78,17 @@ func constructClaim(walletAddress, uuid []byte, amount int) ([]byte, error) {
 	hexBytes, err := hex.DecodeString(hexStr)
 	if err != nil {
 		return nil, errors.New("error while encoding amount: " + err.Error())
+	}
+
+	resultBytes = append(resultBytes, padTo32Bytes(hexBytes)...)
+
+	hexStr = strconv.FormatInt(vatPercentage, 16)
+	if len(hexStr)%2 != 0 {
+		hexStr = "0" + hexStr
+	}
+	hexBytes, err = hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, errors.New("error while encoding vatPercentage: " + err.Error())
 	}
 
 	resultBytes = append(resultBytes, padTo32Bytes(hexBytes)...)

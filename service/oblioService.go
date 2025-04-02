@@ -198,7 +198,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		MeasuringUnit: "unit",
 		Currency:      "USD",
 		VatPercentage: 19,
-		VatIncluded:   1,
+		VatIncluded:   0,
 	}
 
 	if invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
@@ -215,7 +215,8 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 	} else if !invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
 		vat := GetEuVatPercentage(invoiceData.Country)
 		if vat != nil {
-			product.VatPercentage = *vat
+			vatAsFloat := float64(*vat) / 100
+			product.VatPercentage = vatAsFloat
 			product.VatName = "VAT " + invoiceData.Country
 		} else {
 			product.VatPercentage = 0

@@ -24,6 +24,7 @@ const (
 type BuyLicenseResponse struct {
 	Signature      string `json:"signature"`
 	USDLimitAmount int    `json:"usdLimitAmount"`
+	VatPercentage  int64  `json:"vatPercentage"`
 	Uuid           string `json:"uuid"`
 }
 
@@ -45,7 +46,7 @@ func NewLaunchpadHandler(groupHandler *groupHandler) {
 	groupHandler.AddEndpointGroupHandler(endpointGroupHandler)
 }
 
-func (h *launchpadHandler) buyLicense(c *gin.Context) {
+func (h *launchpadHandler) buyLicense(c *gin.Context) { //TODO nuovo endpoint verifica kyc con firma dell'address utente +nodo
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
@@ -137,8 +138,17 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		}
 	}
 
+	vatPercentage := int64(19)
 	if client.IsCompany && client.Country != COUNTRY_CODE {
 		client.ReverseCharge, client.IsUe = service.IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
+		vatPercentage = 0
+	} else if !client.IsCompany && client.Country != model.ROU_ID {
+		vat := service.GetEuVatPercentage(client.Country)
+		if vat != nil {
+			vatPercentage = *vat
+		} else {
+			vatPercentage = 0
+		}
 	}
 
 	newUuid := uuid.New()
@@ -166,7 +176,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		return
 	}
 
-	signature, amount, err := service.NewBuyLicenseTxTemplate(address, *client.Uuid, amount)
+	signature, err := service.NewBuyLicenseTxTemplate(address, *client.Uuid, amount, vatPercentage)
 	if err != nil {
 		log.Error("error while trying to sign message: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -176,6 +186,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	response := BuyLicenseResponse{
 		Signature:      signature,
 		USDLimitAmount: amount,
+		VatPercentage:  vatPercentage,
 		Uuid:           *client.Uuid,
 	}
 
