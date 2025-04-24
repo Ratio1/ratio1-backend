@@ -52,7 +52,7 @@ func NewLaunchpadHandler(groupHandler *groupHandler) {
 	groupHandler.AddEndpointGroupHandler(endpointGroupHandler)
 }
 
-func (h *launchpadHandler) buyLicense(c *gin.Context) {
+func (h *launchpadHandler) linkNode(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
@@ -141,7 +141,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
 }
 
-func (h *launchpadHandler) linkNode(c *gin.Context) { //TODO nuovo endpoint verifica kyc con firma dell'address utente +nodo
+func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
