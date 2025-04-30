@@ -108,7 +108,12 @@ func (h *accountHandler) getOrCreateAccount(c *gin.Context) {
 		}
 	}
 
-	accountDto := service.NewAccountDto(account, kyc)
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
 }
@@ -153,7 +158,12 @@ func (h *accountHandler) registerEmail(c *gin.Context) {
 		}
 	}
 
-	accountDto := service.NewAccountDto(account, kyc)
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
 }
@@ -187,7 +197,12 @@ func (h *accountHandler) confirmEmail(c *gin.Context) {
 		return
 	}
 
-	accountDto := service.NewAccountDto(account, kyc)
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
 }
@@ -250,7 +265,12 @@ func (h *accountHandler) subscribe(c *gin.Context) {
 		return
 	}
 
-	accountDto := service.NewAccountDto(account, kyc)
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
 }
@@ -313,7 +333,12 @@ func (h *accountHandler) unsubscribe(c *gin.Context) {
 		return
 	}
 
-	accountDto := service.NewAccountDto(account, kyc)
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
 }
@@ -379,7 +404,12 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		return
 	}
 
-	accountDto := service.NewAccountDto(account, kyc)
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
 }

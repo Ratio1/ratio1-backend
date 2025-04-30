@@ -15,7 +15,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const COUNTRY_CODE = "ROU"
 const (
 	launchpadBaseEndpoint = "/license"
 	mintTokensEndpoint    = "/buy"
@@ -225,7 +224,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			return
 		}
 
-		err = validateData(*client)
+		err = service.ValidateData(*client)
 		if err != nil {
 			log.Error("error while validating client data: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -234,7 +233,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	}
 
 	vatPercentage := int64(19)
-	if client.IsCompany && client.Country != COUNTRY_CODE {
+	if client.IsCompany && client.Country != model.ROU_ID {
 		client.ReverseCharge, client.IsUe = service.IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
 		vatPercentage = 0
 	} else if !client.IsCompany && client.Country != model.ROU_ID {
@@ -286,38 +285,4 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	}
 
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
-}
-
-func validateData(client model.InvoiceClient) error {
-	if client.IsCompany && client.CompanyName == nil {
-		return errors.New("company name must be provided")
-	} else if !client.IsCompany && (client.Surname == nil || client.Name == nil) {
-		return errors.New("name and surname must be provided")
-	}
-
-	if client.Name == nil && client.Surname == nil && client.CompanyName == nil {
-		return errors.New("name and surname or company name must be provided")
-	}
-
-	if client.IdentificationCode == "" {
-		return errors.New("identification code must be provided")
-	}
-
-	if client.Address == "" {
-		return errors.New("address must be provided")
-	}
-
-	if client.State == "" {
-		return errors.New("state must be provided")
-	}
-
-	if client.City == "" {
-		return errors.New("city must be provided")
-	}
-
-	if client.Country == "" {
-		return errors.New("country must be provided")
-	}
-
-	return nil
 }
