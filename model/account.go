@@ -30,4 +30,5 @@ type AccountDto struct {
 	BlacklistedReason *string `json:"blacklistedReason"`
 	UsdBuyLimit       int     `json:"usdBuyLimit"`
 	VatPercentage     int64   `json:"vatPercentage"`
+	ViesRegistered    bool    `json:"viesRegistered"`
 }

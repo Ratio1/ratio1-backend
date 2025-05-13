@@ -129,6 +129,11 @@ func IsCompanyRegisteredAndUE(countryCode, vat string) (idRegistered bool, isUe 
 	return viesResp.Vies.Valid, true
 }
 
+func isUeCountry(countryCode string) bool {
+	_, ok := euCountries[strings.ToUpper(countryCode)]
+	return ok
+}
+
 func GetEuVatPercentage(countryCode string) *int64 {
 	vat, ok := euCountriesVat[strings.ToUpper(countryCode)]
 	if !ok {

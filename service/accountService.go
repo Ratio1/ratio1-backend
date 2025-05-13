@@ -182,31 +182,20 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 		} else if kyc.ApplicantType == model.IndividualCustomer {
 			limit = config.Config.BuyLimitUSD.Individual
 		}
-		client, err := GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
-		if err != nil {
-			log.Error("error while retrieving Client information: " + err.Error())
-			return nil, err
-		} else if client == nil {
-			log.Error("nil client returned from sumsub api")
-			return nil, errors.New("nil client returned from sumsub api")
-		}
-
-		err = ValidateData(*client)
-		if err != nil {
-			log.Error("error while validating client data: " + err.Error())
-			return nil, err
-		}
 
 		vatPercentage := int64(19)
-		if client.IsCompany && client.Country != model.ROU_ID {
-			client.ReverseCharge, client.IsUe = IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
+		if !isUeCountry(kyc.Country) {
 			vatPercentage = 0
-		} else if !client.IsCompany && client.Country != model.ROU_ID {
-			vat := GetEuVatPercentage(client.Country)
-			if vat != nil {
-				vatPercentage = *vat
-			} else {
+		} else if kyc.Country != model.ROU_ID {
+			if kyc.ApplicantType == model.BusinessCustomer && kyc.ViesRegistered {
 				vatPercentage = 0
+			} else if kyc.ApplicantType == model.IndividualCustomer {
+				vat := GetEuVatPercentage(kyc.Country)
+				if vat != nil {
+					vatPercentage = *vat
+				} else {
+					vatPercentage = 0
+				}
 			}
 		}
 
@@ -224,6 +213,7 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 			BlacklistedReason: account.BlacklistedReason,
 			UsdBuyLimit:       limit,
 			VatPercentage:     vatPercentage,
+			ViesRegistered:    kyc.ViesRegistered,
 		}, nil
 	}
 

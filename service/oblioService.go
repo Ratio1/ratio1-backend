@@ -208,9 +208,6 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		} else if !invoiceData.IsUe {
 			product.VatPercentage = 0
 			product.VatName = "Scutita"
-		} else {
-			product.VatPercentage = 0
-			product.VatName = "Neimpozabil in Romania conform art. 278"
 		}
 	} else if !invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
 		vat := GetEuVatPercentage(invoiceData.Country)

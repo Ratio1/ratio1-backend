@@ -16,6 +16,8 @@ type Kyc struct {
 	IsActive       bool      `gorm:"not null;default:true" json:"is_active"`
 	HasBeenDeleted bool      `gorm:"not null;default:false" json:"has_been_deleted"`
 	ReceiveUpdates *bool     `gorm:"not null;default:false" json:"receiveUpdates"`
+	Country        string    `json:"country"`
+	ViesRegistered bool      `json:"vies_registered"`
 }
 
 const (
