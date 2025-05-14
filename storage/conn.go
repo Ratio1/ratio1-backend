@@ -46,6 +46,7 @@ func TryMigrate() error {
 		&model.Account{},
 		&model.Kyc{},
 		&model.InvoiceClient{},
+		&model.Seller{},
 	)
 	if err != nil {
 		return err

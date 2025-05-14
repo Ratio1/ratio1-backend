@@ -78,3 +78,21 @@ func UpdateInvoice(invoice *model.InvoiceClient) error {
 
 	return nil
 }
+
+func GetUserInvoices(address string) (*[]model.InvoiceClient, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var invoices []model.InvoiceClient
+	txRead := db.Find(&invoices, "address = ? && status =  paid", address)
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+	if txRead.RowsAffected == 0 {
+		return nil, nil
+	}
+
+	return &invoices, nil
+}

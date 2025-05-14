@@ -10,7 +10,6 @@ const (
 	ROU_ID               = "ROU"
 )
 
-// uuid nome+cognome o ragione sociale, cif o cnp (identificationCode), address, state, city,country,
 type InvoiceClient struct {
 	Uuid               *string `gorm:"primarykey;"`
 	Name               *string `gorm:"default:null" json:"name"`
@@ -30,6 +29,8 @@ type InvoiceClient struct {
 	BlockNumber        *int64  `gorm:"default:null"`
 	ReverseCharge      bool    `gorm:"default:false"`
 	IsUe               bool    `gorm:"default:true"`
+	NumLicenses        *int    `gorm:"default:null"`
+	UnitUsdPrice       *int    `gorm:"default:null"`
 }
 
 type AuthRequest struct {

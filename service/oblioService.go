@@ -63,6 +63,8 @@ func ElaborateInvoices() {
 		invoice.Status = &status
 		invoice.TxHash = &event.TxHash
 		invoice.BlockNumber = &event.BlockNumber
+		invoice.NumLicenses = &event.NumLicenses
+		invoice.UnitUsdPrice = &event.UnitUsdPrice
 
 		err = storage.UpdateInvoice(invoice)
 		if err != nil {

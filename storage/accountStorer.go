@@ -78,3 +78,21 @@ func UpdateAccount(account *model.Account) error {
 
 	return nil
 }
+
+func GetAccountsBySellerCode(sellerCode string) (*[]model.Account, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var accounts []model.Account
+	txRead := db.Find(&accounts, "used_seller_code = ?", sellerCode)
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+	if txRead.RowsAffected == 0 {
+		return nil, nil
+	}
+
+	return &accounts, nil
+}

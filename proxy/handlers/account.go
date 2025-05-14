@@ -19,6 +19,7 @@ const (
 	subscribeEndpoint     = "/subscribe"
 	unsubscribeEndpoint   = "/unsubscribe"
 	blacklistEndpoint     = "/blacklist"
+	addSellerCodeEndpoint = "/add-seller-code"
 )
 
 type registerEmailRequest struct {
@@ -53,6 +54,7 @@ func NewAccountHandler(groupHandler *groupHandler) {
 		{Method: http.MethodGet, Path: subscribeEndpoint, HandlerFunc: h.subscribe},
 		{Method: http.MethodGet, Path: unsubscribeEndpoint, HandlerFunc: h.unsubscribe},
 		{Method: http.MethodPost, Path: blacklistEndpoint, HandlerFunc: h.blackListAccount},
+		{Method: http.MethodPost, Path: addSellerCodeEndpoint, HandlerFunc: h.addSellerCode},
 	}
 
 	auth := middleware.Authorization(config.Config.Jwt.Secret)
@@ -402,6 +404,88 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		log.Error("error while retrieving kyc information from storage: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
+	}
+
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) addSellerCode(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	referralCode, ok := c.GetQuery("sellerCode")
+	if !ok || referralCode == "" {
+		log.Error("error while retrieving referral code from params")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "empty or invalid referral code query")
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if account.IsBlacklisted {
+		if account.BlacklistedReason != nil {
+			log.Error("account: " + address + " is blacklisted with reason: " + *account.BlacklistedReason)
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted with reason:"+*account.BlacklistedReason)
+			return
+		} else {
+			log.Error("account: " + address + " is blacklisted!")
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted")
+			return
+		}
+	}
+
+	exist, err := storage.SellerCodeDoExist(referralCode)
+	if err != nil {
+		log.Error("error while checking referral code: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if !exist {
+		log.Error("referral code does not exist")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "referral code does not exist")
+		return
+	}
+
+	account.UsedSellerCode = &referralCode
+	err = storage.UpdateAccount(account)
+	if err != nil {
+		log.Error("error while updating account: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	var kyc *model.Kyc
+	if account.Email != nil {
+		kyc, _, err = storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
 	}
 
 	accountDto, err := service.NewAccountDto(account, kyc)
