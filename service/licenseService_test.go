@@ -18,6 +18,8 @@ type Claim struct {
 	Availabilities []int
 }
 
+const vat = int64(19)
+
 /*
 func padTo32Bytes(b []byte) []byte {
 	if len(b) < 32 {
@@ -81,7 +83,7 @@ func Test_signByte(t *testing.T) {
 func Test_NewBuyLicenseTxTemplate(t *testing.T) {
 	uuid := "d18ac3989ae74da398c8ab26de41bb7c"
 	walletAddress := "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-	resp, _, err := NewBuyLicenseTxTemplate(walletAddress, uuid, 10000)
+	resp, err := NewBuyLicenseTxTemplate(walletAddress, uuid, 10000, vat)
 	require.Nil(t, err)
 	fmt.Println(resp)
 	//expectedSignature := "0bbb76f330fe36625b3c932055b5e7b5a7adb86b1e19c727cf21f8ada45299a97d35232bbc3205663b610ae2f3e2017eecc6ad62f7b22afa846762d666bb6ec81b"
@@ -94,7 +96,7 @@ func Test_ConstructAndSignClaim(t *testing.T) {
 	require.Nil(t, err)
 	walletAddress := []byte("0xf2e3878c9ab6a377d331e252f6bf3673d8e87323")
 
-	sig, err := ConstructAndSignClaim(privKey, walletAddress, []byte(uuid), 10000)
+	sig, err := ConstructAndSignClaim(privKey, walletAddress, []byte(uuid), 10000, vat)
 	require.Nil(t, err)
 
 	expectedSig, _ := hex.DecodeString("0bbb76f330fe36625b3c932055b5e7b5a7adb86b1e19c727cf21f8ada45299a97d35232bbc3205663b610ae2f3e2017eecc6ad62f7b22afa846762d666bb6ec81b")
@@ -108,7 +110,7 @@ func Test_ConstructClaimAndVerify(t *testing.T) {
 	walletAddress := []byte("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
 	sig, _ := hex.DecodeString("88c45b40c1522208c60120f5199d7d945fcf5fceec4b3846beba7c7abaabc13f60b503b4a8b7e4a6bdc4206645bd59bbdd3f8ebc450d98e70fb67a865e78d2191b")
 
-	claim, err := constructClaim(walletAddress, []byte(uuid), 10000)
+	claim, err := constructClaim(walletAddress, []byte(uuid), 10000, vat)
 	require.Nil(t, err)
 
 	hash := crypto.Keccak256Hash(claim)

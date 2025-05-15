@@ -174,47 +174,69 @@ func UnsubscribeEmail(kyc *model.Kyc) error {
 	return nil
 }
 
-func NewAccountDto(account *model.Account, kyc *model.Kyc) *model.AccountDto {
-	if kyc == nil {
-		UsdBuyLimit := 0
-		if config.Config.Api.DevTesting {
-			UsdBuyLimit = config.Config.BuyLimitUSD.Individual
+func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, error) {
+	if kyc != nil {
+		limit := 0
+		if kyc.ApplicantType == model.BusinessCustomer {
+			limit = config.Config.BuyLimitUSD.Company
+		} else if kyc.ApplicantType == model.IndividualCustomer {
+			limit = config.Config.BuyLimitUSD.Individual
 		}
+
+		vatPercentage := int64(19)
+		if !isUeCountry(kyc.Country) {
+			vatPercentage = 0
+		} else if kyc.Country != model.ROU_ID {
+			if kyc.ApplicantType == model.BusinessCustomer && kyc.ViesRegistered {
+				vatPercentage = 0
+			} else if kyc.ApplicantType == model.IndividualCustomer {
+				vat := GetEuVatPercentage(kyc.Country)
+				if vat != nil {
+					vatPercentage = *vat
+				} else {
+					vatPercentage = 0
+				}
+			}
+		}
+
 		return &model.AccountDto{
 			Email:             StringOrEmpty(account.Email),
 			EmailConfirmed:    account.EmailConfirmed,
 			PendingEmail:      account.PendingEmail,
 			Address:           account.Address,
-			ApplicantType:     "",
-			Uuid:              "",
-			KycStatus:         "",
-			ReceiveUpdates:    false,
-			IsActive:          false,
+			ApplicantType:     kyc.ApplicantType,
+			Uuid:              kyc.Uuid.String(),
+			KycStatus:         kyc.KycStatus,
+			ReceiveUpdates:    *kyc.ReceiveUpdates,
+			IsActive:          kyc.IsActive,
 			IsBlacklisted:     account.IsBlacklisted,
 			BlacklistedReason: account.BlacklistedReason,
-			UsdBuyLimit:       UsdBuyLimit,
-		}
+			UsdBuyLimit:       limit,
+			VatPercentage:     vatPercentage,
+			ViesRegistered:    kyc.ViesRegistered,
+		}, nil
 	}
-	limit := 0
-	if kyc.ApplicantType == model.BusinessCustomer {
-		limit = config.Config.BuyLimitUSD.Company
-	} else if kyc.ApplicantType == model.IndividualCustomer {
-		limit = config.Config.BuyLimitUSD.Individual
+
+	UsdBuyLimit := 0
+	if config.Config.Api.DevTesting {
+		UsdBuyLimit = config.Config.BuyLimitUSD.Individual
 	}
 	return &model.AccountDto{
 		Email:             StringOrEmpty(account.Email),
 		EmailConfirmed:    account.EmailConfirmed,
 		PendingEmail:      account.PendingEmail,
 		Address:           account.Address,
-		ApplicantType:     kyc.ApplicantType,
-		Uuid:              kyc.Uuid.String(),
-		KycStatus:         kyc.KycStatus,
-		ReceiveUpdates:    *kyc.ReceiveUpdates,
-		IsActive:          kyc.IsActive,
+		ApplicantType:     "",
+		Uuid:              "",
+		KycStatus:         "",
+		ReceiveUpdates:    false,
+		IsActive:          false,
 		IsBlacklisted:     account.IsBlacklisted,
 		BlacklistedReason: account.BlacklistedReason,
-		UsdBuyLimit:       limit,
-	}
+		UsdBuyLimit:       UsdBuyLimit,
+		VatPercentage:     0,
+	}, nil
+
 }
 
 func getAcocunt(address string) (*model.Account, error) {

@@ -71,6 +71,10 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
 			status = model.StatusApproved
+			err = getViesData(&kyc)
+			if err != nil {
+				return errors.New("error while getting vies data: " + err.Error())
+			}
 			err = SendKycConfirmedEmail(kyc.Email)
 			if err != nil {
 				return errors.New("error while sending email: " + err.Error())
@@ -124,6 +128,34 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 	err = storage.CreateOrUpdateKyc(&kyc)
 	if err != nil {
 		return errors.New("error while updateing kyc information on storage: " + err.Error())
+	}
+
+	return nil
+}
+
+func getViesData(kyc *model.Kyc) error {
+	client, err := GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
+	if err != nil {
+		return err
+	} else if client == nil {
+		return errors.New("nil client returned from sumsub api")
+	}
+
+	err = ValidateData(*client)
+	if err != nil {
+		return err
+	}
+
+	kyc.Country = client.Country
+	if client.IsCompany {
+		client.ReverseCharge, client.IsUe = IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
+		if client.ReverseCharge && client.IsUe {
+			kyc.ViesRegistered = true
+		} else {
+			kyc.ViesRegistered = false
+		}
+	} else {
+		kyc.ViesRegistered = false
 	}
 
 	return nil

@@ -63,6 +63,8 @@ func ElaborateInvoices() {
 		invoice.Status = &status
 		invoice.TxHash = &event.TxHash
 		invoice.BlockNumber = &event.BlockNumber
+		invoice.NumLicenses = &event.NumLicenses
+		invoice.UnitUsdPrice = &event.UnitUsdPrice
 
 		err = storage.UpdateInvoice(invoice)
 		if err != nil {
@@ -198,7 +200,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		MeasuringUnit: "unit",
 		Currency:      "USD",
 		VatPercentage: 19,
-		VatIncluded:   1,
+		VatIncluded:   0,
 	}
 
 	if invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
@@ -208,14 +210,12 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		} else if !invoiceData.IsUe {
 			product.VatPercentage = 0
 			product.VatName = "Scutita"
-		} else {
-			product.VatPercentage = 0
-			product.VatName = "Neimpozabil in Romania conform art. 278"
 		}
 	} else if !invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
 		vat := GetEuVatPercentage(invoiceData.Country)
 		if vat != nil {
-			product.VatPercentage = *vat
+			vatAsFloat := float64(*vat) / 100
+			product.VatPercentage = vatAsFloat
 			product.VatName = "VAT " + invoiceData.Country
 		} else {
 			product.VatPercentage = 0

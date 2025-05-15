@@ -15,16 +15,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const COUNTRY_CODE = "ROU"
 const (
 	launchpadBaseEndpoint = "/license"
 	mintTokensEndpoint    = "/buy"
+	linkNodeEndpoint      = "/link"
 )
 
 type BuyLicenseResponse struct {
 	Signature      string `json:"signature"`
 	USDLimitAmount int    `json:"usdLimitAmount"`
+	VatPercentage  int64  `json:"vatPercentage"`
 	Uuid           string `json:"uuid"`
+}
+
+type LinkNodeResponse struct {
+	Signature string `json:"signature"`
 }
 
 type launchpadHandler struct{}
@@ -34,6 +39,7 @@ func NewLaunchpadHandler(groupHandler *groupHandler) {
 
 	endpoints := []EndpointHandler{
 		{Method: http.MethodPost, Path: mintTokensEndpoint, HandlerFunc: h.buyLicense},
+		{Method: http.MethodGet, Path: linkNodeEndpoint, HandlerFunc: h.linkNode},
 	}
 
 	endpointGroupHandler := EndpointGroupHandler{
@@ -43,6 +49,95 @@ func NewLaunchpadHandler(groupHandler *groupHandler) {
 	}
 
 	groupHandler.AddEndpointGroupHandler(endpointGroupHandler)
+}
+
+func (h *launchpadHandler) linkNode(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	userNodeAddress, ok := c.GetQuery("nodeAddress")
+	if !ok || nodeAddress == "" {
+		log.Error("node address not received")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "node address not received")
+		return
+	}
+
+	if !config.Config.Api.DevTesting {
+		acc, err := service.GetOrCreateAccount(userAddress)
+		if err != nil {
+			log.Error("error while retrieving account information: " + err.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			return
+		} else if acc == nil {
+			log.Error("error while retrieving account information: account does not exist")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
+			return
+		}
+		if acc.Email == nil || *acc.Email == "" {
+			log.Error("email not found")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, errors.New("email not found").Error())
+			return
+		}
+
+		if acc.IsBlacklisted {
+			if acc.BlacklistedReason != nil {
+				log.Error("account: " + userAddress + " is blacklisted with reason: " + *acc.BlacklistedReason)
+				model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted with reason:"+*acc.BlacklistedReason)
+				return
+			} else {
+				log.Error("account: " + userAddress + " is blacklisted!")
+				model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted")
+				return
+			}
+		}
+
+		kyc, found, err := storage.GetKycByEmail(*acc.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		} else if !found {
+			log.Error("kyc not found in storage")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+			return
+		}
+
+		if !kyc.IsActive || kyc.KycStatus != model.StatusApproved || kyc.HasBeenDeleted {
+			log.Error(service.ErrorKycNotCompleted.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorKycNotCompleted.Error())
+			return
+		}
+
+		if kyc.ApplicantType == "" {
+			log.Error("empty applicant type found")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "empty applicant type found")
+			return
+		}
+	}
+
+	signature, err := service.NewLinkLicenseTxTemplate(userAddress, userNodeAddress)
+	if err != nil {
+		log.Error("error while trying to sign message: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	response := LinkNodeResponse{
+		Signature: signature,
+	}
+
+	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
 }
 
 func (h *launchpadHandler) buyLicense(c *gin.Context) {
@@ -129,7 +224,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			return
 		}
 
-		err = validateData(*client)
+		err = service.ValidateData(*client)
 		if err != nil {
 			log.Error("error while validating client data: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -137,8 +232,17 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		}
 	}
 
-	if client.IsCompany && client.Country != COUNTRY_CODE {
+	vatPercentage := int64(19)
+	if client.IsCompany && client.Country != model.ROU_ID {
 		client.ReverseCharge, client.IsUe = service.IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
+		vatPercentage = 0
+	} else if !client.IsCompany && client.Country != model.ROU_ID {
+		vat := service.GetEuVatPercentage(client.Country)
+		if vat != nil {
+			vatPercentage = *vat
+		} else {
+			vatPercentage = 0
+		}
 	}
 
 	newUuid := uuid.New()
@@ -166,7 +270,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		return
 	}
 
-	signature, amount, err := service.NewBuyLicenseTxTemplate(address, *client.Uuid, amount)
+	signature, err := service.NewBuyLicenseTxTemplate(address, *client.Uuid, amount, vatPercentage)
 	if err != nil {
 		log.Error("error while trying to sign message: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -176,42 +280,9 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	response := BuyLicenseResponse{
 		Signature:      signature,
 		USDLimitAmount: amount,
+		VatPercentage:  vatPercentage,
 		Uuid:           *client.Uuid,
 	}
 
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
-}
-
-func validateData(client model.InvoiceClient) error {
-	if client.IsCompany && client.CompanyName == nil {
-		return errors.New("company name must be provided")
-	} else if !client.IsCompany && (client.Surname == nil || client.Name == nil) {
-		return errors.New("name and surname must be provided")
-	}
-
-	if client.Name == nil && client.Surname == nil && client.CompanyName == nil {
-		return errors.New("name and surname or company name must be provided")
-	}
-
-	if client.IdentificationCode == "" {
-		return errors.New("identification code must be provided")
-	}
-
-	if client.Address == "" {
-		return errors.New("address must be provided")
-	}
-
-	if client.State == "" {
-		return errors.New("state must be provided")
-	}
-
-	if client.City == "" {
-		return errors.New("city must be provided")
-	}
-
-	if client.Country == "" {
-		return errors.New("country must be provided")
-	}
-
-	return nil
 }

@@ -14,6 +14,7 @@ type Account struct {
 	PendingReceiveUpdates bool      `gorm:"not null;default:false" json:"pendingReceiveUpdates"`
 	IsBlacklisted         bool      `gorm:"not null;default:false" json:"isBlacklisted"`
 	BlacklistedReason     *string   `gorm:"default:null" json:"blacklistedReason"`
+	UsedSellerCode        *string   `gorm:"default:null" json:"usedSellerCode"`
 }
 
 type AccountDto struct {
@@ -29,4 +30,6 @@ type AccountDto struct {
 	IsBlacklisted     bool    `json:"isBlacklisted"`
 	BlacklistedReason *string `json:"blacklistedReason"`
 	UsdBuyLimit       int     `json:"usdBuyLimit"`
+	VatPercentage     int64   `json:"vatPercentage"`
+	ViesRegistered    bool    `json:"viesRegistered"`
 }

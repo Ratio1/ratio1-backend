@@ -6,14 +6,15 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-func NewBuyLicenseTxTemplate(walletAddress, userUuid string, amount int) (string, int, error) {
+func NewBuyLicenseTxTemplate(walletAddress, userUuid string, amount int, vatPercentage int64) (string, error) {
 
 	privKey, err := GetBackendPrivKey()
 	if err != nil {
-		return "", 0, errors.New("error while retrieving private key: " + err.Error())
+		return "", errors.New("error while retrieving private key: " + err.Error())
 	}
 
 	sig, err := ConstructAndSignClaim(
@@ -21,17 +22,18 @@ func NewBuyLicenseTxTemplate(walletAddress, userUuid string, amount int) (string
 		[]byte(walletAddress),
 		[]byte(userUuid),
 		amount,
+		vatPercentage,
 	)
 
 	if err != nil {
-		return "", 0, errors.New("error while signing message: " + err.Error())
+		return "", errors.New("error while signing message: " + err.Error())
 	}
 
-	return hex.EncodeToString(sig), amount, nil
+	return hex.EncodeToString(sig), nil
 }
 
-func ConstructAndSignClaim(privKey *ecdsa.PrivateKey, walletAddress, uuid []byte, amount int) ([]byte, error) {
-	claim, err := constructClaim(walletAddress, uuid, amount)
+func ConstructAndSignClaim(privKey *ecdsa.PrivateKey, walletAddress, uuid []byte, amount int, vatPercentage int64) ([]byte, error) {
+	claim, err := constructClaim(walletAddress, uuid, amount, vatPercentage)
 	if err != nil {
 		return nil, errors.New("error while constructing claims: " + err.Error())
 	}
@@ -54,7 +56,7 @@ func ConstructAndSignClaim(privKey *ecdsa.PrivateKey, walletAddress, uuid []byte
 	return sig, nil
 }
 
-func constructClaim(walletAddress, uuid []byte, amount int) ([]byte, error) {
+func constructClaim(walletAddress, uuid []byte, amount int, vatPercentage int64) ([]byte, error) {
 	addressBytes := walletAddress
 	if len(walletAddress) == 42 && walletAddress[0] == '0' && walletAddress[1] == 'x' {
 		addressBytes = walletAddress[2:] //remove "0x" if present
@@ -81,7 +83,106 @@ func constructClaim(walletAddress, uuid []byte, amount int) ([]byte, error) {
 
 	resultBytes = append(resultBytes, padTo32Bytes(hexBytes)...)
 
+	hexStr = strconv.FormatInt(vatPercentage, 16)
+	if len(hexStr)%2 != 0 {
+		hexStr = "0" + hexStr
+	}
+	hexBytes, err = hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, errors.New("error while encoding vatPercentage: " + err.Error())
+	}
+
+	resultBytes = append(resultBytes, padTo32Bytes(hexBytes)...)
+
 	return resultBytes, nil
+}
+
+func NewLinkLicenseTxTemplate(walletAddress, nodeAddres string) (string, error) {
+	privKey, err := GetBackendPrivKey()
+	if err != nil {
+		return "", errors.New("error while retrieving private key: " + err.Error())
+	}
+
+	var resultBytes []byte
+	addressBytes := walletAddress
+	if len(walletAddress) == 42 && walletAddress[0] == '0' && walletAddress[1] == 'x' {
+		addressBytes = walletAddress[2:] //remove "0x" if present
+	}
+	if len(addressBytes) != 40 {
+		return "", errors.New("user address is not correct")
+	}
+
+	walletAddressBytes, err := hex.DecodeString(string(addressBytes))
+	if err != nil {
+		return "", errors.New("error while encoding user address: " + err.Error())
+	}
+
+	addressBytes = nodeAddres
+	if len(nodeAddres) == 42 && nodeAddres[0] == '0' && nodeAddres[1] == 'x' {
+		addressBytes = nodeAddres[2:] //remove "0x" if present
+	}
+	if len(addressBytes) != 40 {
+		return "", errors.New("node address is not correct")
+	}
+
+	nodeAddressBytes, err := hex.DecodeString(string(addressBytes))
+	if err != nil {
+		return "", errors.New("error while encoding user address: " + err.Error())
+	}
+
+	resultBytes = append(walletAddressBytes, nodeAddressBytes...)
+
+	hash := crypto.Keccak256Hash(resultBytes)
+	ethSigner := crypto.Keccak256Hash([]byte("\x19Ethereum Signed Message:\n32"), hash.Bytes())
+	sig, err := crypto.Sign(ethSigner.Bytes(), privKey)
+	if err != nil {
+		return "", errors.New("error while signing payload: " + err.Error())
+	}
+	/*
+		In Solidity the 64th digit of a sign is the recovery digit
+		it's required to be 27 or 28
+
+		The crypto.sign function from eth library in go set 0 or 1, the std value from ECDSA
+	*/
+	if sig[64] < 27 {
+		sig[64] += 27
+	}
+
+	return hex.EncodeToString(sig), nil
+}
+
+func ValidateData(client model.InvoiceClient) error {
+	if client.IsCompany && client.CompanyName == nil {
+		return errors.New("company name must be provided")
+	} else if !client.IsCompany && (client.Surname == nil || client.Name == nil) {
+		return errors.New("name and surname must be provided")
+	}
+
+	if client.Name == nil && client.Surname == nil && client.CompanyName == nil {
+		return errors.New("name and surname or company name must be provided")
+	}
+
+	if client.IdentificationCode == "" {
+		return errors.New("identification code must be provided")
+	}
+
+	if client.Address == "" {
+		return errors.New("address must be provided")
+	}
+
+	if client.State == "" {
+		return errors.New("state must be provided")
+	}
+
+	if client.City == "" {
+		return errors.New("city must be provided")
+	}
+
+	if client.Country == "" {
+		return errors.New("country must be provided")
+	}
+
+	return nil
 }
 
 func padTo32Bytes(b []byte) []byte {

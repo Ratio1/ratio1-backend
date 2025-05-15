@@ -39,34 +39,34 @@ var euCountries = map[string]string{
 	"SWE": "SE",
 }
 
-var euCountriesVat = map[string]float64{
-	"AUT": 20,
-	"BEL": 21,
-	"BGR": 20, //GREAT BRITAIN
-	"HRV": 25,
-	"CYP": 19,
-	"CZE": 21,
-	"DNK": 25,
-	"EST": 22,
-	"FIN": 26,
-	"FRA": 20,
-	"DEU": 19,
-	"GRC": 24,
-	"HUN": 27,
-	"IRL": 23,
-	"ITA": 22,
-	"LVA": 21,
-	"LTU": 21,
-	"LUX": 17,
-	"MLT": 18,
-	"NLD": 21,
-	"POL": 23,
-	"PRT": 23,
-	"ROU": 19,
-	"SVK": 23,
-	"SVN": 22,
-	"ESP": 21,
-	"SWE": 25,
+var euCountriesVat = map[string]int64{
+	"AUT": 20_00,
+	"BEL": 21_00,
+	"BGR": 20_00,
+	"HRV": 25_00,
+	"CYP": 19_00,
+	"CZE": 21_00,
+	"DNK": 25_00,
+	"EST": 22_00,
+	"FIN": 26_00,
+	"FRA": 20_00,
+	"DEU": 19_00,
+	"GRC": 24_00,
+	"HUN": 27_00,
+	"IRL": 23_00,
+	"ITA": 22_00,
+	"LVA": 21_00,
+	"LTU": 21_00,
+	"LUX": 17_00,
+	"MLT": 18_00,
+	"NLD": 21_00,
+	"POL": 23_00,
+	"PRT": 23_00,
+	"ROU": 19_00,
+	"SVK": 23_00,
+	"SVN": 22_00,
+	"ESP": 21_00,
+	"SWE": 25_00,
 }
 
 type VIESResponse struct {
@@ -129,7 +129,12 @@ func IsCompanyRegisteredAndUE(countryCode, vat string) (idRegistered bool, isUe 
 	return viesResp.Vies.Valid, true
 }
 
-func GetEuVatPercentage(countryCode string) *float64 {
+func isUeCountry(countryCode string) bool {
+	_, ok := euCountries[strings.ToUpper(countryCode)]
+	return ok
+}
+
+func GetEuVatPercentage(countryCode string) *int64 {
 	vat, ok := euCountriesVat[strings.ToUpper(countryCode)]
 	if !ok {
 		return nil
