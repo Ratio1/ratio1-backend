@@ -21,7 +21,6 @@ func GetOrCreateAccount(address string) (*model.Account, error) {
 		return nil, errors.New("error while retrieving account from storage: " + err.Error())
 	}
 	if account == nil {
-		//TODO generate referral code
 		newAccount := &model.Account{Address: address, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 		err = storage.CreateAccount(newAccount)
 		if err != nil {

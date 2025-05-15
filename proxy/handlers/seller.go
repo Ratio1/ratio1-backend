@@ -242,10 +242,10 @@ func (h *sellerHandler) getSellerCode(c *gin.Context) {
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func generateCode(length int) string {
-	rand.Seed(time.Now().UnixNano()) // inizializza il generatore di numeri casuali
+	rand.Seed(time.Now().UnixNano())
 	code := make([]byte, length)
 	for i := range code {
 		code[i] = charset[rand.Intn(len(charset))]
 	}
-	return "ratio1-" + string(code)
+	return string(code)
 }
