@@ -41,6 +41,10 @@
     "GroupId": "",
     "ApiKey": ""
   },
+  "Infura": {
+    "ApiUrl": "https://base-sepolia.infura.io/v3/",
+    "Secret": ""
+  },
   "acceptedDomains": {
     "Inner": [
       {

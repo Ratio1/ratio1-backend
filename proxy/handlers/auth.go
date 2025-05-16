@@ -116,8 +116,8 @@ func (h *authHandler) createAccessToken(c *gin.Context) {
 	if err != nil {
 		safeErr := crypto.VerifySafeSignature(message.GetAddress().String(), req.Message, req.Signature)
 		if safeErr != nil {
-			log.Error("error while verifying signature: " + err.Error())
-			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			log.Error("error while verifying signature: " + safeErr.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, safeErr.Error())
 			return
 		}
 	}

@@ -232,6 +232,12 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		return nil, errors.New("SUMSUB_JWT_SECRET_KEY is not set")
 	}
 
+	/*	INFURA ENV VARIABLES */
+	cfg.Infura.Secret = os.Getenv("INFURA_SECRET")
+	if cfg.Infura.Secret == "" {
+		return nil, errors.New("INFURA_SECRET is not set")
+	}
+
 	if !cfg.Api.DevTesting {
 		/*	OBLIO ENV VARIABLES	*/
 		cfg.Oblio.ClientSecret = os.Getenv("OBLIO_CLIENT_SECRET")
@@ -241,12 +247,6 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		cfg.Oblio.EventSignature = os.Getenv("OBLIO_EVENT_SIGNATURE")
 		if cfg.Oblio.EventSignature == "" {
 			return nil, errors.New("OBLIO_EVENT_SIGNATURE is not set")
-		}
-
-		/*	INFURA ENV VARIABLES */
-		cfg.Infura.Secret = os.Getenv("INFURA_SECRET")
-		if cfg.Infura.Secret == "" {
-			return nil, errors.New("INFURA_SECRET is not set")
 		}
 
 		/*	MAILERLITE ENV VARIABLES */
