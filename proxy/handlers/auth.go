@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/crypto"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/proxy/middleware"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/service"
@@ -113,9 +114,12 @@ func (h *authHandler) createAccessToken(c *gin.Context) {
 
 	_, err = message.VerifyEIP191(req.Signature)
 	if err != nil {
-		log.Error("error while verifying signature: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
+		safeErr := crypto.VerifySafeSignature(message.GetAddress().String(), req.Message, req.Signature)
+		if safeErr != nil {
+			log.Error("error while verifying signature: " + err.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			return
+		}
 	}
 
 	//create bearer token

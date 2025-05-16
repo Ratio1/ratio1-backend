@@ -188,11 +188,6 @@ func GetTotalSupply() (int64, error) {
 	}
 
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
-	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
-	if err != nil {
-		return 0, errors.New("error while dialing client")
-	}
-	defer client.Close()
 
 	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
 	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
@@ -209,6 +204,12 @@ func GetTotalSupply() (int64, error) {
 		To:   &tokenAddress,
 		Data: data,
 	}
+
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return 0, errors.New("error while dialing client")
+	}
+	defer client.Close()
 
 	result, err := client.CallContract(context.Background(), msg, nil)
 	if err != nil {

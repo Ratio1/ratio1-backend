@@ -162,12 +162,6 @@ func Test_getvalidNodes(t *testing.T) {
 }
 
 func Test_getSigners(t *testing.T) {
-	client, err := ethclient.Dial(infuraURL)
-	if err != nil {
-		log.Error("Failed to connect to Ethereum client: %v", err)
-	}
-	defer client.Close()
-
 	parsedABI, err := abi.JSON(strings.NewReader(contractSignersABI))
 	if err != nil {
 		log.Error("Failed to parse ABI: %v", err)
@@ -184,6 +178,12 @@ func Test_getSigners(t *testing.T) {
 		To:   &contractAddr,
 		Data: data,
 	}
+
+	client, err := ethclient.Dial(infuraURL)
+	if err != nil {
+		log.Error("Failed to connect to Ethereum client: %v", err)
+	}
+	defer client.Close()
 
 	result, err := client.CallContract(context.Background(), msg, nil)
 	if err != nil {
