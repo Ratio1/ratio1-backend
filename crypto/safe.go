@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -15,13 +16,11 @@ import (
 )
 
 func VerifySafeSignature(safeAddress string, message string, signature string) error {
-	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
+	messageHash := crypto.Keccak256Hash(
+		[]byte("\x19Ethereum Signed Message:\n"+fmt.Sprintf("%d", len(message))),
+		[]byte(message),
+	).Bytes()
 
-	messageHash := crypto.Keccak256Hash([]byte(message)).Hex()
 	safeAddr := common.HexToAddress(safeAddress)
 
 	const abiJSON = `[{"constant":true,"inputs":[{"name":"_hash","type":"bytes32"},{"name":"_signature","type":"bytes"}],"name":"isValidSignature","outputs":[{"name":"magicValue","type":"bytes4"}],"payable":false,"stateMutability":"view","type":"function"}]`
@@ -31,20 +30,32 @@ func VerifySafeSignature(safeAddress string, message string, signature string) e
 		return err
 	}
 
-	hashBytes, err := hex.DecodeString(strings.TrimPrefix(messageHash, "0x"))
-	if err != nil {
-		return err
-	}
-
 	sigBytes, err := hex.DecodeString(strings.TrimPrefix(signature, "0x"))
 	if err != nil {
 		return err
 	}
 
-	input, err := parsedABI.Pack("isValidSignature", hashBytes, sigBytes)
+	if len(messageHash) != 32 {
+		return errors.New("invalid hash length")
+	}
+
+	if len(sigBytes) != 65 {
+		return errors.New("invalid signature length")
+	}
+
+	var hashArray [32]byte
+	copy(hashArray[:], messageHash)
+
+	input, err := parsedABI.Pack("isValidSignature", hashArray, sigBytes)
 	if err != nil {
 		return err
 	}
+
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
 
 	msg := ethereum.CallMsg{
 		To:   &safeAddr,

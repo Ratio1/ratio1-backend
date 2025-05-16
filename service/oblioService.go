@@ -76,12 +76,6 @@ func ElaborateInvoices() {
 }
 
 func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
-	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
-	if err != nil {
-		return nil, errors.New("error while dialing client: " + err.Error())
-	}
-	defer client.Close()
-
 	contractAddress := common.HexToAddress(config.Config.NDContractAddress)
 
 	var fromBlock *big.Int
@@ -97,6 +91,12 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 		Addresses: []common.Address{contractAddress},
 		Topics:    [][]common.Hash{{eventHash}},
 	}
+
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return nil, errors.New("error while dialing client: " + err.Error())
+	}
+	defer client.Close()
 
 	logs, err := client.FilterLogs(context.Background(), query)
 	if err != nil {
