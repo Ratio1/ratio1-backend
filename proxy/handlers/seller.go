@@ -3,7 +3,6 @@ package handlers
 import (
 	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -23,7 +22,7 @@ const (
 
 type newSellerRequest struct {
 	Address    string `json:"address" binding:"required"`
-	ForcesCode string `json:"forcedCode"`
+	ForcedCode string `json:"forcedCode"`
 }
 
 type sellerClientsResponse struct {
@@ -115,8 +114,8 @@ func (h *sellerHandler) newSeller(c *gin.Context) {
 	}
 
 	newCode := generateCode(6)
-	if newSellerRequest.ForcesCode != "" {
-		newCode = newSellerRequest.ForcesCode
+	if newSellerRequest.ForcedCode != "" {
+		newCode = newSellerRequest.ForcedCode
 	}
 
 	ok, err = storage.SellerCodeDoExist(newCode)
@@ -242,7 +241,6 @@ func (h *sellerHandler) getSellerCode(c *gin.Context) {
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func generateCode(length int) string {
-	rand.Seed(time.Now().UnixNano())
 	code := make([]byte, length)
 	for i := range code {
 		code[i] = charset[rand.Intn(len(charset))]

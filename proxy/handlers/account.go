@@ -470,6 +470,17 @@ func (h *accountHandler) addSellerCode(c *gin.Context) {
 		return
 	}
 
+	sellerCode, err := storage.GetSellerCodeByAddress(address)
+	if err != nil {
+		log.Error("error while retrieving seller code: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving seller code: "+err.Error())
+		return
+	} else if sellerCode != nil && *sellerCode == referralCode {
+		log.Error("user is using his own seller code")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user is using his own seller code")
+		return
+	}
+
 	account.UsedSellerCode = &referralCode
 	err = storage.UpdateAccount(account)
 	if err != nil {
