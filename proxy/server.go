@@ -41,6 +41,7 @@ func NewWebServer() (*WebServer, error) {
 	handlers.NewAccountHandler(groupHandler)
 	handlers.NewSumsubHandler(groupHandler)
 	handlers.NewTokenHandler(groupHandler)
+	handlers.NewSellerHandler(groupHandler)
 
 	groupHandler.RegisterEndpoints(router)
 
