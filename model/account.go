@@ -32,4 +32,5 @@ type AccountDto struct {
 	UsdBuyLimit       int     `json:"usdBuyLimit"`
 	VatPercentage     int64   `json:"vatPercentage"`
 	ViesRegistered    bool    `json:"viesRegistered"`
+	UsedSellerCode    *string `json:"referral"`
 }

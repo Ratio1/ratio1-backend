@@ -214,6 +214,7 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 			UsdBuyLimit:       limit,
 			VatPercentage:     vatPercentage,
 			ViesRegistered:    kyc.ViesRegistered,
+			UsedSellerCode:    account.UsedSellerCode,
 		}, nil
 	}
 
@@ -235,6 +236,7 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 		BlacklistedReason: account.BlacklistedReason,
 		UsdBuyLimit:       UsdBuyLimit,
 		VatPercentage:     0,
+		UsedSellerCode:    account.UsedSellerCode,
 	}, nil
 
 }
