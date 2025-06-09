@@ -161,6 +161,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	if config.Config.Api.DevTesting {
 		kyc.ApplicantType = "individual"
 		acc.Email = new(string)
+		client.Country = "ITA"
 	} else {
 		acc, err = service.GetOrCreateAccount(address)
 		if err != nil {
