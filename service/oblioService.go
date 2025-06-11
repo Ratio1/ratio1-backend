@@ -235,7 +235,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Currency:   "USD",
 		Mentions:   mentions,
 		Number:     1,
-		SendEmail:  1,
+		SendEmail:  0,
 		Client:     client,
 		Product:    []model.InvoiceProduct{product},
 		Collect:    collect,
