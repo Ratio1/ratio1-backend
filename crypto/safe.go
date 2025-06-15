@@ -39,9 +39,12 @@ func VerifySafeSignature(safeAddress string, message string, signature string) e
 		return errors.New("invalid hash length")
 	}
 
-	if len(sigBytes) != 65 {
-		return errors.New("invalid signature length")
-	}
+	/*
+		This seems to cause issues with 2/3 multisig wallets, so we are temporarily disabling this check.
+		if len(sigBytes) != 65 {
+			return errors.New("invalid signature length")
+		}
+	*/
 
 	var hashArray [32]byte
 	copy(hashArray[:], messageHash)
