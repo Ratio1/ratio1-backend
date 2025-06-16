@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -74,7 +75,7 @@ func GetTotalMintedAmount() (int64, error) {
 		}
 
 		for _, vLog := range mintedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()]; exist {
+			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))]; exist {
 				continue
 			}
 
@@ -150,7 +151,7 @@ func GetTotalBurnedAmount() (int64, error) {
 		}
 
 		for _, vLog := range burnedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()]; exist {
+			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))]; exist {
 				continue
 			}
 

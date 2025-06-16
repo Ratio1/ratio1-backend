@@ -20,7 +20,7 @@ func Test_FullTest(t *testing.T) { //TO TEST THIS RETURN NIL ON emailService.go 
 	account, err := GetOrCreateAccount(address)
 	require.Nil(t, err)
 	require.Equal(t, account.Address, address)
-	_ = NewAccountDto(account, nil)
+	NewAccountDto(account, nil)
 
 	expectedAccount := model.Account{
 		Address:               address,
@@ -35,7 +35,7 @@ func Test_FullTest(t *testing.T) { //TO TEST THIS RETURN NIL ON emailService.go 
 	require.Equal(t, account.PendingReceiveUpdates, expectedAccount.PendingReceiveUpdates)
 	require.Equal(t, account.Email, expectedAccount.Email)
 	require.Equal(t, account.EmailConfirmed, false)
-	_ = NewAccountDto(account, nil)
+	NewAccountDto(account, nil)
 
 	token, err := crypto.GenerateConfirmJwt(
 		address,
@@ -60,7 +60,7 @@ func Test_FullTest(t *testing.T) { //TO TEST THIS RETURN NIL ON emailService.go 
 	require.Equal(t, account.PendingReceiveUpdates, expectedAccount.PendingReceiveUpdates)
 	require.Equal(t, account.Email, expectedAccount.Email)
 	require.Equal(t, account.EmailConfirmed, true)
-	_ = NewAccountDto(account, nil)
+	NewAccountDto(account, nil)
 
 	_, err = RegisterEmail(address, email, false)
 	require.Equal(t, err, errors.New("email is already used"))
@@ -68,21 +68,21 @@ func Test_FullTest(t *testing.T) { //TO TEST THIS RETURN NIL ON emailService.go 
 	kyc, found, err := storage.GetKycByEmail(*account.Email)
 	require.Nil(t, err)
 	require.True(t, found)
-	_ = NewAccountDto(account, kyc)
+	NewAccountDto(account, kyc)
 	err = SubscribeEmail(kyc)
 	require.Nil(t, err)
 	newKyc, found, err := storage.GetKycByEmail(*account.Email)
 	require.Nil(t, err)
 	require.True(t, found)
 	require.True(t, *newKyc.ReceiveUpdates)
-	_ = NewAccountDto(account, kyc)
+	NewAccountDto(account, kyc)
 	err = UnsubscribeEmail(newKyc)
 	require.Nil(t, err)
 	kyc, found, err = storage.GetKycByEmail(*account.Email)
 	require.Nil(t, err)
 	require.True(t, found)
 	require.False(t, *kyc.ReceiveUpdates)
-	_ = NewAccountDto(account, kyc)
+	NewAccountDto(account, kyc)
 
 	kycUuid := "166cdcfc-afec-4372-90a0-f718a8133414"
 	//url, err := InitNewSession(kyc.Uuid.String(), model.IndividualCustomer)

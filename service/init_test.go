@@ -31,9 +31,9 @@ func init() {
 	config.Config.Oblio.ClientSecret = ""
 	config.Config.Oblio.EventSignature = "LicensesCreated(address,bytes32,uint256,uint256,uint256)"
 	config.Config.NDContractAddress = "0x0421b7c9A3B1a4f99F56131b65d15085C7cCACB0"
-	config.Config.R1ContractAddress = "0xc992dcab6d3f8783fbf0c935e7bceb20aa50a6f1"
+	config.Config.R1ContractAddress = "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF"
 	config.Config.Infura.Secret = "533c2b6ac99b4f11b513d25cfb5dffd1" //test secret, test use only
-	config.Config.Infura.ApiUrl = "https://base-sepolia.infura.io/v3/"
+	config.Config.Infura.ApiUrl = "https://base-mainnet.infura.io/v3/"
 	config.Config.Oblio.Abi = `[{
 		"anonymous": false,
 		"inputs": [
