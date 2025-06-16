@@ -183,7 +183,7 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 			limit = config.Config.BuyLimitUSD.Individual
 		}
 
-		vatPercentage := int64(19)
+		vatPercentage := int64(ROUVatPerc)
 		if !isUeCountry(kyc.Country) {
 			vatPercentage = 0
 		} else if kyc.Country != model.ROU_ID {

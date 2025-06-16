@@ -69,6 +69,8 @@ var euCountriesVat = map[string]int64{
 	"SWE": 25_00,
 }
 
+const ROUVatPerc = 19_00
+
 type VIESResponse struct {
 	XMLName xml.Name `xml:"result"`
 	Vies    struct {
