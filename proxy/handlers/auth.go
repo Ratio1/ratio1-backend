@@ -35,11 +35,6 @@ type tokenPayload struct {
 	Expiration   int64  `json:"expiration"`
 }
 
-type responsePayload struct {
-	Version    string `json:"version"`
-	NodeAddres string `json:"nodeAddress"`
-}
-
 type authHandler struct{}
 
 func NewAuthHandler(groupHandler *groupHandler) {

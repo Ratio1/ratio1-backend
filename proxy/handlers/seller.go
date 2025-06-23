@@ -3,6 +3,7 @@ package handlers
 import (
 	"math/rand"
 	"net/http"
+	"slices"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -60,13 +61,18 @@ func (h *sellerHandler) newSeller(c *gin.Context) {
 		return
 	}
 
-	/*  TODO check if user is valid(?)
 	userAddress, err := middleware.AddressFromBearer(c)
 	if err != nil {
 		log.Error("error while retrieving address from bearer: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
-	}*/
+	}
+
+	if !slices.Contains(config.Config.AdminAddresses, userAddress) {
+		log.Error("user: " + userAddress + " is not an admin")
+		model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "user is not an admin")
+		return
+	}
 
 	var newSellerRequest newSellerRequest
 	if err := c.ShouldBindJSON(&newSellerRequest); err != nil {
@@ -139,7 +145,7 @@ func (h *sellerHandler) newSeller(c *gin.Context) {
 		return
 	}
 
-	model.JsonResponse(c, http.StatusOK, nil, nodeAddress, "")
+	model.JsonResponse(c, http.StatusOK, newCode, nodeAddress, "")
 }
 
 func (h *sellerHandler) getClients(c *gin.Context) {
@@ -238,7 +244,7 @@ func (h *sellerHandler) getSellerCode(c *gin.Context) {
 ..#######.....##....####.########..######.
 */
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func generateCode(length int) string {
 	code := make([]byte, length)
