@@ -26,34 +26,34 @@ import (
 func ElaborateInvoices() {
 	latestSeenBlock, _, err := storage.GetLatestInvoiceBlock()
 	if err != nil {
-		log.Error("Error receiving latest block from database: " + err.Error())
+		fmt.Println("Error receiving latest block from database: " + err.Error())
 		return
 	}
 
 	events, err := fetchEvents(latestSeenBlock)
 	if err != nil {
-		log.Error("Error fetching events: " + err.Error())
+		fmt.Println("Error fetching events: " + err.Error())
 		return
 	}
 
 	for _, event := range events {
 		invoice, found, err := storage.GetInvoiceByID(event.InvoiceID)
 		if err != nil {
-			log.Error("Error retrieving invoice infromation from storage: " + err.Error())
+			fmt.Println("Error retrieving invoice infromation from storage: " + err.Error())
 			continue
 		}
 		if !found {
-			log.Error("Invoice not found in storage: " + event.InvoiceID)
+			fmt.Println("Invoice not found in storage: " + event.InvoiceID)
 			continue
 		}
 		if *invoice.Status != model.InvoiceStatusPending {
-			log.Error("Invoice already processed: " + event.InvoiceID)
+			fmt.Println("Invoice already processed: " + event.InvoiceID)
 			continue
 		}
 
 		url, invoiceNumber, err := generateInvoice(*invoice, event)
 		if err != nil {
-			log.Error("Error generating invoice: " + err.Error())
+			fmt.Println("Error generating invoice: " + err.Error())
 			continue
 		}
 
@@ -68,7 +68,7 @@ func ElaborateInvoices() {
 
 		err = storage.UpdateInvoice(invoice)
 		if err != nil {
-			log.Error("Error updating invoices in storage: " + err.Error())
+			fmt.Println("Error updating invoices in storage: " + err.Error())
 		}
 
 		time.Sleep(1 * time.Second)
@@ -107,7 +107,7 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 	for _, vLog := range logs {
 		event, err := decodeLogs(vLog)
 		if err != nil {
-			log.Error("error while decoding logs: " + err.Error())
+			fmt.Println("error while decoding logs: " + err.Error())
 			continue
 		}
 		events = append(events, *event)
