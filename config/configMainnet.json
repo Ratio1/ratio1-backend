@@ -68,7 +68,7 @@
   "R1ContractAddress": "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF",
   "CronJobTiming": {
     "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "0 */2 * * *",
-    "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "0 1-23/2 * * *"
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "0 1-23/2 * * *"
   },
   "ChainID": 8453,
   "BuyLimitUSD": {
