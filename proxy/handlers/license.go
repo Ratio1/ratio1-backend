@@ -191,7 +191,8 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			}
 		}
 
-		kyc, found, err := storage.GetKycByEmail(*acc.Email)
+		var found bool
+		kyc, found, err = storage.GetKycByEmail(*acc.Email)
 		if err != nil {
 			log.Error("error while retrieving kyc information from storage: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
