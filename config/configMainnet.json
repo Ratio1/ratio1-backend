@@ -67,8 +67,7 @@
   "NDContractAddress": "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423",
   "R1ContractAddress": "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF",
   "CronJobTiming": {
-    "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "0 */2 * * *",
-    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "0 1-23/2 * * *"
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "*/30 * * * *"
   },
   "ChainID": 8453,
   "BuyLimitUSD": {

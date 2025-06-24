@@ -179,7 +179,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		name = *invoiceData.Name + " " + *invoiceData.Surname
 	}
 
-	pricePerToken := float64(invoiceRequest.UnitUsdPrice) / invoiceRequest.TokenPaid
+	pricePerToken := float64(invoiceRequest.UnitUsdPrice*invoiceRequest.NumLicenses) / invoiceRequest.TokenPaid
 
 	var mentions = "Amount paid: " + strconv.FormatFloat(invoiceRequest.TokenPaid, 'f', 2, 64) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD" + "\nTxHash: " + invoiceRequest.TxHash
 
