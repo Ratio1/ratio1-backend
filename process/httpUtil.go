@@ -93,7 +93,7 @@ func HttpPost(url string, payload interface{}, response interface{}, headers ...
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return errors.New("error while doing http post request: " + err.Error())
 	}
 	defer func() {
 		bodyCloseErr := resp.Body.Close()
@@ -135,7 +135,7 @@ func HttpPostWithUrlEncoded(url string, payload interface{}, response interface{
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("unexpected status code")
+		return errors.New("unexpected status code: " + resp.Status)
 	}
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {

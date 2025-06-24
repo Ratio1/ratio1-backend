@@ -14,77 +14,6 @@ import (
 )
 
 func Test_oblio(t *testing.T) {
-	/*
-		name := "Alberto"
-		surname := "Bastianello"
-		companyName := "DB CODING SRL"
-		userEmail := "alberto.bast2001@gmail.com"
-		hash := "0x2e5b12d06d36e30fa41aaee7337d9102da686966775a22ff1b59a5bb0de20452"
-		status := model.InvoiceStatusPending
-		invoiceData := model.InvoiceClient{
-			Uuid:               nil,
-			Name:               &name,
-			Surname:            &surname,
-			CompanyName:        &companyName,
-			UserEmail:          &userEmail,
-			IdentificationCode: "01965590936",
-			Address:            "Via Montereale, 10 - 33170 Pordenone PN",
-			State:              "PN",
-			City:               "Pordenone",
-			Country:            "ITA",
-
-			IsUe:          true,
-			ReverseCharge: true,
-			IsCompany:     true,
-			Status:        &status,
-		}
-	*/
-	/*
-		name := "Alberto"
-		surname := "Bastianello"
-		userEmail := "alberto.bast2001@gmail.com"
-		hash := "0x2e5b12d06d36e30fa41aaee7337d9102da686966775a22ff1b59a5bb0de20452"
-		status := model.InvoiceStatusPending
-		invoiceData := model.InvoiceClient{
-			Uuid:               nil,
-			Name:               &name,
-			Surname:            &surname,
-			CompanyName:        nil,
-			UserEmail:          &userEmail,
-			IdentificationCode: "BSTLRT01M29I403H",
-			Address:            "Via Montereale, 10 - 33170 Pordenone PN",
-			State:              "PN",
-			City:               "Pordenone",
-			Country:            "ITA",
-
-			IsUe:          true,
-			ReverseCharge: false,
-			IsCompany:     false,
-			Status:        &status,
-		}*/
-	/*
-		companyName := "IMOBIL EST"
-		userEmail := "alberto.bast2001@gmail.com"
-		hash := "0x2e5b12d06d36e30fa41aaee7337d9102da686966775a22ff1b59a5bb0de20452"
-		status := model.InvoiceStatusPending
-		invoiceData := model.InvoiceClient{
-			Uuid:               nil,
-			Name:               nil,
-			Surname:            nil,
-			CompanyName:        &companyName,
-			UserEmail:          &userEmail,
-			IdentificationCode: "17963005",
-			Address:            "Str. Costache Negruzzi 3B",
-			State:              "IS",
-			City:               "Iasi",
-			Country:            "ROU",
-
-			IsUe:          true,
-			ReverseCharge: false,
-			IsCompany:     true,
-			Status:        &status,
-		}*/
-
 	companyName := "Smart Energy Provider Limited"
 	userEmail := "alberto.bast2001@gmail.com"
 	hash := "0x2e5b12d06d36e30fa41aaee7337d9102da686966775a22ff1b59a5bb0de20452"
@@ -115,14 +44,12 @@ func Test_oblio(t *testing.T) {
 		TokenPaid:    2781.22,
 		TxHash:       hash,
 	}
-	url, invoiceNumber, err := generateInvoice(invoiceData, InvoiceRequest)
+	url, invoiceNumber, err := generateInvoice(invoiceData, InvoiceRequest, model.AuthRequest{
+		AccessToken: "ciao"})
 	require.Nil(t, err)
 	fmt.Println(url, invoiceNumber)
 }
 
-func Test_ElaborateInvoice(t *testing.T) {
-	ElaborateInvoices()
-}
 func Test_etchfetchEvent(t *testing.T) {
 	fetchEvents(nil)
 }

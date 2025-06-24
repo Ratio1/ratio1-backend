@@ -30,7 +30,7 @@ func init() {
 	config.Config.Oblio.InvoiceUrl = "https://www.oblio.eu/api/docs/invoice"
 	config.Config.Oblio.ClientSecret = ""
 	config.Config.Oblio.EventSignature = "LicensesCreated(address,bytes32,uint256,uint256,uint256)"
-	config.Config.NDContractAddress = "0x0421b7c9A3B1a4f99F56131b65d15085C7cCACB0"
+	config.Config.NDContractAddress = "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423"
 	config.Config.R1ContractAddress = "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF"
 	config.Config.Infura.Secret = "533c2b6ac99b4f11b513d25cfb5dffd1" //test secret, test use only
 	config.Config.Infura.ApiUrl = "https://base-mainnet.infura.io/v3/"

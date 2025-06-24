@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -36,6 +35,13 @@ func ElaborateInvoices() {
 		return
 	}
 
+	var auth model.AuthRequest
+	err = process.HttpPostWithUrlEncoded(config.Config.Oblio.AuthUrl, config.Config.Oblio.ClientSecret, &auth)
+	if err != nil {
+		fmt.Println("Error doing auth http request: " + err.Error())
+		return
+	}
+
 	for _, event := range events {
 		invoice, found, err := storage.GetInvoiceByID(event.InvoiceID)
 		if err != nil {
@@ -51,7 +57,7 @@ func ElaborateInvoices() {
 			continue
 		}
 
-		url, invoiceNumber, err := generateInvoice(*invoice, event)
+		url, invoiceNumber, err := generateInvoice(*invoice, event, auth)
 		if err != nil {
 			fmt.Println("Error generating invoice: " + err.Error())
 			continue
@@ -70,8 +76,6 @@ func ElaborateInvoices() {
 		if err != nil {
 			fmt.Println("Error updating invoices in storage: " + err.Error())
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -160,13 +164,7 @@ func decodeLogs(vLog types.Log) (*model.Event, error) {
 	return &result, nil
 }
 
-func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event) (url string, invoiceNumber string, err error) {
-	var auth model.AuthRequest
-	err = process.HttpPostWithUrlEncoded(config.Config.Oblio.AuthUrl, config.Config.Oblio.ClientSecret, &auth)
-	if err != nil {
-		return "", "", errors.New("error while doing auth http request: " + err.Error())
-	}
-
+func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event, auth model.AuthRequest) (url string, invoiceNumber string, err error) {
 	var headers = []process.HttpHeaderPair{
 		{Key: "Authorization",
 			Value: "Bearer " + auth.AccessToken},

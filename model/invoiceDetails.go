@@ -34,11 +34,11 @@ type InvoiceClient struct {
 }
 
 type AuthRequest struct {
-	AccessToken string      `json:"access_token"`
-	ExpiresIn   interface{} `json:"expires_in"`
-	TokenType   string      `json:"token_type"`
-	Scope       string      `json:"scope"`
-	RequestTime interface{} `json:"request_time"`
+	AccessToken string `json:"access_token"`
+	ExpiresIn   any    `json:"expires_in"`
+	TokenType   string `json:"token_type"`
+	Scope       string `json:"scope"`
+	RequestTime any    `json:"request_time"`
 }
 
 type InvoiceRequest struct {
