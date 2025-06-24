@@ -215,7 +215,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			return
 		}
 
-		client, err := service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
+		client, err = service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
 		if err != nil {
 			log.Error("error while retrieving Client information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
