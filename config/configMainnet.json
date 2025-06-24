@@ -48,6 +48,9 @@
       },
       {
         "domain": "app.ratio1.ai"
+      },
+      {
+        "domain": "mainnet-test.ratio1-dapp-test.pages.dev"
       }
     ]
   },
