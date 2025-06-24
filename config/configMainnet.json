@@ -72,8 +72,8 @@
   },
   "ChainID": 8453,
   "BuyLimitUSD": {
-    "Individual": 5000,
-    "Company": 5000
+    "Individual": 10000,
+    "Company": 15000
   },
   "ViesApi": {
     "BaseUrl": "https://viesapi.eu/api"
