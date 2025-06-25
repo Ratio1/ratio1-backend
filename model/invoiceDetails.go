@@ -70,7 +70,7 @@ type InvoiceProduct struct {
 	MeasuringUnit string  `json:"measuringUnit,omitempty"`
 	VatName       string  `json:"vatName,omitempty"`
 	VatPercentage float64 `json:"vatPercentage"`
-	VatIncluded   int     `json:"vatIncluded,omitempty"`
+	VatIncluded   int     `json:"vatIncluded"`
 
 	Quantity int64  `json:"quantity,omitempty"`
 	Currency string `json:"currency,omitempty"`

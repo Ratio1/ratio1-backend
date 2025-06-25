@@ -177,10 +177,6 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		name = *invoiceData.Name + " " + *invoiceData.Surname
 	}
 
-	pricePerToken := float64(invoiceRequest.UnitUsdPrice*invoiceRequest.NumLicenses) / invoiceRequest.TokenPaid
-
-	var mentions = "Amount paid: " + strconv.FormatFloat(invoiceRequest.TokenPaid, 'f', 2, 64) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD" + "\nTxHash: " + invoiceRequest.TxHash
-
 	var client = model.OblioInvoiceClient{
 		CIF:     invoiceData.IdentificationCode,
 		Name:    name,
@@ -198,7 +194,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		MeasuringUnit: "unit",
 		Currency:      "USD",
 		VatPercentage: 19,
-		VatIncluded:   0,
+		VatIncluded:   0, // 0 = false, 1 = true
 	}
 
 	if invoiceData.IsCompany && invoiceData.Country != model.ROU_ID {
@@ -220,6 +216,11 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 			product.VatName = "Neimpozabil in Romania conform art. 278"
 		}
 	}
+	percentage := float64(100) + product.VatPercentage                                                     // 100% + VAT percentage
+	tokenPaidWithoutVat := (invoiceRequest.TokenPaid * 100) / percentage                                   // Calculate the token amount without VAT
+	pricePerToken := float64(invoiceRequest.UnitUsdPrice*invoiceRequest.NumLicenses) / tokenPaidWithoutVat // Calculate the price per token in USD
+
+	var mentions = "Amount paid: " + strconv.FormatFloat(invoiceRequest.TokenPaid, 'f', 2, 64) + " R1 tokens\nExchange rate: 1 R1 = " + strconv.FormatFloat(pricePerToken, 'f', 4, 64) + " USD" + "\nTxHash: " + invoiceRequest.TxHash
 
 	var collect = model.InvoiceCollect{
 		Type:           "Alta incasare banca",
