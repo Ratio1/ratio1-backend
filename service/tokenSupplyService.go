@@ -66,7 +66,7 @@ func GetTotalMintedAmount() (int64, error) {
 			Addresses: []common.Address{tokenAddress},
 			Topics: [][]common.Hash{
 				{transferEventSigHash},
-				{zeroTopic},
+				{zeroTopic}, // This is the "to" address, which we don't filter on
 			},
 		}
 
@@ -76,7 +76,7 @@ func GetTotalMintedAmount() (int64, error) {
 		}
 
 		for _, vLog := range mintedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))]; exist {
+			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
 				continue
 			}
 
@@ -86,7 +86,7 @@ func GetTotalMintedAmount() (int64, error) {
 
 			amount := new(big.Int).SetBytes(vLog.Data)
 			mintedTotal.Add(mintedTotal, amount)
-			alreadySeen[vLog.TxHash.String()] = true
+			alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
 
 			if vLog.BlockNumber > fromBlock.Uint64() {
 				fromBlock = big.NewInt(int64(vLog.BlockNumber))
@@ -102,7 +102,7 @@ func GetTotalMintedAmount() (int64, error) {
 	setInSupplyData(MintedKey, supplyData{
 		timestamp:       time.Now(),
 		value:           trimmedMinted.Int64() + startingValue,
-		lastBlockNumber: fromBlock.Int64(),
+		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
 	})
 
 	return trimmedMinted.Int64(), nil
@@ -141,7 +141,7 @@ func GetTotalBurnedAmount() (int64, error) {
 			Addresses: []common.Address{tokenAddress},
 			Topics: [][]common.Hash{
 				{transferEventSigHash},
-				nil,
+				{},
 				{zeroTopic},
 			},
 		}
@@ -152,7 +152,7 @@ func GetTotalBurnedAmount() (int64, error) {
 		}
 
 		for _, vLog := range burnedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))]; exist {
+			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
 				continue
 			}
 
@@ -162,7 +162,7 @@ func GetTotalBurnedAmount() (int64, error) {
 
 			amount := new(big.Int).SetBytes(vLog.Data)
 			burnedTotal.Add(burnedTotal, amount)
-			alreadySeen[vLog.TxHash.String()] = true
+			alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
 
 			if vLog.BlockNumber > fromBlock.Uint64() {
 				fromBlock = big.NewInt(int64(vLog.BlockNumber))
@@ -178,7 +178,7 @@ func GetTotalBurnedAmount() (int64, error) {
 	setInSupplyData(BurnedKey, supplyData{
 		timestamp:       time.Now(),
 		value:           trimmedBurned.Int64() + startingValue,
-		lastBlockNumber: fromBlock.Int64(),
+		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
 	})
 
 	return trimmedBurned.Int64(), nil

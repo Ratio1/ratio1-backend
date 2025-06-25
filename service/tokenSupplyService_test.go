@@ -22,4 +22,5 @@ func Test_GetTokenSupply(t *testing.T) {
 	fmt.Println("Total Minted:", totalMinted)
 	fmt.Println("Total Burned:", totalBurned)
 	fmt.Println("Team Supply:", teamSupply)
+	require.Equal(t, totalSupply, totalMinted-totalBurned, "Total supply should equal total minted minus total burned")
 }
