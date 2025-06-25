@@ -18,12 +18,13 @@ const (
 )
 
 type tokenSupplyResponse struct {
-	CirculatingSupply int64 `json:"circulatingSupply"`
-	TotalSupply       int64 `json:"totalSupply"`
-	MaxSupply         int64 `json:"maxSupply"`
-	Minted            int64 `json:"minted"`
-	Burned            int64 `json:"burned"`
-	InitilaMinted     int64 `json:"initialMinted"`
+	CirculatingSupply int64  `json:"circulatingSupply"`
+	TotalSupply       int64  `json:"totalSupply"`
+	MaxSupply         int64  `json:"maxSupply"`
+	Minted            int64  `json:"minted"`
+	Burned            int64  `json:"burned"`
+	InitilaMinted     int64  `json:"initialMinted"`
+	NodeAddress       string `json:"nodeAddress"`
 }
 
 type tokenHandler struct{}
@@ -178,6 +179,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		CirculatingSupply: trimmedSupply - trimmedTeamSupply,
 		Burned:            trimmedBurned,
 		Minted:            trimmedMinted,
+		NodeAddress:       nodeAddress,
 	}
 
 	c.JSON(http.StatusOK, response)
