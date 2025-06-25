@@ -115,7 +115,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 					return errors.New("error while sending email: " + err.Error())
 				}
 			}
-		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
+		} else if event.ReviewResult.ReviewAnswer == "GREEN" && event.Type == model.ApplicantOnHold {
 			status = model.StatusApproved
 			err = SendKycConfirmedEmail(kyc.Email)
 			if err != nil {

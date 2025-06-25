@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -62,7 +64,23 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 	token, ok := c.GetQuery("extract")
 	if ok && token != "" {
 		switch token {
-		case "circulatingSupply", "totalSupply":
+		case "circulatingSupply":
+			totalSupply, err := service.GetTotalSupply()
+			if err != nil {
+				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+				return
+			}
+
+			teamSupply, err := service.GetTeamWalletsSupply()
+			if err != nil {
+				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+				return
+			}
+
+			circulatingSupply := totalSupply - teamSupply
+			c.String(http.StatusOK, "%d", circulatingSupply)
+			return
+		case "totalSupply":
 			totalSupply, err := service.GetTotalSupply()
 			if err != nil {
 				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
@@ -98,25 +116,58 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		}
 	}
 
-	var trimmedSupply, trimmedMinted, trimmedBurned int64
+	var trimmedSupply, trimmedMinted, trimmedBurned, trimmedTeamSupply int64
 	var wg sync.WaitGroup
-	wg.Add(3)
+	errCh := make(chan error, 2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		trimmedSupply, err = service.GetTotalSupply()
+		_trimmedSupply, err := service.GetTotalSupply()
+		if err != nil {
+			errCh <- errors.New("error while retrieving supply: " + err.Error())
+			return
+		}
+		trimmedSupply = _trimmedSupply
 	}()
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		trimmedMinted, err = service.GetTotalMintedAmount()
+		_trimmedMinted, err := service.GetTotalMintedAmount()
+		if err != nil {
+			errCh <- errors.New("error while retrieving minted amount: " + err.Error())
+			return
+		}
+		trimmedMinted = _trimmedMinted
 	}()
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		trimmedBurned, err = service.GetTotalBurnedAmount()
+		_trimmedBurned, err := service.GetTotalBurnedAmount()
+		if err != nil {
+			errCh <- errors.New("error while retrieving burned amount: " + err.Error())
+			return
+		}
+		trimmedBurned = _trimmedBurned
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_trimmedTeamSupply, err := service.GetTeamWalletsSupply()
+		if err != nil {
+			errCh <- errors.New("error while retrieving team supply: " + err.Error())
+			return
+		}
+		trimmedTeamSupply = _trimmedTeamSupply
 	}()
 	wg.Wait()
+	close(errCh)
 
-	if err != nil {
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+	if len(errCh) > 0 {
+		var errorMsgs []string
+		for err := range errCh {
+			errorMsgs = append(errorMsgs, err.Error())
+		}
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, strings.Join(errorMsgs, " | "))
 		return
 	}
 
@@ -124,7 +175,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		InitilaMinted:     0,
 		MaxSupply:         161803398,
 		TotalSupply:       trimmedSupply,
-		CirculatingSupply: trimmedSupply,
+		CirculatingSupply: trimmedSupply - trimmedTeamSupply,
 		Burned:            trimmedBurned,
 		Minted:            trimmedMinted,
 	}

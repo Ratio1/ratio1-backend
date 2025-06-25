@@ -24,9 +24,10 @@ type supplyData struct {
 }
 
 var (
-	SupplyKey = "supply"
-	MintedKey = "minted"
-	BurnedKey = "burned"
+	SupplyKey      = "supply"
+	MintedKey      = "minted"
+	BurnedKey      = "burned"
+	TeamWalletsKey = "team_wallets_supply"
 )
 var tokenSupplyData = make(map[string]supplyData)
 var mu sync.Mutex
@@ -225,6 +226,66 @@ func GetTotalSupply() (int64, error) {
 
 	trimmedSupply := big.NewInt(0).Div(totalSupply, oneToken)
 	setInSupplyData(SupplyKey, supplyData{
+		timestamp: time.Now(),
+		value:     trimmedSupply.Int64(),
+	})
+
+	return trimmedSupply.Int64(), nil
+}
+
+func GetTeamWalletsSupply() (int64, error) {
+	if valid, value, _ := getFromSupplyData(TeamWalletsKey); valid {
+		return value, nil
+	}
+
+	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
+
+	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"},
+	{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
+
+	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+	if err != nil {
+		return 0, errors.New("error while parsing abi: " + err.Error())
+	}
+
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return 0, errors.New("error while dialing client")
+	}
+	defer client.Close()
+
+	var totalTeamBalance = big.NewInt(0)
+
+	for _, addrStr := range config.Config.TeamAddresses {
+		teamAddress := common.HexToAddress(addrStr)
+
+		// Pack balanceOf call
+		balanceData, err := parsedABI.Pack("balanceOf", teamAddress)
+		if err != nil {
+			return 0, errors.New("error packing balanceOf: " + err.Error())
+		}
+
+		msg := ethereum.CallMsg{
+			To:   &tokenAddress,
+			Data: balanceData,
+		}
+
+		result, err := client.CallContract(context.Background(), msg, nil)
+		if err != nil {
+			return 0, errors.New("error calling balanceOf for " + addrStr)
+		}
+
+		var balance *big.Int
+		err = parsedABI.UnpackIntoInterface(&balance, "balanceOf", result)
+		if err != nil {
+			return 0, errors.New("error unpacking balanceOf for " + addrStr + ": " + err.Error())
+		}
+
+		totalTeamBalance = totalTeamBalance.Add(totalTeamBalance, balance)
+	}
+
+	trimmedSupply := big.NewInt(0).Div(totalTeamBalance, oneToken)
+	setInSupplyData(TeamWalletsKey, supplyData{
 		timestamp: time.Now(),
 		value:     trimmedSupply.Int64(),
 	})

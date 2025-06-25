@@ -29,6 +29,7 @@ type GeneralConfig struct {
 	Infura             Infura
 	NDContractAddress  string
 	R1ContractAddress  string
+	TeamAddresses      []string
 	CronJobTiming      map[string]string
 	AdminAddresses     []string
 	EmailTemplatesPath string
