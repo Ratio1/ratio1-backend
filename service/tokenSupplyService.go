@@ -99,13 +99,14 @@ func GetTotalMintedAmount() (int64, error) {
 	}
 
 	trimmedMinted := big.NewInt(0).Div(mintedTotal, oneToken)
+	trimmedMintAsInt := trimmedMinted.Int64() + startingValue
 	setInSupplyData(MintedKey, supplyData{
 		timestamp:       time.Now(),
-		value:           trimmedMinted.Int64() + startingValue,
+		value:           trimmedMintAsInt,
 		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
 	})
 
-	return trimmedMinted.Int64(), nil
+	return trimmedMintAsInt, nil
 }
 
 func GetTotalBurnedAmount() (int64, error) {
@@ -175,13 +176,14 @@ func GetTotalBurnedAmount() (int64, error) {
 	}
 
 	trimmedBurned := big.NewInt(0).Div(burnedTotal, oneToken)
+	trimmedBurnedAsInt := trimmedBurned.Int64() + startingValue
 	setInSupplyData(BurnedKey, supplyData{
 		timestamp:       time.Now(),
-		value:           trimmedBurned.Int64() + startingValue,
+		value:           trimmedBurnedAsInt,
 		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
 	})
 
-	return trimmedBurned.Int64(), nil
+	return trimmedBurnedAsInt, nil
 }
 
 func GetTotalSupply() (int64, error) {

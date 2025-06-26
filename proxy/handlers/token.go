@@ -119,7 +119,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 
 	var trimmedSupply, trimmedMinted, trimmedBurned, trimmedTeamSupply int64
 	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
+	errCh := make(chan error, 4)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
