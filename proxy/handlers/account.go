@@ -20,6 +20,7 @@ const (
 	unsubscribeEndpoint   = "/unsubscribe"
 	blacklistEndpoint     = "/blacklist"
 	addSellerCodeEndpoint = "/add-seller-code"
+	getKycinfoEndpoint    = "/kyc-info"
 )
 
 type registerEmailRequest struct {
@@ -30,6 +31,17 @@ type registerEmailRequest struct {
 type blaclistUserRequest struct {
 	Address string `json:"address"`
 	Reasons string `json:"reasons"`
+}
+
+type clientInfoResponse struct {
+	Name               string `json:"name"`
+	Email              string `json:"email"`
+	IdentificationCode string `json:"identificationCode"`
+	Address            string `json:"address"`
+	State              string `json:"state"`
+	City               string `json:"city"`
+	Country            string `json:"country"`
+	IsCompany          bool   `json:"isCompany"`
 }
 
 type accountHandler struct{}
@@ -55,6 +67,7 @@ func NewAccountHandler(groupHandler *groupHandler) {
 		{Method: http.MethodGet, Path: unsubscribeEndpoint, HandlerFunc: h.unsubscribe},
 		{Method: http.MethodPost, Path: blacklistEndpoint, HandlerFunc: h.blackListAccount},
 		{Method: http.MethodPost, Path: addSellerCodeEndpoint, HandlerFunc: h.addSellerCode},
+		{Method: http.MethodGet, Path: getKycinfoEndpoint, HandlerFunc: h.getKycinfo},
 	}
 
 	auth := middleware.Authorization(config.Config.Jwt.Secret)
@@ -507,4 +520,73 @@ func (h *accountHandler) addSellerCode(c *gin.Context) {
 	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) getKycinfo(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	kyc, found, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		log.Error("error while retrieving kyc information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+	if !found {
+		log.Error("kyc not found in storage")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+		return
+	}
+
+	client, err := service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
+	if err != nil {
+		log.Error("error while retrieving client infos: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	name := ""
+	if client.Name != nil && client.Surname != nil {
+		name = *client.Name + " " + *client.Surname
+	} else if client.CompanyName != nil {
+		name = *client.CompanyName
+	} else {
+		log.Error("client name and surname are both nil, cannot retrieve client name")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "client name and surname are both nil, cannot retrieve client name")
+		return
+	}
+
+	email := ""
+	if client.UserEmail != nil {
+		email = *client.UserEmail
+	}
+	response := clientInfoResponse{
+		Name:               name,
+		Email:              email,
+		IdentificationCode: client.IdentificationCode,
+		Address:            client.Address,
+		State:              client.State,
+		City:               client.City,
+		Country:            client.Country,
+		IsCompany:          client.IsCompany,
+	}
+	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
 }
