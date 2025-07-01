@@ -555,6 +555,11 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
 		return
 	}
+	if kyc.KycStatus != model.StatusApproved {
+		log.Error("kyc status is not approved, cannot retrieve client infos")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "kyc status is not approved, cannot retrieve client infos")
+		return
+	}
 
 	client, err := service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
 	if err != nil {
