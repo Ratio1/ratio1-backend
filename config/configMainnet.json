@@ -50,7 +50,7 @@
         "domain": "app.ratio1.ai"
       },
       {
-        "domain": "mainnet-test.ratio1-dapp-test.pages.dev"
+        "domain": "deeploy-dapp.vercel.app"
       }
     ]
   },

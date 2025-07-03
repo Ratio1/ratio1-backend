@@ -52,6 +52,9 @@
       },
       {
         "domain": "devnet-app.ratio1.ai"
+      },
+      {
+        "domain": "deeploy-dapp.vercel.app"
       }
     ]
   },
