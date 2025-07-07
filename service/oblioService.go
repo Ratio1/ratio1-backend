@@ -183,7 +183,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Address: invoiceData.Address,
 		State:   invoiceData.State,
 		City:    invoiceData.City,
-		Country: invoiceData.Country,
+		Country: GetRoNameForISOCode(invoiceData.Country),
 		Email:   *invoiceData.UserEmail,
 	}
 
