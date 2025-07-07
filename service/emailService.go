@@ -22,6 +22,7 @@ const (
 	subjectEmailStepRejected     = "Check your KYC documentation uploads"
 	subjectEmailAccountResetted  = "Your KYC has been resetted"
 	subjectAddressBlacklisted    = "Address is blacklisted"
+	subjectNewBuyLicenseInvoice  = "A new buy license invoice has been sent"
 )
 
 var (
@@ -151,6 +152,34 @@ func SendAccountResettedEmail(email string) error {
 	}
 
 	return callSendEmail(email, subjectEmailAccountResetted, body.String())
+}
+
+func SendBuyLicenseEmail(email, url, invoiceNumber string) error {
+	text := "A new invoice has been submitted. Invoice Number: " + invoiceNumber + " , link: " + url
+	return callSendTextEmail(email, subjectNewBuyLicenseInvoice, text)
+}
+
+func callSendTextEmail(email, subject, text string) error {
+	msg := EmailMessage{
+		From:          config.Config.Mail.FromEmail,
+		To:            email,
+		Subject:       subject,
+		TextBody:      text,
+		HtmlBody:      "",
+		MessageStream: messageStreamSend,
+	}
+
+	var resp EmailSendResponse
+	url := fmt.Sprintf("%s%s", config.Config.Mail.ApiUrl, emailSendEndpoint)
+	err := process.HttpPost(url, msg, &resp, postmarkHeaders()...)
+	if err != nil {
+		return err
+	}
+	if resp.ErrorCode != 0 {
+		return fmt.Errorf("send email resulted in error %s", resp.Message)
+	}
+
+	return nil
 }
 
 func callSendEmail(email, subject, htmlBody string) error {

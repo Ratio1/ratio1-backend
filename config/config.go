@@ -17,24 +17,25 @@ var (
 )
 
 type GeneralConfig struct {
-	Api                ApiConfig
-	Database           DatabaseConfig
-	Jwt                JwtConfig
-	Mail               MailConfig
-	Sumsub             SumsubConfig
-	MailerLite         MailerLiteConfig
-	AcceptedDomains    AcceptedDomains
-	ChainID            int
-	Oblio              Oblio
-	Infura             Infura
-	NDContractAddress  string
-	R1ContractAddress  string
-	TeamAddresses      []string
-	CronJobTiming      map[string]string
-	AdminAddresses     []string
-	EmailTemplatesPath string
-	BuyLimitUSD        BuyLimitUSDConfig
-	ViesApi            ViesConfig
+	Api                 ApiConfig
+	Database            DatabaseConfig
+	Jwt                 JwtConfig
+	Mail                MailConfig
+	Sumsub              SumsubConfig
+	MailerLite          MailerLiteConfig
+	AcceptedDomains     AcceptedDomains
+	ChainID             int
+	Oblio               Oblio
+	Infura              Infura
+	NDContractAddress   string
+	R1ContractAddress   string
+	TeamAddresses       []string
+	CronJobTiming       map[string]string
+	AdminAddresses      []string
+	EmailTemplatesPath  string
+	BuyLimitUSD         BuyLimitUSDConfig
+	ViesApi             ViesConfig
+	InvoiceMessageEmail string
 }
 
 type ApiConfig struct {
@@ -285,6 +286,8 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	if cfg.EmailTemplatesPath == "" {
 		return nil, errors.New("EMAIL_TEMPLATES_PATH is not set")
 	}
+
+	cfg.InvoiceMessageEmail = "corina.erhan@ratio1.ai"
 
 	return cfg, nil
 }

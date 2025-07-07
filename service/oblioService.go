@@ -76,6 +76,8 @@ func ElaborateInvoices() {
 		if err != nil {
 			fmt.Println("Error updating invoices in storage: " + err.Error())
 		}
+
+		SendBuyLicenseEmail(config.Config.InvoiceMessageEmail, url, invoiceNumber)
 	}
 }
 
