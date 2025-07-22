@@ -13,12 +13,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// todo return all seller codes api + disable seller code ( blocks new user from registering with this code)
 const (
-	baseSellerEndpoint = "/seller"
-	newSellerEndpoint  = "/new"
-	getSellerClients   = "/clients"
+	baseSellerEndpoint        = "/seller"
+	newSellerEndpoint         = "/new"
+	getSellerClients          = "/clients"
+	getAllSellerCodes         = "/all-codes"
+	enableSellerCodeEndpoint  = "/enable"
+	disableSellerCodeEndpoint = "/disable"
+	getSellerCode             = "/code"
+
 	//TODO add admins seller get clients
-	getSellerCode = "/code"
 )
 
 type newSellerRequest struct {
@@ -41,6 +46,9 @@ func NewSellerHandler(groupHandler *groupHandler) {
 		{Method: http.MethodPost, Path: newSellerEndpoint, HandlerFunc: h.newSeller},
 		{Method: http.MethodGet, Path: getSellerClients, HandlerFunc: h.getClients},
 		{Method: http.MethodGet, Path: getSellerCode, HandlerFunc: h.getSellerCode},
+		{Method: http.MethodGet, Path: getAllSellerCodes, HandlerFunc: h.getSellersCode},
+		{Method: http.MethodPost, Path: disableSellerCodeEndpoint, HandlerFunc: h.disableSellerCode},
+		{Method: http.MethodPost, Path: enableSellerCodeEndpoint, HandlerFunc: h.enableSellerCode},
 	}
 
 	auth := middleware.Authorization(config.Config.Jwt.Secret)
@@ -232,6 +240,161 @@ func (h *sellerHandler) getSellerCode(c *gin.Context) {
 	}
 
 	model.JsonResponse(c, http.StatusOK, sellerCode, nodeAddress, "")
+}
+
+func (h *sellerHandler) getSellersCode(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if !slices.Contains(config.Config.AdminAddresses, userAddress) {
+		log.Error("user: " + userAddress + " is not an admin")
+		model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "user is not an admin")
+		return
+	}
+
+	sellers, err := storage.GetAllSellerCode()
+	if err != nil {
+		log.Error("error while retrieving all seller codes: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving all seller codes: "+err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, sellers, nodeAddress, "")
+}
+
+func (h *sellerHandler) disableSellerCode(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	adminAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if !slices.Contains(config.Config.AdminAddresses, adminAddress) {
+		log.Error("user: " + adminAddress + " is not an admin")
+		model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "user is not an admin")
+		return
+	}
+
+	var seller *model.Seller
+	userAddress, ok := c.GetQuery("userAddress")
+	if ok && userAddress != "" {
+		seller, err = storage.GetSellerByAddress(userAddress)
+		if err != nil {
+			log.Error("error while retrieving seller by address: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving seller by address: "+err.Error())
+			return
+		}
+	} else {
+		sellerCode, ok := c.GetQuery("sellerCode")
+		if !ok || sellerCode == "" {
+			log.Error("seller code is required")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "seller code is required")
+			return
+		}
+		seller, err = storage.GetSellerByCode(sellerCode)
+		if err != nil {
+			log.Error("error while retrieving seller by code: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving seller by code: "+err.Error())
+			return
+		}
+	}
+
+	if seller == nil {
+		log.Error("seller not found")
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "seller not found")
+		return
+	}
+
+	seller.IsDisabled = true
+	err = storage.UpdateSeller(seller)
+	if err != nil {
+		log.Error("error while updating seller: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while updating seller: "+err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, nil, nodeAddress, "")
+}
+
+func (h *sellerHandler) enableSellerCode(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	adminAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if !slices.Contains(config.Config.AdminAddresses, adminAddress) {
+		log.Error("user: " + adminAddress + " is not an admin")
+		model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "user is not an admin")
+		return
+	}
+
+	var seller *model.Seller
+	userAddress, ok := c.GetQuery("userAddress")
+	if ok && userAddress != "" {
+		seller, err = storage.GetSellerByAddress(userAddress)
+		if err != nil {
+			log.Error("error while retrieving seller by address: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving seller by address: "+err.Error())
+			return
+		}
+	} else {
+		sellerCode, ok := c.GetQuery("sellerCode")
+		if !ok || sellerCode == "" {
+			log.Error("seller code is required")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "seller code is required")
+			return
+		}
+		seller, err = storage.GetSellerByCode(sellerCode)
+		if err != nil {
+			log.Error("error while retrieving seller by code: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving seller by code: "+err.Error())
+			return
+		}
+	}
+
+	if seller == nil {
+		log.Error("seller not found")
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "seller not found")
+		return
+	}
+
+	seller.IsDisabled = false
+	err = storage.UpdateSeller(seller)
+	if err != nil {
+		log.Error("error while updating seller: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while updating seller: "+err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, nil, nodeAddress, "")
 }
 
 /*
