@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// todo return all seller codes api + disable seller code ( blocks new user from registering with this code)
 const (
 	baseSellerEndpoint        = "/seller"
 	newSellerEndpoint         = "/new"
