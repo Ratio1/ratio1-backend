@@ -14,7 +14,7 @@ import (
 
 const (
 	emailSendEndpoint      = "/email"
-	emailSendBatchEndpoint = "/batch"
+	emailSendBatchEndpoint = "/email/batch"
 
 	messageStreamSend            = "outbound"
 	subjectEmailConfirm          = "Ratio1 - Confirm your Email"
