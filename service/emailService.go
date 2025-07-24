@@ -200,14 +200,16 @@ func callSendBatchEmail(emails []string, subject, htmlBody string) error {
 		})
 	}
 
-	var resp EmailSendResponse
+	var resp []EmailSendResponse
 	url := fmt.Sprintf("%s%s", config.Config.Mail.ApiUrl, emailSendBatchEndpoint)
 	err := process.HttpPost(url, msg, &resp, postmarkHeaders()...)
 	if err != nil {
 		return err
 	}
-	if resp.ErrorCode != 0 {
-		return fmt.Errorf("send email resulted in error %s", resp.Message)
+	for _, r := range resp {
+		if r.ErrorCode != 0 {
+			return fmt.Errorf("send email resulted in error %s", r.Message)
+		}
 	}
 
 	return nil
