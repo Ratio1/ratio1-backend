@@ -83,3 +83,28 @@ func CreateOrUpdateKyc(kyc *model.Kyc) error {
 
 	return nil
 }
+
+func GetAllUsersEmails() ([]string, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var kycs []model.Kyc
+	txRead := db.Find(&kycs, "email != ''")
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+	if txRead.RowsAffected == 0 {
+		return nil, nil
+	}
+
+	var emails []string
+	for _, kyc := range kycs {
+		if kyc.Email != "" {
+			emails = append(emails, kyc.Email)
+		}
+	}
+
+	return emails, nil
+}

@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	emailSendEndpoint = "/email"
+	emailSendEndpoint      = "/email"
+	emailSendBatchEndpoint = "/batch"
 
 	messageStreamSend            = "outbound"
 	subjectEmailConfirm          = "Ratio1 - Confirm your Email"
@@ -51,6 +52,10 @@ type EmailMessage struct {
 	TextBody      string `json:"TextBody"`
 	HtmlBody      string `json:"HtmlBody"`
 	MessageStream string `json:"MessageStream"`
+}
+
+func SendNewsEmail(email []string, subject, htmlBody string) error {
+	return callSendBatchEmail(email, subject, htmlBody)
 }
 
 func SendConfirmEmail(address, email string) error {
@@ -171,6 +176,32 @@ func callSendTextEmail(email, subject, text string) error {
 
 	var resp EmailSendResponse
 	url := fmt.Sprintf("%s%s", config.Config.Mail.ApiUrl, emailSendEndpoint)
+	err := process.HttpPost(url, msg, &resp, postmarkHeaders()...)
+	if err != nil {
+		return err
+	}
+	if resp.ErrorCode != 0 {
+		return fmt.Errorf("send email resulted in error %s", resp.Message)
+	}
+
+	return nil
+}
+
+func callSendBatchEmail(emails []string, subject, htmlBody string) error {
+	var msg []EmailMessage
+	for _, email := range emails {
+		msg = append(msg, EmailMessage{
+			From:          config.Config.Mail.FromEmail,
+			To:            email,
+			Subject:       subject,
+			TextBody:      "",
+			HtmlBody:      htmlBody,
+			MessageStream: messageStreamSend,
+		})
+	}
+
+	var resp EmailSendResponse
+	url := fmt.Sprintf("%s%s", config.Config.Mail.ApiUrl, emailSendBatchEndpoint)
 	err := process.HttpPost(url, msg, &resp, postmarkHeaders()...)
 	if err != nil {
 		return err
