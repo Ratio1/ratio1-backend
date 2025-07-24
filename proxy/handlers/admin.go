@@ -103,7 +103,7 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 		return
 	}
 
-	testMail := []string{"defranceschi_a@yahoo.com", "alberto.bast29@gmail.com"}
+	testMail := []string{"petrica.butusina@ratio1.ai", "alberto.bast29@gmail.com"}
 
 	errCh := make(chan error, (len(testMail)/500)+1) //TODO substitute with emails
 	var wg sync.WaitGroup
