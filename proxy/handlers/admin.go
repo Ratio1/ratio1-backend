@@ -103,13 +103,11 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 		return
 	}
 
-	testMail := []string{"petrica.butusina@ratio1.ai", "alberto.bast29@gmail.com"}
-
-	errCh := make(chan error, (len(testMail)/500)+1) //TODO substitute with emails
+	errCh := make(chan error, (len(emails)/500)+1)
 	var wg sync.WaitGroup
-	for i := 0; i < len(testMail); i += 500 {
+	for i := 0; i < len(emails); i += 500 {
 		end := i + 500
-		end = min(end, len(testMail))
+		end = min(end, len(emails))
 		wg.Add(1)
 		go func(_email []string) {
 			defer wg.Done()
@@ -117,7 +115,7 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 				errCh <- errors.New("error while sending email to user: " + strings.Join(_email, " | ") + " with error: " + err.Error())
 				return
 			}
-		}(testMail[i:end])
+		}(emails[i:end])
 
 	}
 	wg.Wait()
