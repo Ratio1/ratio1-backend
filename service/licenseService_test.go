@@ -18,7 +18,7 @@ type Claim struct {
 	Availabilities []int
 }
 
-const vat = int64(19)
+const vat = int64(21)
 
 /*
 func padTo32Bytes(b []byte) []byte {

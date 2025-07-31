@@ -62,7 +62,7 @@ var euCountriesVat = map[string]int64{
 	"NLD": 21_00,
 	"POL": 23_00,
 	"PRT": 23_00,
-	"ROU": 19_00,
+	"ROU": 21_00,
 	"SVK": 23_00,
 	"SVN": 22_00,
 	"ESP": 21_00,
@@ -321,7 +321,7 @@ var countriesName = map[string]string{
 	"MNP": "Insulele Mariane de Nord",
 }
 
-const ROUVatPerc = 19_00
+const ROUVatPerc = 21_00
 
 type VIESResponse struct {
 	XMLName xml.Name `xml:"result"`

@@ -195,7 +195,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		Quantity:      int64(invoiceRequest.NumLicenses),
 		MeasuringUnit: "unit",
 		Currency:      "USD",
-		VatPercentage: 19,
+		VatPercentage: 21,
 		VatIncluded:   0, // 0 = false, 1 = true
 	}
 
