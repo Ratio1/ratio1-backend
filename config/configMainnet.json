@@ -50,6 +50,9 @@
         "domain": "app.ratio1.ai"
       },
       {
+        "domain": "deeploy.ratio1.ai"
+      },
+      {
         "domain": "deeploy-dapp.vercel.app"
       }
     ]
