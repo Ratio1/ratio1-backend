@@ -11,8 +11,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod tidy
 COPY . .
-RUN cd cmd
-RUN go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o backend
+RUN cd cmd && go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o backend
 
 
 ###################
