@@ -31,17 +31,20 @@ LABEL org.opencontainers.image.version=$VERSION
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
-# Copy the binary to root
-COPY --from=builder /src/ratio1-backend /cmd/ratio1-backend
+# Set working directory
+WORKDIR /app
 
-# Copy other necessary files to root directory
-COPY templates/html /templates/html
-COPY config /config
-COPY cmd /cmd
+# Copy the binary
+COPY --from=builder /src/ratio1-backend /app/ratio1-backend
+
+# Copy other necessary files
+COPY templates/html /app/templates/html
+COPY config /app/config
+COPY cmd /app/cmd
 
 # Make executable
-RUN chmod +x /cmd/ratio1-backend
+RUN chmod +x /app/ratio1-backend
 
 USER 1000:1000
 
-ENTRYPOINT ["/cmd/ratio1-backend"]
+ENTRYPOINT ["/app/ratio1-backend"]
