@@ -1,7 +1,8 @@
 ###################
 # Builder stage   #
 ###################
-FROM golang:1.21-alpine AS builder
+#FROM golang:1.21-alpine AS builder
+FROM golang:1.21 AS builder
 
 ARG VERSION
 
@@ -10,10 +11,26 @@ WORKDIR /src
 # Grab deps first for better cache
 COPY go.mod go.sum ./
 
-RUN go get github.com/ethereum/go-ethereum@v1.14.8
-RUN go mod tidy
+RUN go get github.com/ethereum/go-ethereum@v1.14.5
+
+RUN go mod download
+
 COPY . .
-RUN cd cmd && go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o backend
+RUN go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o backend ./cmd
+#RUN CGO_ENABLED=0 \
+#    go build -trimpath \
+#      -ldflags "-s -w \
+#        -X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" \
+#      -o /ratio1-backend ./cmd
+#RUN CGO_ENABLED=0 \
+#    go build -trimpath \
+#      -ldflags "-s -w \
+#        -X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" \
+#      -o /ratio1-backend ./cmd
+
+RUN ls /
+RUN ls /src
+RUN ls /src/cmd
 
 
 ###################
@@ -23,10 +40,11 @@ FROM gcr.io/distroless/static:nonroot
 ARG VERSION
 
 LABEL org.opencontainers.image.version=$VERSION
-COPY --from=builder /app/backend /ratio1-backend
 COPY templates/html /templates/html
-COPY config          /config
+COPY config         /config
+COPY cmd            /cmd
+COPY --from=builder /src/backend /cmd/ratio1-backend
+
 
 USER nonroot
-ENTRYPOINT ["/backend"]
-
+ENTRYPOINT ["./cmd/ratio1-backend"]
