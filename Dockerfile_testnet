@@ -1,7 +1,6 @@
 ###################
 # Builder stage   #
 ###################
-#FROM golang:1.21-alpine AS builder
 FROM golang:1.21 AS builder
 
 ARG VERSION
@@ -11,40 +10,35 @@ WORKDIR /src
 # Grab deps first for better cache
 COPY go.mod go.sum ./
 
-RUN go get github.com/ethereum/go-ethereum@v1.14.5
-
 RUN go mod download
 
 COPY . .
-RUN go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o backend ./cmd
-#RUN CGO_ENABLED=0 \
-#    go build -trimpath \
-#      -ldflags "-s -w \
-#        -X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" \
-#      -o /ratio1-backend ./cmd
-#RUN CGO_ENABLED=0 \
-#    go build -trimpath \
-#      -ldflags "-s -w \
-#        -X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" \
-#      -o /ratio1-backend ./cmd
 
-RUN ls /
-RUN ls /src
-RUN ls /src/cmd
-
+# Build the application
+RUN go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o ratio1-backend ./cmd
 
 ###################
 # Runtime image   #
 ###################
-FROM gcr.io/distroless/static:nonroot
+FROM ubuntu:22.04
 ARG VERSION
 
 LABEL org.opencontainers.image.version=$VERSION
+
+# Install ca-certificates for HTTPS requests
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy the binary to root
+COPY --from=builder /src/ratio1-backend /cmd/ratio1-backend
+
+# Copy other necessary files to root directory
 COPY templates/html /templates/html
-COPY config         /config
-COPY cmd            /cmd
-COPY --from=builder /src/backend /cmd/ratio1-backend
+COPY config /config
+COPY cmd /cmd
 
+# Make executable
+RUN chmod +x /cmd/ratio1-backend
 
-USER nonroot
-ENTRYPOINT ["./cmd/ratio1-backend"]
+USER 1000:1000
+
+ENTRYPOINT ["/cmd/ratio1-backend"]
