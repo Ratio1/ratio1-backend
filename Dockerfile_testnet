@@ -9,6 +9,8 @@ WORKDIR /src
 
 # Grab deps first for better cache
 COPY go.mod go.sum ./
+
+RUN go get github.com/ethereum/go-ethereum@v1.14.8
 RUN go mod tidy
 COPY . .
 RUN cd cmd && go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o backend
