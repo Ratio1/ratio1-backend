@@ -36,7 +36,6 @@ func NewWebServer() (*WebServer, error) {
 
 	service.NewAuthService()
 
-	handlers.NewPingHandler(groupHandler)
 	handlers.NewAuthHandler(groupHandler)
 	handlers.NewLaunchpadHandler(groupHandler)
 	handlers.NewAccountHandler(groupHandler)
@@ -57,11 +56,11 @@ func (w *WebServer) Run() *http.Server {
 	if !strings.Contains(address, ":") {
 		panic("bad address")
 	}
-	
+
 	// Log the server startup
 	logger := handlers.GetLogger()
 	logger.Info("Starting API server", "address", address)
-	
+
 	server := &http.Server{
 		Addr:           address,
 		Handler:        w.router,
