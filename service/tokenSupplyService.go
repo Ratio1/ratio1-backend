@@ -19,35 +19,36 @@ import (
 
 type supplyData struct {
 	timestamp       time.Time //last time this value was updated
-	value           int64     //last value saved
+	value           *big.Int  //last value saved
 	lastBlockNumber int64     //last block number seen
 }
 
 var (
-	SupplyKey      = "supply"
-	MintedKey      = "minted"
-	BurnedKey      = "burned"
-	TeamWalletsKey = "team_wallets_supply"
+	SupplyKey         = "supply"
+	MintedKey         = "minted"
+	BurnedKey         = "burned"
+	NdContractBurnKey = "nd_contract_burn"
+	TeamWalletsKey    = "team_wallets_supply"
 )
 var tokenSupplyData = make(map[string]supplyData)
 var mu sync.Mutex
 var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
 
-func GetTotalMintedAmount() (int64, error) {
+func GetTotalMintedAmount() (*big.Int, error) {
 	var fromBlock *big.Int
-	startingValue := int64(0)
+	startingValue := big.NewInt(0)
 
 	if valid, value, lastBlock := getFromSupplyData(MintedKey); valid {
 		return value, nil
 	} else {
-		startingValue += value
+		startingValue.Add(startingValue, value)
 		fromBlock = big.NewInt(lastBlock)
 	}
 
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
-		return 0, errors.New("error while dialing client")
+		return big.NewInt(0), errors.New("error while dialing client")
 	}
 	defer client.Close()
 
@@ -72,7 +73,7 @@ func GetTotalMintedAmount() (int64, error) {
 
 		mintedLogs, err := client.FilterLogs(context.Background(), mintedQuery)
 		if err != nil {
-			return 0, errors.New("error while filtering minted logs")
+			return big.NewInt(0), errors.New("error while filtering minted logs")
 		}
 
 		for _, vLog := range mintedLogs {
@@ -81,7 +82,7 @@ func GetTotalMintedAmount() (int64, error) {
 			}
 
 			if len(vLog.Data) != 32 {
-				return 0, errors.New("unexpected data length in minted log")
+				return big.NewInt(0), errors.New("unexpected data length in minted log")
 			}
 
 			amount := new(big.Int).SetBytes(vLog.Data)
@@ -98,32 +99,31 @@ func GetTotalMintedAmount() (int64, error) {
 		}
 	}
 
-	trimmedMinted := big.NewInt(0).Div(mintedTotal, oneToken)
-	trimmedMintAsInt := trimmedMinted.Int64() + startingValue
+	mintedTotal.Add(mintedTotal, startingValue)
 	setInSupplyData(MintedKey, supplyData{
 		timestamp:       time.Now(),
-		value:           trimmedMintAsInt,
+		value:           mintedTotal,
 		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
 	})
 
-	return trimmedMintAsInt, nil
+	return mintedTotal, nil
 }
 
-func GetTotalBurnedAmount() (int64, error) {
+func GetTotalBurnedAmount() (*big.Int, error) {
 	var fromBlock *big.Int
-	startingValue := int64(0)
+	startingValue := big.NewInt(0)
 
 	if valid, value, lastBlock := getFromSupplyData(BurnedKey); valid {
 		return value, nil
 	} else {
-		startingValue += value
+		startingValue.Add(startingValue, value)
 		fromBlock = big.NewInt(lastBlock)
 	}
 
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
-		return 0, errors.New("error while dialing client")
+		return big.NewInt(0), errors.New("error while dialing client")
 	}
 	defer client.Close()
 
@@ -149,7 +149,7 @@ func GetTotalBurnedAmount() (int64, error) {
 
 		burnedLogs, err := client.FilterLogs(context.Background(), burnedQuery)
 		if err != nil {
-			return 0, errors.New("error while filtering burned logs")
+			return big.NewInt(0), errors.New("error while filtering burned logs")
 		}
 
 		for _, vLog := range burnedLogs {
@@ -158,7 +158,7 @@ func GetTotalBurnedAmount() (int64, error) {
 			}
 
 			if len(vLog.Data) != 32 {
-				return 0, errors.New("unexpected data length in burned log")
+				return big.NewInt(0), errors.New("unexpected data length in burned log")
 			}
 
 			amount := new(big.Int).SetBytes(vLog.Data)
@@ -175,18 +175,96 @@ func GetTotalBurnedAmount() (int64, error) {
 		}
 	}
 
-	trimmedBurned := big.NewInt(0).Div(burnedTotal, oneToken)
-	trimmedBurnedAsInt := trimmedBurned.Int64() + startingValue
+	burnedTotal.Add(burnedTotal, startingValue)
 	setInSupplyData(BurnedKey, supplyData{
 		timestamp:       time.Now(),
-		value:           trimmedBurnedAsInt,
+		value:           burnedTotal,
 		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
 	})
 
-	return trimmedBurnedAsInt, nil
+	return burnedTotal, nil
 }
 
-func GetTotalSupply() (int64, error) {
+func GetNdContractTotalBurnedAmount() (*big.Int, error) { //TODO to be nd contract burn
+	var fromBlock *big.Int
+	startingValue := big.NewInt(0)
+
+	if valid, value, lastBlock := getFromSupplyData(NdContractBurnKey); valid {
+		return value, nil
+	} else {
+		startingValue.Add(startingValue, value)
+		fromBlock = big.NewInt(lastBlock)
+	}
+
+	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return big.NewInt(0), errors.New("error while dialing client")
+	}
+	defer client.Close()
+
+	transferEventSignature := []byte("Transfer(address,address,uint256)")
+	transferEventSigHash := crypto.Keccak256Hash(transferEventSignature)
+
+	ndContractAddress := common.HexToAddress(config.Config.NDContractAddress)
+	ndContractTopic := common.BytesToHash(ndContractAddress.Bytes())
+
+	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
+	zeroTopic := common.BytesToHash(zeroAddress.Bytes())
+
+	burnedTotal := big.NewInt(0)
+	alreadySeen := make(map[string]bool)
+
+	for {
+		burnedQuery := ethereum.FilterQuery{
+			FromBlock: fromBlock,
+			Addresses: []common.Address{tokenAddress},
+			Topics: [][]common.Hash{
+				{transferEventSigHash},
+				{ndContractTopic},
+				{zeroTopic},
+			},
+		}
+
+		burnedLogs, err := client.FilterLogs(context.Background(), burnedQuery)
+		if err != nil {
+			return big.NewInt(0), errors.New("error while filtering burned logs")
+		}
+
+		for _, vLog := range burnedLogs {
+			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
+				continue
+			}
+
+			if len(vLog.Data) != 32 {
+				return big.NewInt(0), errors.New("unexpected data length in burned log")
+			}
+
+			amount := new(big.Int).SetBytes(vLog.Data)
+			burnedTotal.Add(burnedTotal, amount)
+			alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
+
+			if vLog.BlockNumber > fromBlock.Uint64() {
+				fromBlock = big.NewInt(int64(vLog.BlockNumber))
+			}
+		}
+
+		if len(burnedLogs) < 10000 {
+			break
+		}
+	}
+
+	burnedTotal.Add(burnedTotal, startingValue)
+	setInSupplyData(NdContractBurnKey, supplyData{
+		timestamp:       time.Now(),
+		value:           burnedTotal,
+		lastBlockNumber: fromBlock.Int64() + 1, // +1 to ensure we don't get any already-calc logs in the next call
+	})
+
+	return burnedTotal, nil
+}
+
+func GetTotalSupply() (*big.Int, error) {
 	if valid, value, _ := getFromSupplyData(SupplyKey); valid {
 		return value, nil
 	}
@@ -196,12 +274,12 @@ func GetTotalSupply() (int64, error) {
 	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
 	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
 	if err != nil {
-		return 0, errors.New("error while parsing abi: " + err.Error())
+		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
 
 	data, err := parsedABI.Pack("totalSupply")
 	if err != nil {
-		return 0, errors.New("error while packing interface: " + err.Error())
+		return big.NewInt(0), errors.New("error while packing interface: " + err.Error())
 	}
 
 	msg := ethereum.CallMsg{
@@ -211,31 +289,30 @@ func GetTotalSupply() (int64, error) {
 
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
-		return 0, errors.New("error while dialing client")
+		return big.NewInt(0), errors.New("error while dialing client")
 	}
 	defer client.Close()
 
 	result, err := client.CallContract(context.Background(), msg, nil)
 	if err != nil {
-		return 0, errors.New("error while calling contract")
+		return big.NewInt(0), errors.New("error while calling contract")
 	}
 
 	var totalSupply *big.Int
 	err = parsedABI.UnpackIntoInterface(&totalSupply, "totalSupply", result)
 	if err != nil {
-		return 0, errors.New("error while unpacking interface: " + err.Error())
+		return big.NewInt(0), errors.New("error while unpacking interface: " + err.Error())
 	}
 
-	trimmedSupply := big.NewInt(0).Div(totalSupply, oneToken)
 	setInSupplyData(SupplyKey, supplyData{
 		timestamp: time.Now(),
-		value:     trimmedSupply.Int64(),
+		value:     totalSupply,
 	})
 
-	return trimmedSupply.Int64(), nil
+	return totalSupply, nil
 }
 
-func GetTeamWalletsSupply() (int64, error) {
+func GetTeamWalletsSupply() (*big.Int, error) {
 	if valid, value, _ := getFromSupplyData(TeamWalletsKey); valid {
 		return value, nil
 	}
@@ -247,12 +324,12 @@ func GetTeamWalletsSupply() (int64, error) {
 
 	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
 	if err != nil {
-		return 0, errors.New("error while parsing abi: " + err.Error())
+		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
 
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
-		return 0, errors.New("error while dialing client")
+		return big.NewInt(0), errors.New("error while dialing client")
 	}
 	defer client.Close()
 
@@ -264,7 +341,7 @@ func GetTeamWalletsSupply() (int64, error) {
 		// Pack balanceOf call
 		balanceData, err := parsedABI.Pack("balanceOf", teamAddress)
 		if err != nil {
-			return 0, errors.New("error packing balanceOf: " + err.Error())
+			return big.NewInt(0), errors.New("error packing balanceOf: " + err.Error())
 		}
 
 		msg := ethereum.CallMsg{
@@ -274,28 +351,51 @@ func GetTeamWalletsSupply() (int64, error) {
 
 		result, err := client.CallContract(context.Background(), msg, nil)
 		if err != nil {
-			return 0, errors.New("error calling balanceOf for " + addrStr)
+			return big.NewInt(0), errors.New("error calling balanceOf for " + addrStr)
 		}
 
 		var balance *big.Int
 		err = parsedABI.UnpackIntoInterface(&balance, "balanceOf", result)
 		if err != nil {
-			return 0, errors.New("error unpacking balanceOf for " + addrStr + ": " + err.Error())
+			return big.NewInt(0), errors.New("error unpacking balanceOf for " + addrStr + ": " + err.Error())
 		}
 
 		totalTeamBalance = totalTeamBalance.Add(totalTeamBalance, balance)
 	}
 
-	trimmedSupply := big.NewInt(0).Div(totalTeamBalance, oneToken)
 	setInSupplyData(TeamWalletsKey, supplyData{
 		timestamp: time.Now(),
-		value:     trimmedSupply.Int64(),
+		value:     totalTeamBalance,
 	})
 
-	return trimmedSupply.Int64(), nil
+	return totalTeamBalance, nil
 }
 
-func getFromSupplyData(key string) (isValid bool, value, blockNumber int64) {
+func GetAmountAsFloatString(amount *big.Int) string {
+	if amount == nil {
+		return ""
+	}
+
+	amountFloat := new(big.Float).SetInt(amount)
+	amountFloat.Quo(amountFloat, new(big.Float).SetInt(oneToken))
+	return amountFloat.Text('f', 18)
+}
+
+func CalcCircSupply(teamSupply, totalSupply string) string {
+	teamSupplyBig, tmOk := new(big.Float).SetString(teamSupply)
+	totalSupplyBig, ttOk := new(big.Float).SetString(totalSupply)
+	if !tmOk && !ttOk {
+		return "0"
+	} else if !ttOk {
+		return teamSupply
+	} else if !tmOk {
+		return totalSupply
+	}
+	circSupply := new(big.Float).Sub(totalSupplyBig, teamSupplyBig)
+	return circSupply.Text('f', 18)
+}
+
+func getFromSupplyData(key string) (isValid bool, value *big.Int, blockNumber int64) {
 	mu.Lock()
 	defer mu.Unlock()
 	if v, found := tokenSupplyData[key]; found {
@@ -305,7 +405,7 @@ func getFromSupplyData(key string) (isValid bool, value, blockNumber int64) {
 			return false, v.value, v.lastBlockNumber
 		}
 	} else {
-		return false, 0, 0
+		return false, big.NewInt(0), 0
 	}
 }
 

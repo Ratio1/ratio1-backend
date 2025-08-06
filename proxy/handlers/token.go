@@ -18,13 +18,14 @@ const (
 )
 
 type tokenSupplyResponse struct {
-	CirculatingSupply int64  `json:"circulatingSupply"`
-	TotalSupply       int64  `json:"totalSupply"`
-	MaxSupply         int64  `json:"maxSupply"`
-	Minted            int64  `json:"minted"`
-	Burned            int64  `json:"burned"`
-	InitilaMinted     int64  `json:"initialMinted"`
+	CirculatingSupply string `json:"circulatingSupply"`
+	TotalSupply       string `json:"totalSupply"`
+	MaxSupply         string `json:"maxSupply"`
+	Minted            string `json:"minted"`
+	Burned            string `json:"burned"`
+	InitilaMinted     string `json:"initialMinted"`
 	NodeAddress       string `json:"nodeAddress"`
+	NdContractBurn    string `json:"ndContractBurn"`
 }
 
 type tokenHandler struct{}
@@ -78,7 +79,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			circulatingSupply := totalSupply - teamSupply
+			circulatingSupply := service.CalcCircSupply(service.GetAmountAsFloatString(teamSupply), service.GetAmountAsFloatString(totalSupply))
 			c.String(http.StatusOK, "%d", circulatingSupply)
 			return
 		case "totalSupply":
@@ -88,7 +89,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", totalSupply)
+			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalSupply))
 			return
 		case "minted":
 			totalMinted, err := service.GetTotalMintedAmount()
@@ -97,7 +98,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", totalMinted)
+			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalMinted))
 			return
 		case "burned":
 			totalBurned, err := service.GetTotalBurnedAmount()
@@ -106,7 +107,24 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", totalBurned)
+			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalBurned))
+			return
+		case "ndBurned":
+			ndContractBurn, err := service.GetNdContractTotalBurnedAmount()
+			if err != nil {
+				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+				return
+			}
+
+			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(ndContractBurn))
+			return
+		case "teamSupply":
+			teamSupply, err := service.GetTeamWalletsSupply()
+			if err != nil {
+				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+				return
+			}
+			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(teamSupply))
 			return
 		case "initailMinted":
 			c.String(http.StatusOK, "%d", 0)
@@ -117,7 +135,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		}
 	}
 
-	var trimmedSupply, trimmedMinted, trimmedBurned, trimmedTeamSupply int64
+	var trimmedSupply, trimmedMinted, trimmedBurned, trimmedTeamSupply, ndContractBurned string
 	var wg sync.WaitGroup
 	errCh := make(chan error, 4)
 	wg.Add(1)
@@ -128,7 +146,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			errCh <- errors.New("error while retrieving supply: " + err.Error())
 			return
 		}
-		trimmedSupply = _trimmedSupply
+		trimmedSupply = service.GetAmountAsFloatString(_trimmedSupply)
 	}()
 	wg.Add(1)
 	go func() {
@@ -138,7 +156,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			errCh <- errors.New("error while retrieving minted amount: " + err.Error())
 			return
 		}
-		trimmedMinted = _trimmedMinted
+		trimmedMinted = service.GetAmountAsFloatString(_trimmedMinted)
 	}()
 	wg.Add(1)
 	go func() {
@@ -148,7 +166,7 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			errCh <- errors.New("error while retrieving burned amount: " + err.Error())
 			return
 		}
-		trimmedBurned = _trimmedBurned
+		trimmedBurned = service.GetAmountAsFloatString(_trimmedBurned)
 	}()
 	wg.Add(1)
 	go func() {
@@ -158,7 +176,17 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			errCh <- errors.New("error while retrieving team supply: " + err.Error())
 			return
 		}
-		trimmedTeamSupply = _trimmedTeamSupply
+		trimmedTeamSupply = service.GetAmountAsFloatString(_trimmedTeamSupply)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_ndContractBurned, err := service.GetNdContractTotalBurnedAmount()
+		if err != nil {
+			errCh <- errors.New("error while retrieving supply: " + err.Error())
+			return
+		}
+		ndContractBurned = service.GetAmountAsFloatString(_ndContractBurned)
 	}()
 	wg.Wait()
 	close(errCh)
@@ -173,12 +201,13 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 	}
 
 	response := tokenSupplyResponse{
-		InitilaMinted:     0,
-		MaxSupply:         161803398,
+		InitilaMinted:     "0",
+		MaxSupply:         "161803398",
 		TotalSupply:       trimmedSupply,
-		CirculatingSupply: trimmedSupply - trimmedTeamSupply,
+		CirculatingSupply: service.CalcCircSupply(trimmedTeamSupply, trimmedSupply),
 		Burned:            trimmedBurned,
 		Minted:            trimmedMinted,
+		NdContractBurn:    ndContractBurned,
 		NodeAddress:       nodeAddress,
 	}
 
