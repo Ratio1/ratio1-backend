@@ -45,3 +45,8 @@ func (g *groupHandler) RegisterEndpoints(r *gin.Engine) {
 func (g *groupHandler) AddEndpointGroupHandler(endpointHandler EndpointGroupHandler) {
 	g.endpointHandlersMap[endpointHandler.Root] = append(g.endpointHandlersMap[endpointHandler.Root], endpointHandler)
 }
+
+// GetLogger returns the logger instance
+func GetLogger() logger.Logger {
+	return log
+}
