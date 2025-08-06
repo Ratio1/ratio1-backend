@@ -1,6 +1,6 @@
 {
   "Api": {
-    "Address": "localhost:5000",
+    "Address": "0.0.0.0:5000",
     "DevTesting": true
   },
   "Database": {
