@@ -2,7 +2,7 @@ name: Build and Push Container Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, docker-build-gh-actions ]
   # also allow manual runs
   workflow_dispatch:
 
