@@ -25,7 +25,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & Push Testnet Image
+      - name: Build & Push Image
         uses: docker/build-push-action@v5
         with:
           context: .
