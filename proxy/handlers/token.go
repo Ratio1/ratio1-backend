@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"math/big"
 	"net/http"
 	"strings"
 	"sync"
@@ -17,15 +18,17 @@ const (
 	getSupplyEndpoint = "/supply"
 )
 
+var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
+
 type tokenSupplyResponse struct {
-	CirculatingSupply string `json:"circulatingSupply"`
-	TotalSupply       string `json:"totalSupply"`
-	MaxSupply         string `json:"maxSupply"`
-	Minted            string `json:"minted"`
-	Burned            string `json:"burned"`
-	InitilaMinted     string `json:"initialMinted"`
+	CirculatingSupply any    `json:"circulatingSupply"`
+	TotalSupply       any    `json:"totalSupply"`
+	MaxSupply         any    `json:"maxSupply"`
+	Minted            any    `json:"minted"`
+	Burned            any    `json:"burned"`
+	InitilaMinted     any    `json:"initialMinted"`
+	NdContractBurn    any    `json:"ndContractBurn"`
 	NodeAddress       string `json:"nodeAddress"`
-	NdContractBurn    string `json:"ndContractBurn"`
 }
 
 type tokenHandler struct{}
@@ -79,7 +82,10 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			circulatingSupply := service.CalcCircSupply(service.GetAmountAsFloatString(teamSupply), service.GetAmountAsFloatString(totalSupply))
+			trimmedTotalSupply := big.NewInt(0).Div(totalSupply, oneToken)
+			trimmedTeamSupply := big.NewInt(0).Div(teamSupply, oneToken)
+			circulatingSupply := trimmedTotalSupply.Int64() - trimmedTeamSupply.Int64()
+			//circulatingSupply := service.CalcCircSupply(service.GetAmountAsFloatString(teamSupply), service.GetAmountAsFloatString(totalSupply))
 			c.String(http.StatusOK, "%d", circulatingSupply)
 			return
 		case "totalSupply":
@@ -89,7 +95,9 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalSupply))
+			trimmedTotalSupply := big.NewInt(0).Div(totalSupply, oneToken)
+			c.String(http.StatusOK, "%d", trimmedTotalSupply.Int64())
+			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalSupply))
 			return
 		case "minted":
 			totalMinted, err := service.GetTotalMintedAmount()
@@ -98,7 +106,9 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalMinted))
+			trimmedMinted := big.NewInt(0).Div(totalMinted, oneToken)
+			c.String(http.StatusOK, "%d", trimmedMinted.Int64())
+			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalMinted))
 			return
 		case "burned":
 			totalBurned, err := service.GetTotalBurnedAmount()
@@ -107,7 +117,9 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalBurned))
+			trimmedBurned := big.NewInt(0).Div(totalBurned, oneToken)
+			c.String(http.StatusOK, "%d", trimmedBurned.Int64())
+			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalBurned))
 			return
 		case "ndBurned":
 			ndContractBurn, err := service.GetNdContractTotalBurnedAmount()
@@ -116,7 +128,9 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				return
 			}
 
-			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(ndContractBurn))
+			trimmedNdContractBurn := big.NewInt(0).Div(ndContractBurn, oneToken)
+			c.String(http.StatusOK, "%d", trimmedNdContractBurn.Int64())
+			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(ndContractBurn))
 			return
 		case "teamSupply":
 			teamSupply, err := service.GetTeamWalletsSupply()
@@ -124,7 +138,10 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 				return
 			}
-			c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(teamSupply))
+
+			trimmedTeamSupply := big.NewInt(0).Div(teamSupply, oneToken)
+			c.String(http.StatusOK, "%d", trimmedTeamSupply.Int64())
+			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(teamSupply))
 			return
 		case "initailMinted":
 			c.String(http.StatusOK, "%d", 0)
@@ -135,58 +152,64 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		}
 	}
 
-	var trimmedSupply, trimmedMinted, trimmedBurned, trimmedTeamSupply, ndContractBurned string
+	var totalSupplyString, totalMintedString, totalBurnedString, teamSupplyString, ndContractBurnedString string //with decimals
+	var trimmedSupplyInt, trimmedMintedInt, trimmedBurnedInt, trimmedTeamSupplyInt, ndContractBurnedInt int64    //without decimals
 	var wg sync.WaitGroup
 	errCh := make(chan error, 4)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_trimmedSupply, err := service.GetTotalSupply()
+		totalSupply, err := service.GetTotalSupply()
 		if err != nil {
 			errCh <- errors.New("error while retrieving supply: " + err.Error())
 			return
 		}
-		trimmedSupply = service.GetAmountAsFloatString(_trimmedSupply)
+		trimmedSupplyInt = big.NewInt(0).Div(totalSupply, oneToken).Int64()
+		totalSupplyString = service.GetAmountAsFloatString(totalSupply)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_trimmedMinted, err := service.GetTotalMintedAmount()
+		totalMinted, err := service.GetTotalMintedAmount()
 		if err != nil {
 			errCh <- errors.New("error while retrieving minted amount: " + err.Error())
 			return
 		}
-		trimmedMinted = service.GetAmountAsFloatString(_trimmedMinted)
+		trimmedMintedInt = big.NewInt(0).Div(totalMinted, oneToken).Int64()
+		totalMintedString = service.GetAmountAsFloatString(totalMinted)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_trimmedBurned, err := service.GetTotalBurnedAmount()
+		totalBurned, err := service.GetTotalBurnedAmount()
 		if err != nil {
 			errCh <- errors.New("error while retrieving burned amount: " + err.Error())
 			return
 		}
-		trimmedBurned = service.GetAmountAsFloatString(_trimmedBurned)
+		trimmedBurnedInt = big.NewInt(0).Div(totalBurned, oneToken).Int64()
+		totalBurnedString = service.GetAmountAsFloatString(totalBurned)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_trimmedTeamSupply, err := service.GetTeamWalletsSupply()
+		teamSupply, err := service.GetTeamWalletsSupply()
 		if err != nil {
 			errCh <- errors.New("error while retrieving team supply: " + err.Error())
 			return
 		}
-		trimmedTeamSupply = service.GetAmountAsFloatString(_trimmedTeamSupply)
+		trimmedTeamSupplyInt = big.NewInt(0).Div(teamSupply, oneToken).Int64()
+		teamSupplyString = service.GetAmountAsFloatString(teamSupply)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_ndContractBurned, err := service.GetNdContractTotalBurnedAmount()
+		ndContractBurned, err := service.GetNdContractTotalBurnedAmount()
 		if err != nil {
 			errCh <- errors.New("error while retrieving supply: " + err.Error())
 			return
 		}
-		ndContractBurned = service.GetAmountAsFloatString(_ndContractBurned)
+		ndContractBurnedInt = big.NewInt(0).Div(ndContractBurned, oneToken).Int64()
+		ndContractBurnedString = service.GetAmountAsFloatString(ndContractBurned)
 	}()
 	wg.Wait()
 	close(errCh)
@@ -199,16 +222,30 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, strings.Join(errorMsgs, " | "))
 		return
 	}
-
-	response := tokenSupplyResponse{
-		InitilaMinted:     "0",
-		MaxSupply:         "161803398",
-		TotalSupply:       trimmedSupply,
-		CirculatingSupply: service.CalcCircSupply(trimmedTeamSupply, trimmedSupply),
-		Burned:            trimmedBurned,
-		Minted:            trimmedMinted,
-		NdContractBurn:    ndContractBurned,
-		NodeAddress:       nodeAddress,
+	var response tokenSupplyResponse
+	withDecimals, ok := c.GetQuery("withDecimals")
+	if ok && withDecimals == "true" {
+		response = tokenSupplyResponse{
+			InitilaMinted:     "0",
+			MaxSupply:         "161803398",
+			TotalSupply:       totalSupplyString,
+			CirculatingSupply: service.CalcCircSupply(teamSupplyString, totalSupplyString),
+			Burned:            totalBurnedString,
+			Minted:            totalMintedString,
+			NdContractBurn:    ndContractBurnedString,
+			NodeAddress:       nodeAddress,
+		}
+	} else {
+		response = tokenSupplyResponse{
+			InitilaMinted:     0,
+			MaxSupply:         161803398,
+			TotalSupply:       trimmedSupplyInt,
+			CirculatingSupply: trimmedSupplyInt - trimmedTeamSupplyInt,
+			Burned:            trimmedBurnedInt,
+			Minted:            trimmedMintedInt,
+			NdContractBurn:    ndContractBurnedInt,
+			NodeAddress:       nodeAddress,
+		}
 	}
 
 	c.JSON(http.StatusOK, response)
