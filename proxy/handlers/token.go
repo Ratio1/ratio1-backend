@@ -1,21 +1,20 @@
 package handlers
 
 import (
-	"errors"
 	"math/big"
 	"net/http"
-	"strings"
-	"sync"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/service"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/gin-gonic/gin"
 )
 
 const (
 	baseTokenEndpoint = "/token"
 	getSupplyEndpoint = "/supply"
+	getStatsEncpoint  = "/stats"
 )
 
 var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
@@ -38,6 +37,7 @@ func NewTokenHandler(groupHandler *groupHandler) {
 
 	publicEndpoints := []EndpointHandler{
 		{Method: http.MethodGet, Path: getSupplyEndpoint, HandlerFunc: h.getTokenSupply},
+		{Method: http.MethodGet, Path: getStatsEncpoint, HandlerFunc: h.getStats},
 	}
 
 	publicEndpointsGroupHandler := EndpointGroupHandler{
@@ -66,80 +66,49 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		return
 	}
 
+	stats, err := storage.GetLatestStats()
+	if err != nil {
+		log.Error("error while retrieving latest stats from db: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving latest stats from db: "+err.Error())
+		return
+	} else if stats == nil {
+		log.Error("no stats found in db")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "no stats found in db")
+		return
+	}
+
 	token, ok := c.GetQuery("extract")
 	if ok && token != "" {
 		switch token {
 		case "circulatingSupply":
-			totalSupply, err := service.GetTotalSupply()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			teamSupply, err := service.GetTeamWalletsSupply()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedTotalSupply := big.NewInt(0).Div(totalSupply, oneToken)
-			trimmedTeamSupply := big.NewInt(0).Div(teamSupply, oneToken)
+			trimmedTotalSupply := big.NewInt(0).Div(stats.TotalSupply, oneToken)
+			trimmedTeamSupply := big.NewInt(0).Div(stats.TeamWalletsSupply, oneToken)
 			circulatingSupply := trimmedTotalSupply.Int64() - trimmedTeamSupply.Int64()
 			//circulatingSupply := service.CalcCircSupply(service.GetAmountAsFloatString(teamSupply), service.GetAmountAsFloatString(totalSupply))
 			c.String(http.StatusOK, "%d", circulatingSupply)
 			return
 		case "totalSupply":
-			totalSupply, err := service.GetTotalSupply()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedTotalSupply := big.NewInt(0).Div(totalSupply, oneToken)
+			trimmedTotalSupply := big.NewInt(0).Div(stats.TotalSupply, oneToken)
 			c.String(http.StatusOK, "%d", trimmedTotalSupply.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalSupply))
 			return
 		case "minted":
-			totalMinted, err := service.GetTotalMintedAmount()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedMinted := big.NewInt(0).Div(totalMinted, oneToken)
+			trimmedMinted := big.NewInt(0).Div(stats.DailyMinted, oneToken)
 			c.String(http.StatusOK, "%d", trimmedMinted.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalMinted))
 			return
 		case "burned":
-			totalBurned, err := service.GetTotalBurnedAmount()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedBurned := big.NewInt(0).Div(totalBurned, oneToken)
+			trimmedBurned := big.NewInt(0).Div(stats.DailyTokenBurn, oneToken)
 			c.String(http.StatusOK, "%d", trimmedBurned.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalBurned))
 			return
 		case "ndBurned":
-			ndContractBurn, err := service.GetNdContractTotalBurnedAmount()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedNdContractBurn := big.NewInt(0).Div(ndContractBurn, oneToken)
+			trimmedNdContractBurn := big.NewInt(0).Div(stats.DailyNdContractTokenBurn, oneToken)
 			c.String(http.StatusOK, "%d", trimmedNdContractBurn.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(ndContractBurn))
 			return
 		case "teamSupply":
-			teamSupply, err := service.GetTeamWalletsSupply()
-			if err != nil {
-				model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-				return
-			}
-
-			trimmedTeamSupply := big.NewInt(0).Div(teamSupply, oneToken)
+			trimmedTeamSupply := big.NewInt(0).Div(stats.TeamWalletsSupply, oneToken)
 			c.String(http.StatusOK, "%d", trimmedTeamSupply.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(teamSupply))
 			return
@@ -152,76 +121,21 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 		}
 	}
 
-	var totalSupplyString, totalMintedString, totalBurnedString, teamSupplyString, ndContractBurnedString string //with decimals
-	var trimmedSupplyInt, trimmedMintedInt, trimmedBurnedInt, trimmedTeamSupplyInt, ndContractBurnedInt int64    //without decimals
-	var wg sync.WaitGroup
-	errCh := make(chan error, 4)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		totalSupply, err := service.GetTotalSupply()
-		if err != nil {
-			errCh <- errors.New("error while retrieving supply: " + err.Error())
-			return
-		}
-		trimmedSupplyInt = big.NewInt(0).Div(totalSupply, oneToken).Int64()
-		totalSupplyString = service.GetAmountAsFloatString(totalSupply)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		totalMinted, err := service.GetTotalMintedAmount()
-		if err != nil {
-			errCh <- errors.New("error while retrieving minted amount: " + err.Error())
-			return
-		}
-		trimmedMintedInt = big.NewInt(0).Div(totalMinted, oneToken).Int64()
-		totalMintedString = service.GetAmountAsFloatString(totalMinted)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		totalBurned, err := service.GetTotalBurnedAmount()
-		if err != nil {
-			errCh <- errors.New("error while retrieving burned amount: " + err.Error())
-			return
-		}
-		trimmedBurnedInt = big.NewInt(0).Div(totalBurned, oneToken).Int64()
-		totalBurnedString = service.GetAmountAsFloatString(totalBurned)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		teamSupply, err := service.GetTeamWalletsSupply()
-		if err != nil {
-			errCh <- errors.New("error while retrieving team supply: " + err.Error())
-			return
-		}
-		trimmedTeamSupplyInt = big.NewInt(0).Div(teamSupply, oneToken).Int64()
-		teamSupplyString = service.GetAmountAsFloatString(teamSupply)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ndContractBurned, err := service.GetNdContractTotalBurnedAmount()
-		if err != nil {
-			errCh <- errors.New("error while retrieving supply: " + err.Error())
-			return
-		}
-		ndContractBurnedInt = big.NewInt(0).Div(ndContractBurned, oneToken).Int64()
-		ndContractBurnedString = service.GetAmountAsFloatString(ndContractBurned)
-	}()
-	wg.Wait()
-	close(errCh)
+	trimmedSupplyInt := big.NewInt(0).Div(stats.TotalSupply, oneToken).Int64()
+	totalSupplyString := service.GetAmountAsFloatString(stats.TotalSupply)
 
-	if len(errCh) > 0 {
-		var errorMsgs []string
-		for err := range errCh {
-			errorMsgs = append(errorMsgs, err.Error())
-		}
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, strings.Join(errorMsgs, " | "))
-		return
-	}
+	trimmedMintedInt := big.NewInt(0).Div(stats.DailyMinted, oneToken).Int64()
+	totalMintedString := service.GetAmountAsFloatString(stats.DailyMinted)
+
+	trimmedBurnedInt := big.NewInt(0).Div(stats.DailyTokenBurn, oneToken).Int64()
+	totalBurnedString := service.GetAmountAsFloatString(stats.DailyTokenBurn)
+
+	trimmedTeamSupplyInt := big.NewInt(0).Div(stats.TeamWalletsSupply, oneToken).Int64()
+	teamSupplyString := service.GetAmountAsFloatString(stats.TeamWalletsSupply)
+
+	ndContractBurnedInt := big.NewInt(0).Div(stats.DailyNdContractTokenBurn, oneToken).Int64()
+	ndContractBurnedString := service.GetAmountAsFloatString(stats.DailyNdContractTokenBurn)
+
 	var response tokenSupplyResponse
 	withDecimals, ok := c.GetQuery("withDecimals")
 	if ok && withDecimals == "true" {
@@ -249,4 +163,31 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *tokenHandler) getStats(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	if config.Config.Api.DevTesting {
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "node is not on mainnet")
+		return
+	}
+
+	stats, err := storage.GetAllStatsASC()
+	if err != nil {
+		log.Error("error while retrieving stats from db: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving stats from db: "+err.Error())
+		return
+	} else if stats == nil {
+		log.Error("no stats found in db")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "no stats found in db")
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, stats, nodeAddress, "")
 }
