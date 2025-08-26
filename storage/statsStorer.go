@@ -33,7 +33,7 @@ func GetLatestStats() (*model.Stats, error) {
 	}
 
 	var stats model.Stats
-	tx := db.Order("day DESC").First(&stats)
+	tx := db.Order("creation_timestamp DESC").First(&stats)
 
 	if tx.Error != nil {
 		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -52,7 +52,7 @@ func GetAllStatsASC() (*[]model.Stats, error) {
 	}
 
 	var stats []model.Stats
-	tx := db.Order("day ASC").Find(&stats)
+	tx := db.Order("creation_timestamp ASC").Find(&stats)
 
 	if tx.Error != nil {
 		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
