@@ -213,6 +213,7 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
       "type": "event"
     }
 ]`
+	cfg.AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
 
 	/*	DATABASE ENV VARIABLES	*/
 	cfg.Database.DbName = os.Getenv("DATABASE_NAME")
@@ -316,12 +317,6 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		cfg.ViesApi.Password = os.Getenv("VIES_PASSWORD")
 		if cfg.ViesApi.Password == "" {
 			return nil, errors.New("VIES_PASSWORD is not set")
-		}
-
-		/* POAI */
-		cfg.AllocationEventSignature = os.Getenv("ALLOC_EVENT_SIGNATURE")
-		if cfg.AllocationEventSignature == "" {
-			return nil, errors.New("ALLOC_EVENT_SIGNATURE is not set")
 		}
 	}
 

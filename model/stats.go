@@ -6,7 +6,7 @@ import (
 )
 
 type Stats struct {
-	Day                      time.Time `gorm:"primarykey;unique" json:"day"` //primary key
+	Timestamp                time.Time `gorm:"primarykey;unique" json:"timestamp"` //primary key
 	DailyActiveJobs          int       `json:"dailyActiveJobs"`
 	DailyUsdcLocked          *big.Int  `json:"dailyUsdcLocked"`
 	DailyTokenBurn           *big.Int  `json:"dailyTokenBurn"`

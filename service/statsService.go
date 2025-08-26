@@ -342,7 +342,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 	fromBlock := big.NewInt(from)
 	toBlock := big.NewInt(to)
 
-	eventSignatureAsBytes := []byte(config.Config.AllocationEventSignature) //TODO to be event 'RewardsAllocatedV2(uint256,address,address,uint256)'
+	eventSignatureAsBytes := []byte(config.Config.AllocationEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
