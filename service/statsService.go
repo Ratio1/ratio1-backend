@@ -118,7 +118,7 @@ func DailyGetStats() {
 	}
 
 	stats := model.Stats{
-		Day:                      time.Now().UTC(),
+		CreationTimestamp:        time.Now().UTC(),
 		DailyActiveJobs:          dailyActiveJobs,
 		DailyUsdcLocked:          dailyUsdcLocked,
 		DailyTokenBurn:           dailyTokenBurn,
