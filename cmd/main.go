@@ -79,6 +79,16 @@ func startApi(ctx *cli.Context) error {
 			}
 			c.Start()
 		}
+
+		dailyNodeTiming, found := config.Config.GetDailyCronJobTiming(nodeAddress)
+		if found {
+			c := cron.New()
+			_, err = c.AddFunc(dailyNodeTiming, service.DailyGetStats)
+			if err != nil {
+				return errors.New("error while starting daily cronjob: " + err.Error())
+			}
+			c.Start()
+		}
 	}
 
 	api, err := proxy.NewWebServer()

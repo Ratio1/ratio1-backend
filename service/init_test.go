@@ -31,6 +31,9 @@ func init() {
 	config.Config.Oblio.InvoiceUrl = "https://www.oblio.eu/api/docs/invoice"
 	config.Config.Oblio.ClientSecret = ""
 	config.Config.Oblio.EventSignature = "LicensesCreated(address,bytes32,uint256,uint256,uint256)"
+	config.Config.AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
+	config.Config.PoaiManagerAddress = "0xa8d7FFCE91a888872A9f5431B4Dd6c0c135055c1"
+	config.Config.USDCContractAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
 	config.Config.NDContractAddress = "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423"
 	config.Config.R1ContractAddress = "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF"
@@ -82,6 +85,39 @@ func init() {
 		"name": "LicensesCreated",
 		"type": "event"
   }]`
+
+	config.Config.AllocLogsAbi = `[{
+"anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "jobId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "nodeAddress",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "nodeOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdcAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "RewardsAllocatedV2",
+      "type": "event"
+    }
+]`
 
 	config.Config.BuyLimitUSD.Individual = 10000
 	config.Config.BuyLimitUSD.Company = 200000

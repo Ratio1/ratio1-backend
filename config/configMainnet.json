@@ -68,6 +68,7 @@
     "Secret": ""
   },
   "NDContractAddress": "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423",
+  "USDCContractAddress": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   "R1ContractAddress": "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF",
   "TeamAddresses": [
     "0xABdaAC00E36007fB71b2059fc0E784690a991923",
@@ -78,6 +79,9 @@
   ],
   "CronJobTiming": {
     "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "*/30 * * * *"
+  },
+  "DailyCronJobTiming": {
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "5 17 * * *"
   },
   "ChainID": 8453,
   "BuyLimitUSD": {

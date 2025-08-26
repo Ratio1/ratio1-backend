@@ -17,25 +17,30 @@ var (
 )
 
 type GeneralConfig struct {
-	Api                 ApiConfig
-	Database            DatabaseConfig
-	Jwt                 JwtConfig
-	Mail                MailConfig
-	Sumsub              SumsubConfig
-	MailerLite          MailerLiteConfig
-	AcceptedDomains     AcceptedDomains
-	ChainID             int
-	Oblio               Oblio
-	Infura              Infura
-	NDContractAddress   string
-	R1ContractAddress   string
-	TeamAddresses       []string
-	CronJobTiming       map[string]string
-	AdminAddresses      []string
-	EmailTemplatesPath  string
-	BuyLimitUSD         BuyLimitUSDConfig
-	ViesApi             ViesConfig
-	InvoiceMessageEmail string
+	Api                      ApiConfig
+	Database                 DatabaseConfig
+	Jwt                      JwtConfig
+	Mail                     MailConfig
+	Sumsub                   SumsubConfig
+	MailerLite               MailerLiteConfig
+	AcceptedDomains          AcceptedDomains
+	ChainID                  int
+	Oblio                    Oblio
+	Infura                   Infura
+	NDContractAddress        string
+	R1ContractAddress        string
+	USDCContractAddress      string
+	PoaiManagerAddress       string
+	AllocationEventSignature string
+	AllocLogsAbi             string
+	TeamAddresses            []string
+	CronJobTiming            map[string]string
+	DailyCronJobTiming       map[string]string
+	AdminAddresses           []string
+	EmailTemplatesPath       string
+	BuyLimitUSD              BuyLimitUSDConfig
+	ViesApi                  ViesConfig
+	InvoiceMessageEmail      string
 }
 
 type ApiConfig struct {
@@ -176,6 +181,40 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		"type": "event"
   }]`
 
+	cfg.AllocLogsAbi = `[{
+"anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "jobId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "nodeAddress",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "nodeOwner",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdcAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "RewardsAllocatedV2",
+      "type": "event"
+    }
+]`
+	cfg.AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
+
 	/*	DATABASE ENV VARIABLES	*/
 	cfg.Database.DbName = os.Getenv("DATABASE_NAME")
 	if cfg.Database.DbName == "" {
@@ -294,5 +333,10 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 
 func (c *GeneralConfig) GetCronJobTiming(nodeAddress string) (string, bool) {
 	nodeTiming, found := c.CronJobTiming[nodeAddress]
+	return nodeTiming, found
+}
+
+func (c *GeneralConfig) GetDailyCronJobTiming(nodeAddress string) (string, bool) {
+	nodeTiming, found := c.DailyCronJobTiming[nodeAddress]
 	return nodeTiming, found
 }
