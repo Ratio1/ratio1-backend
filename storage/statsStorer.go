@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"math/big"
+	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"gorm.io/gorm"
@@ -47,17 +48,37 @@ func GetLatestStats() (*model.Stats, error) {
 		return nil, err
 	}
 
-	var stats model.Stats
-	tx := db.Order("creation_timestamp DESC").First(&stats)
+	var r statsRow
+	// selezioniamo castando i NUMERIC a testo
+	err = db.Model(&model.Stats{}).
+		Select(`
+			creation_timestamp,
+			daily_active_jobs,
+			daily_usdc_locked::text          AS daily_usdc_locked,
+			daily_token_burn::text           AS daily_token_burn,
+			total_token_burn::text           AS total_token_burn,
+			daily_nd_contract_token_burn::text AS daily_nd_contract_token_burn,
+			total_nd_contract_token_burn::text AS total_nd_contract_token_burn,
+			daily_poai_rewards::text         AS daily_poai_rewards,
+			total_poai_rewards::text         AS total_poai_rewards,
+			daily_minted::text               AS daily_minted,
+			total_minted::text               AS total_minted,
+			total_supply::text               AS total_supply,
+			team_wallets_supply::text        AS team_wallets_supply,
+			last_block_number
+		`).
+		Order("creation_timestamp DESC").
+		Limit(1).
+		Scan(&r).Error
 
-	if tx.Error != nil {
-		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, tx.Error
+		return nil, err
 	}
 
-	return &stats, nil
+	return rowToModel(&r), nil
 }
 
 func GetAllStatsASC() (*[]model.Stats, error) {
@@ -66,22 +87,90 @@ func GetAllStatsASC() (*[]model.Stats, error) {
 		return nil, err
 	}
 
-	var stats []model.Stats
-	tx := db.Order("creation_timestamp ASC").Find(&stats)
-
-	if tx.Error != nil {
-		if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+	var rows []statsRow
+	err = db.Model(&model.Stats{}).
+		Select(`
+			creation_timestamp,
+			daily_active_jobs,
+			daily_usdc_locked::text          AS daily_usdc_locked,
+			daily_token_burn::text           AS daily_token_burn,
+			total_token_burn::text           AS total_token_burn,
+			daily_nd_contract_token_burn::text AS daily_nd_contract_token_burn,
+			total_nd_contract_token_burn::text AS total_nd_contract_token_burn,
+			daily_poai_rewards::text         AS daily_poai_rewards,
+			total_poai_rewards::text         AS total_poai_rewards,
+			daily_minted::text               AS daily_minted,
+			total_minted::text               AS total_minted,
+			total_supply::text               AS total_supply,
+			team_wallets_supply::text        AS team_wallets_supply,
+			last_block_number
+		`).
+		Order("creation_timestamp ASC").
+		Scan(&rows).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, tx.Error
+		return nil, err
 	}
 
-	return &stats, nil
+	out := make([]model.Stats, 0, len(rows))
+	for i := range rows {
+		out = append(out, *rowToModel(&rows[i]))
+	}
+	return &out, nil
+}
+
+type statsRow struct {
+	CreationTimestamp        time.Time
+	DailyActiveJobs          int
+	DailyUsdcLocked          *string
+	DailyTokenBurn           *string
+	TotalTokenBurn           *string
+	DailyNdContractTokenBurn *string
+	TotalNdContractTokenBurn *string
+	DailyPOAIRewards         *string
+	TotalPOAIRewards         *string
+	DailyMinted              *string
+	TotalMinted              *string
+	TotalSupply              *string
+	TeamWalletsSupply        *string
+	LastBlockNumber          int64
 }
 
 func toNumericExpr(x *big.Int) any {
 	if x == nil {
-		return nil // scrive NULL
+		return nil
 	}
 	return gorm.Expr("?::numeric", x.String())
+}
+
+func toBigIntPtr(s *string) *big.Int {
+	if s == nil {
+		return nil
+	}
+	bi := new(big.Int)
+	if _, ok := bi.SetString(*s, 10); !ok {
+		return nil
+	}
+	return bi
+}
+
+func rowToModel(r *statsRow) *model.Stats {
+	return &model.Stats{
+		CreationTimestamp:        r.CreationTimestamp,
+		DailyActiveJobs:          r.DailyActiveJobs,
+		DailyUsdcLocked:          toBigIntPtr(r.DailyUsdcLocked),
+		DailyTokenBurn:           toBigIntPtr(r.DailyTokenBurn),
+		TotalTokenBurn:           toBigIntPtr(r.TotalTokenBurn),
+		DailyNdContractTokenBurn: toBigIntPtr(r.DailyNdContractTokenBurn),
+		TotalNdContractTokenBurn: toBigIntPtr(r.TotalNdContractTokenBurn),
+		DailyPOAIRewards:         toBigIntPtr(r.DailyPOAIRewards),
+		TotalPOAIRewards:         toBigIntPtr(r.TotalPOAIRewards),
+		DailyMinted:              toBigIntPtr(r.DailyMinted),
+		TotalMinted:              toBigIntPtr(r.TotalMinted),
+		TotalSupply:              toBigIntPtr(r.TotalSupply),
+		TeamWalletsSupply:        toBigIntPtr(r.TeamWalletsSupply),
+		LastBlockNumber:          r.LastBlockNumber,
+	}
 }
