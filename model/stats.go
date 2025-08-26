@@ -7,17 +7,17 @@ import (
 
 type Stats struct {
 	CreationTimestamp        time.Time `gorm:"primarykey;unique" json:"creationTimestamp"` //primary key
-	DailyActiveJobs          int       `json:"dailyActiveJobs"`
-	DailyUsdcLocked          *big.Int  `json:"dailyUsdcLocked"`
-	DailyTokenBurn           *big.Int  `json:"dailyTokenBurn"`
-	TotalTokenBurn           *big.Int  `json:"totalTokenBurn"`
-	DailyNdContractTokenBurn *big.Int  `json:"dailyNdContractTokenBurn"`
-	TotalNdContractTokenBurn *big.Int  `json:"totalNdContractTokenBurn"`
-	DailyPOAIRewards         *big.Int  `json:"dailyPOAIRewards"`
-	TotalPOAIRewards         *big.Int  `json:"totalPOAIRewards"`
-	DailyMinted              *big.Int  `json:"dailyMinted"`
-	TotalMinted              *big.Int  `json:"totalMinted"`
-	TotalSupply              *big.Int  `json:"totalSupply"`
-	TeamWalletsSupply        *big.Int  `json:"teamWalletsSupply"`
-	LastBlockNumber          int64     `json:"lastBlockNumber"`
+	DailyActiveJobs          int       `gorm:"type:integer;default:null" json:"dailyActiveJobs"`
+	DailyUsdcLocked          *big.Int  `gorm:"type:numeric;default:null" json:"dailyUsdcLocked"`
+	DailyTokenBurn           *big.Int  `gorm:"type:numeric;default:null" json:"dailyTokenBurn"`
+	TotalTokenBurn           *big.Int  `gorm:"type:numeric;default:null" json:"totalTokenBurn"`
+	DailyNdContractTokenBurn *big.Int  `gorm:"type:numeric;default:null" json:"dailyNdContractTokenBurn"`
+	TotalNdContractTokenBurn *big.Int  `gorm:"type:numeric;default:null" json:"totalNdContractTokenBurn"`
+	DailyPOAIRewards         *big.Int  `gorm:"type:numeric;default:null" json:"dailyPOAIRewards"`
+	TotalPOAIRewards         *big.Int  `gorm:"type:numeric;default:null" json:"totalPOAIRewards"`
+	DailyMinted              *big.Int  `gorm:"type:numeric;default:null" json:"dailyMinted"`
+	TotalMinted              *big.Int  `gorm:"type:numeric;default:null" json:"totalMinted"`
+	TotalSupply              *big.Int  `gorm:"type:numeric;default:null" json:"totalSupply"`
+	TeamWalletsSupply        *big.Int  `gorm:"type:numeric;default:null" json:"teamWalletsSupply"`
+	LastBlockNumber          int64     `gorm:"type:bigint;default:null" json:"lastBlockNumber"`
 }
