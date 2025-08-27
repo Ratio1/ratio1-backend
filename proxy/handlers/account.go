@@ -642,12 +642,5 @@ func (h *accountHandler) isKyb(c *gin.Context) { //TODO change with userInfo fro
 		return
 	}
 
-	client, err := service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
-	if err != nil {
-		log.Error("error while retrieving client infos: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
-	}
-
-	model.JsonResponse(c, http.StatusOK, client.IsCompany, nodeAddress, "")
+	model.JsonResponse(c, http.StatusOK, kyc.ApplicantType == model.BusinessCustomer, nodeAddress, "")
 }
