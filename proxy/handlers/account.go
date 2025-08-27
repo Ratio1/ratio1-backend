@@ -21,6 +21,7 @@ const (
 	blacklistEndpoint     = "/blacklist"
 	addSellerCodeEndpoint = "/add-seller-code"
 	getKycinfoEndpoint    = "/kyc-info"
+	getIsKybEndpoint      = "/is-kyb"
 )
 
 type registerEmailRequest struct {
@@ -51,6 +52,7 @@ func NewAccountHandler(groupHandler *groupHandler) {
 
 	publicEndpoints := []EndpointHandler{
 		{Method: http.MethodGet, Path: confirmEmailEndpoint, HandlerFunc: h.confirmEmail},
+		{Method: http.MethodGet, Path: getIsKybEndpoint, HandlerFunc: h.isKyb},
 	}
 
 	publicEndpointsGroupHandler := EndpointGroupHandler{
@@ -594,4 +596,51 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 		IsCompany:          client.IsCompany,
 	}
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
+}
+
+func (h *accountHandler) isKyb(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	if config.Config.Api.DevTesting { //IF testnet or devnet always return true
+		model.JsonResponse(c, http.StatusOK, true, nodeAddress, "")
+		return
+	}
+
+	address, ok := c.GetQuery("walletAddress")
+	if !ok || address == "" {
+		log.Error("empty or invalid wallet address query")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "empty or invalid wallet address query")
+		return
+	}
+
+	account, err := service.GetOrCreateAccount(address)
+	if err != nil {
+		log.Error("error while retrieving account information: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	kyc, found, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		log.Error("error while retrieving kyc information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+	if !found {
+		log.Error("kyc not found in storage")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+		return
+	}
+	if kyc.KycStatus != model.StatusApproved {
+		log.Error("kyc status is not approved, cannot retrieve client infos")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "kyc status is not approved, cannot retrieve client infos")
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, kyc.ApplicantType == model.BusinessCustomer, nodeAddress, "")
 }
