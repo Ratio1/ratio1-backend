@@ -598,7 +598,7 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
 }
 
-func (h *accountHandler) isKyb(c *gin.Context) { //TODO change with userInfo from DB when POAI is merged
+func (h *accountHandler) isKyb(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
