@@ -623,22 +623,26 @@ func (h *accountHandler) isKyb(c *gin.Context) {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
+	} else if account == nil || account.Email == nil {
+		log.Error("account or account email is nil")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "account or account email is nil")
+		return
 	}
 
 	kyc, found, err := storage.GetKycByEmail(*account.Email)
 	if err != nil {
 		log.Error("error while retrieving kyc information from storage: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
 	if !found {
 		log.Error("kyc not found in storage")
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "user email not found")
 		return
 	}
 	if kyc.KycStatus != model.StatusApproved {
 		log.Error("kyc status is not approved, cannot retrieve client infos")
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "kyc status is not approved, cannot retrieve client infos")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "kyc status is not approved, cannot retrieve client infos")
 		return
 	}
 
