@@ -56,6 +56,11 @@ func (w *WebServer) Run() *http.Server {
 	if !strings.Contains(address, ":") {
 		panic("bad address")
 	}
+
+	// Log the server startup
+	logger := handlers.GetLogger()
+	logger.Info("Starting API server", "address", address)
+
 	server := &http.Server{
 		Addr:           address,
 		Handler:        w.router,
@@ -65,7 +70,9 @@ func (w *WebServer) Run() *http.Server {
 	}
 
 	go func() {
+		logger.Info("API server is running", "address", address)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Server error", "error", err.Error())
 			panic(err)
 		}
 	}()
