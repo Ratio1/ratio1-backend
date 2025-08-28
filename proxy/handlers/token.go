@@ -93,17 +93,17 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalSupply))
 			return
 		case "minted":
-			trimmedMinted := big.NewInt(0).Div(stats.DailyMinted, oneToken)
+			trimmedMinted := big.NewInt(0).Div(stats.TotalMinted, oneToken)
 			c.String(http.StatusOK, "%d", trimmedMinted.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalMinted))
 			return
 		case "burned":
-			trimmedBurned := big.NewInt(0).Div(stats.DailyTokenBurn, oneToken)
+			trimmedBurned := big.NewInt(0).Div(stats.TotalTokenBurn, oneToken)
 			c.String(http.StatusOK, "%d", trimmedBurned.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(totalBurned))
 			return
 		case "ndBurned":
-			trimmedNdContractBurn := big.NewInt(0).Div(stats.DailyNdContractTokenBurn, oneToken)
+			trimmedNdContractBurn := big.NewInt(0).Div(stats.TotalNdContractTokenBurn, oneToken)
 			c.String(http.StatusOK, "%d", trimmedNdContractBurn.Int64())
 			//c.String(http.StatusOK, "%d", service.GetAmountAsFloatString(ndContractBurn))
 			return
@@ -124,17 +124,17 @@ func (h *tokenHandler) getTokenSupply(c *gin.Context) {
 	trimmedSupplyInt := big.NewInt(0).Div(stats.TotalSupply, oneToken).Int64()
 	totalSupplyString := service.GetAmountAsFloatString(stats.TotalSupply)
 
-	trimmedMintedInt := big.NewInt(0).Div(stats.DailyMinted, oneToken).Int64()
-	totalMintedString := service.GetAmountAsFloatString(stats.DailyMinted)
+	trimmedMintedInt := big.NewInt(0).Div(stats.TotalMinted, oneToken).Int64()
+	totalMintedString := service.GetAmountAsFloatString(stats.TotalMinted)
 
-	trimmedBurnedInt := big.NewInt(0).Div(stats.DailyTokenBurn, oneToken).Int64()
-	totalBurnedString := service.GetAmountAsFloatString(stats.DailyTokenBurn)
+	trimmedBurnedInt := big.NewInt(0).Div(stats.TotalTokenBurn, oneToken).Int64()
+	totalBurnedString := service.GetAmountAsFloatString(stats.TotalTokenBurn)
 
 	trimmedTeamSupplyInt := big.NewInt(0).Div(stats.TeamWalletsSupply, oneToken).Int64()
 	teamSupplyString := service.GetAmountAsFloatString(stats.TeamWalletsSupply)
 
-	ndContractBurnedInt := big.NewInt(0).Div(stats.DailyNdContractTokenBurn, oneToken).Int64()
-	ndContractBurnedString := service.GetAmountAsFloatString(stats.DailyNdContractTokenBurn)
+	ndContractBurnedInt := big.NewInt(0).Div(stats.TotalNdContractTokenBurn, oneToken).Int64()
+	ndContractBurnedString := service.GetAmountAsFloatString(stats.TotalNdContractTokenBurn)
 
 	var response tokenSupplyResponse
 	withDecimals, ok := c.GetQuery("withDecimals")
