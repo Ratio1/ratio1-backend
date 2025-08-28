@@ -82,7 +82,7 @@
     "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "*/30 * * * *"
   },
   "DailyCronJobTiming": {
-    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "10 10 * * *"
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "30 9 * * *"
   },
   "ChainID": 8453,
   "BuyLimitUSD": {
