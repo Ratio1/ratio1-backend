@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
@@ -386,7 +387,6 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 	}
 
 	event := struct {
-		JobId       string
 		NodeAddress common.Address
 		NodeOwner   common.Address
 		UsdcAmount  *big.Int
@@ -397,6 +397,12 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 		return nil, errors.New("error while unpacking interface: " + err.Error())
 	}
 
+	jobIDBig := new(big.Int).SetBytes(vLog.Topics[1].Bytes())
+	var jobID uint64
+	if jobIDBig.BitLen() > 64 {
+		return nil, fmt.Errorf("jobId too large for uint64: %s", jobIDBig.String())
+	}
+	jobID = jobIDBig.Uint64()
 	result := model.Allocation{
 		CspAddress:  vLog.Address.String(),
 		TxHash:      vLog.TxHash.Hex(),
@@ -404,7 +410,7 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 
 		NodeAddress: event.NodeAddress.String(),
 		UserAddress: event.NodeOwner.String(),
-		JobId:       event.JobId,
+		JobId:       strconv.Itoa(int(jobID)),
 	}
 	result.SetUsdcAmountPayed(event.UsdcAmount)
 	return &result, nil
