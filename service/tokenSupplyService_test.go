@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,10 +32,10 @@ func Test_GetTokenSupply(t *testing.T) {
 	fmt.Println("ND Contract Burn:", ndContractBurn)
 	/* print as big float*/
 
-	fmt.Println("Circulating Supply (float):", CalcCircSupply(GetAmountAsFloatString(teamSupply), GetAmountAsFloatString(totalSupply)))
-	fmt.Println("Total Supply (float):", GetAmountAsFloatString(totalSupply))
-	fmt.Println("Total Minted (float):", GetAmountAsFloatString(totalMinted))
-	fmt.Println("Total Burned (float):", GetAmountAsFloatString(totalBurned))
-	fmt.Println("Team Supply (float):", GetAmountAsFloatString(teamSupply))
-	fmt.Println("ND Contract Burn (float):", GetAmountAsFloatString(ndContractBurn))
+	fmt.Println("Circulating Supply (float):", CalcCircSupply(GetAmountAsFloatString(teamSupply, 18), GetAmountAsFloatString(totalSupply, model.R1Decimals)))
+	fmt.Println("Total Supply (float):", GetAmountAsFloatString(totalSupply, model.R1Decimals))
+	fmt.Println("Total Minted (float):", GetAmountAsFloatString(totalMinted, model.R1Decimals))
+	fmt.Println("Total Burned (float):", GetAmountAsFloatString(totalBurned, model.R1Decimals))
+	fmt.Println("Team Supply (float):", GetAmountAsFloatString(teamSupply, model.R1Decimals))
+	fmt.Println("ND Contract Burn (float):", GetAmountAsFloatString(ndContractBurn, model.R1Decimals))
 }

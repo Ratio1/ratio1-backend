@@ -27,6 +27,7 @@ type GeneralConfig struct {
 	ChainID                  int
 	Oblio                    Oblio
 	Infura                   Infura
+	JobDetailsApi            string
 	NDContractAddress        string
 	R1ContractAddress        string
 	USDCContractAddress      string
@@ -317,6 +318,12 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		cfg.ViesApi.Password = os.Getenv("VIES_PASSWORD")
 		if cfg.ViesApi.Password == "" {
 			return nil, errors.New("VIES_PASSWORD is not set")
+		}
+
+		/* JOB DETAILS VAR	*/
+		cfg.JobDetailsApi = os.Getenv("JOB_DETAILS_API")
+		if cfg.JobDetailsApi == "" {
+			return nil, errors.New("JOB_DETAILS_API is not set")
 		}
 	}
 

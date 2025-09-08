@@ -48,6 +48,9 @@ func TryMigrate() error {
 		&model.InvoiceClient{},
 		&model.Seller{},
 		&model.Stats{},
+		&model.Allocation{},
+		&model.Preference{},
+		&model.InvoiceDraft{},
 	)
 	if err != nil {
 		return err

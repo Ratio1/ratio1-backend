@@ -15,16 +15,27 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
-
-func GetAmountAsFloatString(amount *big.Int) string {
+func GetAmountAsFloatString(amount *big.Int, decimals int) string {
 	if amount == nil {
 		return ""
 	}
 
+	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
 	amountFloat := new(big.Float).SetInt(amount)
 	amountFloat.Quo(amountFloat, new(big.Float).SetInt(oneToken))
 	return amountFloat.Text('f', 18)
+}
+
+func GetAmountAsFloat(amount *big.Int, decimals int) float64 {
+	if amount == nil {
+		return 0
+	}
+
+	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	amountFloat := new(big.Float).SetInt(amount)
+	amountFloat.Quo(amountFloat, new(big.Float).SetInt(oneToken))
+	v, _ := amountFloat.Float64()
+	return v
 }
 
 func CalcCircSupply(teamSupply, totalSupply string) string {

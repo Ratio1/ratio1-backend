@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/GoRoadster/go-log"
@@ -16,35 +15,11 @@ import (
 const (
 	contentTypeKey   = "Content-Type"
 	contentTypeValue = "application/json"
-
-	binancePriceUrlEGLD = "https://api.binance.com/api/v3/ticker/price?symbol=EGLDUSDT"
 )
 
 type HttpHeaderPair struct {
 	Key   string
 	Value string
-}
-
-type binanceResponse struct {
-	Symbol string `json:"symbol"`
-	Price  string `json:"price"`
-}
-
-func GetEgldPrice() (float64, error) {
-	var br binanceResponse
-	err := HttpGet(binancePriceUrlEGLD, &br)
-	if err != nil {
-		return -1, err
-	}
-	if br.Price == "" {
-		return -1, errors.New("failed to fetch EGLD price")
-	}
-	vFloat, err := strconv.ParseFloat(br.Price, 64)
-	if err != nil {
-		return -1, err
-	}
-
-	return vFloat, nil
 }
 
 func HttpGet(url string, castTarget interface{}, headers ...HttpHeaderPair) error {
@@ -53,11 +28,11 @@ func HttpGet(url string, castTarget interface{}, headers ...HttpHeaderPair) erro
 	if err != nil {
 		return err
 	}
-	if headers != nil {
-		for _, head := range headers {
-			req.Header.Set(head.Key, head.Value)
-		}
+
+	for _, head := range headers {
+		req.Header.Set(head.Key, head.Value)
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -86,11 +61,10 @@ func HttpPost(url string, payload interface{}, response interface{}, headers ...
 		return err
 	}
 	req.Header.Set(contentTypeKey, contentTypeValue)
-	if headers != nil {
-		for _, head := range headers {
-			req.Header.Set(head.Key, head.Value)
-		}
+	for _, head := range headers {
+		req.Header.Set(head.Key, head.Value)
 	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.New("error while doing http post request: " + err.Error())

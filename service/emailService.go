@@ -159,6 +159,38 @@ func SendAccountResettedEmail(email string) error {
 	return callSendEmail(email, subjectEmailAccountResetted, body.String())
 }
 
+func SendNodeOwnerDraftEmail(email string) error {
+	/*template, err := templates.GetAccountResettedEmailTemplate() //TODO change with correct email template
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	var body bytes.Buffer
+	err = template.Execute(&body, struct{}{})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectEmailAccountResetted, body.String())*/
+	return nil
+}
+
+func SendCspDraftEmail(email string) error {
+	/*template, err := templates.GetAccountResettedEmailTemplate() //TODO change with correct email template
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	var body bytes.Buffer
+	err = template.Execute(&body, struct{}{})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectEmailAccountResetted, body.String())*/
+	return nil
+}
+
 func SendBuyLicenseEmail(email, url, invoiceNumber string) error {
 	text := "A new invoice has been submitted. Invoice Number: " + invoiceNumber + " , link: " + url
 	return callSendTextEmail(email, subjectNewBuyLicenseInvoice, text)

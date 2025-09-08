@@ -546,6 +546,12 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 		return
 	}
 
+	if account.Email == nil {
+		log.Error("account email is nil for address: " + address)
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "account email is nil for address: "+address)
+		return
+	}
+
 	kyc, found, err := storage.GetKycByEmail(*account.Email)
 	if err != nil {
 		log.Error("error while retrieving kyc information from storage: " + err.Error())
@@ -582,8 +588,8 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 	}
 
 	email := ""
-	if client.UserEmail != nil {
-		email = *client.UserEmail
+	if account.Email != nil {
+		email = *account.Email
 	}
 	response := clientInfoResponse{
 		Name:               name,

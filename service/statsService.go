@@ -54,19 +54,21 @@ func DailyGetStats() {
 		return
 	}
 
+	for _, a := range allocEvents {
+		_ = a.GetJobDetails(config.Config.JobDetailsApi) //ignore the error
+	}
+
 	time.Sleep(1 * time.Second) // to avoid "429 Too Many Requests" error from infura
 
-	/* TODO use for poai
 	err = generateAllocations(allocEvents)
 	if err != nil {
 		fmt.Println("Error generating allocations: " + err.Error())
 		return
 	}
-	*/
 
 	dailyPoaiReward := big.NewInt(0)
 	for _, e := range allocEvents {
-		dailyPoaiReward = dailyPoaiReward.Add(dailyPoaiReward, &e.UsdcAmountPayed)
+		dailyPoaiReward = dailyPoaiReward.Add(dailyPoaiReward, e.GetUsdcAmountPayed())
 	}
 
 	dailyMinted, err := getPeriodMintedAmount(from, to)
@@ -400,15 +402,14 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 		TxHash:      vLog.TxHash.Hex(),
 		BlockNumber: int64(vLog.BlockNumber),
 
-		NodeAddress:     event.NodeAddress.String(),
-		UserAddress:     event.NodeOwner.String(),
-		JobId:           event.JobId,
-		UsdcAmountPayed: *event.UsdcAmount,
+		NodeAddress: event.NodeAddress.String(),
+		UserAddress: event.NodeOwner.String(),
+		JobId:       event.JobId,
 	}
+	result.SetUsdcAmountPayed(event.UsdcAmount)
 	return &result, nil
 }
 
-/*
 func generateAllocations(allocEevents []model.Allocation) error {
 	for _, event := range allocEevents {
 		err := storage.CreateAllocation(&event)
@@ -417,4 +418,4 @@ func generateAllocations(allocEevents []model.Allocation) error {
 		}
 	}
 	return nil
-}*/
+}

@@ -36,7 +36,7 @@ type BadInitSessionResponse struct {
 	ErrorName     string `json:"errorName"`
 }
 
-func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
+func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string) error {
 	layout := "2006-01-02 15:04:05.000"
 	parsedTime, err := time.Parse(layout, event.CreatedAtMs)
 	if err != nil {
@@ -71,13 +71,18 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
 			status = model.StatusApproved
-			err = getViesData(&kyc)
+			userInfo, err := getViesData(&kyc)
 			if err != nil {
 				return errors.New("error while getting vies data: " + err.Error())
 			}
 			err = SendKycConfirmedEmail(kyc.Email)
 			if err != nil {
 				return errors.New("error while sending email: " + err.Error())
+			}
+			userInfo.BlockchainAddress = userAddress
+			err = storage.CreateUserInfo(userInfo)
+			if err != nil {
+				return errors.New("error while creating userinfo: " + err.Error())
 			}
 		}
 		kyc.KycStatus = status
@@ -133,23 +138,23 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc) error {
 	return nil
 }
 
-func getViesData(kyc *model.Kyc) error {
+func getViesData(kyc *model.Kyc) (*model.UserInfo, error) {
 	client, err := GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
 	if err != nil {
-		return err
+		return nil, err
 	} else if client == nil {
-		return errors.New("nil client returned from sumsub api")
+		return nil, errors.New("nil client returned from sumsub api")
 	}
 
 	err = ValidateData(*client)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	kyc.Country = client.Country
 	if client.IsCompany {
-		client.ReverseCharge, client.IsUe = IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
-		if client.ReverseCharge && client.IsUe {
+		ReverseCharge, IsUe := IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
+		if ReverseCharge && IsUe {
 			kyc.ViesRegistered = true
 		} else {
 			kyc.ViesRegistered = false
@@ -158,7 +163,7 @@ func getViesData(kyc *model.Kyc) error {
 		kyc.ViesRegistered = false
 	}
 
-	return nil
+	return client, nil
 }
 
 func InitNewSession(uuid, level string) (*string, error) {
@@ -208,7 +213,7 @@ func InitNewSession(uuid, level string) (*string, error) {
 	return &goodResponse.Token, nil
 }
 
-func GetClientInfos(applicantId, uuid string) (*model.InvoiceClient, error) {
+func GetClientInfos(applicantId, uuid string) (*model.UserInfo, error) {
 	Url := "https://api.sumsub.com" + "/resources/applicants/" + applicantId + "/one"
 	request, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
@@ -253,7 +258,7 @@ func generateSignature(secret, message string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func mapApplicantToInvoiceClient(app model.ApplicantProfile) *model.InvoiceClient {
+func mapApplicantToInvoiceClient(app model.ApplicantProfile) *model.UserInfo {
 	var name, surname, companyName, identificationCode *string
 	var addr, city, state, country string
 	if app.Type == "company" && app.FixedInfo.CompanyInfo != nil {
@@ -277,24 +282,51 @@ func mapApplicantToInvoiceClient(app model.ApplicantProfile) *model.InvoiceClien
 
 	}
 
-	invoiceClient := model.InvoiceClient{
-		Uuid:               nil,
+	invoiceClient := model.UserInfo{
 		Name:               name,
 		Surname:            surname,
 		CompanyName:        companyName,
-		UserEmail:          nil,
 		IdentificationCode: *identificationCode,
 		Address:            addr,
 		City:               city,
 		State:              state,
 		Country:            country,
 		IsCompany:          app.Type == "company",
-		Status:             nil,
-		InvoiceUrl:         nil,
-		InvoiceNumber:      nil,
-		TxHash:             nil,
-		BlockNumber:        nil,
 	}
 
 	return &invoiceClient
+}
+
+func ValidateData(client model.UserInfo) error {
+	if client.IsCompany && client.CompanyName == nil {
+		return errors.New("company name must be provided")
+	} else if !client.IsCompany && (client.Surname == nil || client.Name == nil) {
+		return errors.New("name and surname must be provided")
+	}
+
+	if client.Name == nil && client.Surname == nil && client.CompanyName == nil {
+		return errors.New("name and surname or company name must be provided")
+	}
+
+	if client.IdentificationCode == "" {
+		return errors.New("identification code must be provided")
+	}
+
+	if client.Address == "" {
+		return errors.New("address must be provided")
+	}
+
+	if client.State == "" {
+		return errors.New("state must be provided")
+	}
+
+	if client.City == "" {
+		return errors.New("city must be provided")
+	}
+
+	if client.Country == "" {
+		return errors.New("country must be provided")
+	}
+
+	return nil
 }
