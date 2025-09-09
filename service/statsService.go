@@ -55,8 +55,26 @@ func DailyGetStats() {
 		return
 	}
 
+	allJobsId := make(map[string]*Response)
 	for _, a := range allocEvents {
-		_ = a.GetJobDetails(config.Config.JobDetailsApi) //ignore the error
+		allJobsId[a.JobId] = nil
+	}
+
+	for k := range allJobsId {
+		res, err := GetJobDetails(k, config.Config.JobDetailsApi)
+		if err != nil {
+			continue
+		}
+		allJobsId[k] = res
+	}
+
+	for i, a := range allocEvents {
+		if v := allJobsId[a.JobId]; v != nil {
+			a.JobName = v.Result.JobName
+			a.JobType = strconv.Itoa(v.Result.JobType)
+			a.ProjectName = v.Result.ProjectName
+			allocEvents[i] = a
+		}
 	}
 
 	time.Sleep(1 * time.Second) // to avoid "429 Too Many Requests" error from infura

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NaeuralEdgeProtocol/ratio1-backend/process"
 	"github.com/google/uuid"
 )
 
@@ -46,24 +45,6 @@ func (a *Allocation) SetUsdcAmountPayed(amount *big.Int) {
 	} else {
 		a.UsdcAmountPayed = amount.String()
 	}
-}
-
-func (a *Allocation) GetJobDetails(api string) error {
-	//http request
-	var resp struct {
-		jobName     string
-		jobType     string
-		projectName string
-	}
-	err := process.HttpGet(api, &resp)
-	if err != nil {
-		return errors.New("error while retriveing job details: " + err.Error())
-	}
-
-	a.JobName = resp.jobName
-	a.JobType = resp.jobType
-	a.ProjectName = resp.projectName
-	return nil
 }
 
 type InvoiceDraft struct {

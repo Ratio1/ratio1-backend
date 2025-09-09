@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"sync"
 	"time"
@@ -26,6 +27,9 @@ var (
 	}
 	SumsubAppToken  = ""
 	SumsubSecretKey = ""
+
+	sk             *ecdsa.PrivateKey
+	PrivateKeyPath = ""
 
 	SleepTime = 1 * time.Second
 
