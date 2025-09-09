@@ -1,13 +1,20 @@
 package main
 
 import (
+	"errors"
+	"sync"
 	"time"
 
-	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
+	"gorm.io/gorm"
 )
 
 var (
-	Database = config.DatabaseConfig{
+	once     sync.Once
+	database *gorm.DB
+
+	NoDBError = errors.New("no DB Connection")
+
+	Database = DatabaseConfig{
 		User:         "postgres",
 		Password:     "postgres",
 		Host:         "localhost",

@@ -13,36 +13,34 @@ import (
 MAKE sure to set all the needed variabels berfore running
 */
 
-/*
-	func main() {
-		fmt.Println("beginning of all allocatoin script")
-		allocations := getAllAllocations()
-		if allocations == nil {
-			return
-		}
-
-		fmt.Println("lenght of allocation: ", len(allocations))
-
-		fmt.Println("saving data to json")
-		data, err := json.Marshal(allocations)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-
-		file, err := os.Create("allocations.json")
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-
-		_, err = file.Write(data)
-		if err != nil {
-			panic(err)
-		}
+func main() {
+	fmt.Println("beginning of all allocatoin script")
+	allocations := GetAllAllocations()
+	if allocations == nil {
+		return
 	}
-*/
 
-func getAllAllocations() []model.Allocation {
+	fmt.Println("lenght of allocation: ", len(allocations))
+
+	fmt.Println("saving data to json")
+	data, err := json.Marshal(allocations)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	file, err := os.Create("allocations.json")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	_, err = file.Write(data)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func GetAllAllocations() []model.Allocation {
 	client, err := ethclient.Dial(InfuraApiUrl + InfuraSecret)
 	if err != nil {
 		fmt.Println("error while dialing client:", err)

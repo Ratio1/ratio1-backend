@@ -21,12 +21,12 @@ MAKE sure to set all the needed variabels berfore running
 
 /*
 func main() {
-	storage.Connect()
-	createAllUserInfo()
+	DBConnect()
+	CreateAllUserInfo()
 }
 */
 
-func createAllUserInfo() {
+func CreateAllUserInfo() {
 	kycs, err := storage.GetAllActiveKyc()
 	if err != nil {
 		fmt.Println("error on retrieving all active kycs: " + err.Error())
