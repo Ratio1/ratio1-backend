@@ -25,6 +25,7 @@ import (
 MAKE sure to set all the needed variabels berfore running
 */
 
+/*
 func main() {
 	var err error
 	sk, err = loadPrivateKeyFromPemFile(PrivateKeyPath)
@@ -58,6 +59,7 @@ func main() {
 		panic(err)
 	}
 }
+*/
 
 func GetAllAllocations() []model.Allocation {
 	client, err := ethclient.Dial(InfuraApiUrl + InfuraSecret)

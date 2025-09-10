@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
+	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -25,6 +26,7 @@ type DatabaseConfig struct {
 
 func DBConnect() {
 	once.Do(func() {
+		fmt.Println(sql.Drivers())
 		sqlDb, err := sql.Open("postgres", Database.Url())
 		if err != nil {
 			panic(err)
@@ -51,6 +53,39 @@ func GetDB() (*gorm.DB, error) {
 	}
 
 	return database, nil
+}
+
+func getAllActiveKyc() ([]*model.Kyc, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var acc []*model.Kyc
+	txRead := db.Find(&acc, "kyc_status = ? AND is_active = ? AND has_been_deleted = ?", "approved", "true", "false")
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+
+	return acc, nil
+}
+
+func getAccountByEmail(email string) (*model.Account, bool, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, false, err
+	}
+
+	var acc model.Account
+	txRead := db.Find(&acc, "email = ?", email)
+	if txRead.Error != nil {
+		return nil, false, txRead.Error
+	}
+	if txRead.RowsAffected == 0 {
+		return nil, false, nil
+	}
+
+	return &acc, true, nil
 }
 
 type statsRow struct {

@@ -9,30 +9,32 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
-	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 )
 
 /*
 MAKE sure to set all the needed variabels berfore running
 */
 
-/*
 func main() {
 	DBConnect()
 	CreateAllUserInfo()
 }
-*/
 
 func CreateAllUserInfo() {
-	kycs, err := storage.GetAllActiveKyc()
+	kycs, err := getAllActiveKyc()
 	if err != nil {
 		fmt.Println("error on retrieving all active kycs: " + err.Error())
 	}
+	var allUserinfo []model.UserInfo
 	for _, kyc := range kycs {
-		acc, ok, err := storage.GetAccountByEmail(kyc.Email)
+		if kyc.ApplicantId == "safeFalseApplicant" {
+			continue
+		}
+		acc, ok, err := getAccountByEmail(kyc.Email)
 		if err != nil {
 			fmt.Println("error on retrieving account: " + err.Error() + " for user: " + kyc.Email)
 			continue
@@ -43,16 +45,16 @@ func CreateAllUserInfo() {
 
 		userinfo, err := getClientInfos(kyc.ApplicantId, kyc.Uuid.String())
 		if err != nil {
-			fmt.Println("error for user: " + kyc.Email + " with applicant id : " + kyc.ApplicantId)
+			fmt.Println("error for user: "+kyc.Email+" with applicant id : "+kyc.ApplicantId+" error: ", err.Error())
 			continue
 		}
 		userinfo.BlockchainAddress = acc.Address
-		err = storage.CreateUserInfo(userinfo)
-		if err != nil {
-			fmt.Println("error while creating user info for user: " + userinfo.Email)
-		}
+		userinfo.Email = kyc.Email
+		allUserinfo = append(allUserinfo, *userinfo)
 		time.Sleep(1 * time.Second) //TO not reach ratelimit from sumsub (300 req for 5 sec, 60req/sec)
 	}
+	olddata, _ := json.Marshal(allUserinfo)
+	_ = os.WriteFile("allUserInfo.json", olddata, 0644)
 }
 
 func getClientInfos(applicantId, uuid string) (*model.UserInfo, error) {

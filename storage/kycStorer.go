@@ -108,18 +108,3 @@ func GetAllUsersEmails() ([]string, error) {
 
 	return emails, nil
 }
-
-func GetAllActiveKyc() ([]*model.Kyc, error) {
-	db, err := GetDB()
-	if err != nil {
-		return nil, err
-	}
-
-	var acc []*model.Kyc
-	txRead := db.Find(&acc, "kyc_status = approved AND is_active = true AND has_been_deleted = false")
-	if txRead.Error != nil {
-		return nil, txRead.Error
-	}
-
-	return acc, nil
-}
