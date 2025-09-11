@@ -30,8 +30,6 @@ func init() {
 	config.Config.Oblio.AuthUrl = "https://www.oblio.eu/api/authorize/token"
 	config.Config.Oblio.InvoiceUrl = "https://www.oblio.eu/api/docs/invoice"
 	config.Config.Oblio.ClientSecret = ""
-	config.Config.Oblio.EventSignature = "LicensesCreated(address,bytes32,uint256,uint256,uint256)"
-	config.Config.AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
 	config.Config.PoaiManagerAddress = "0xa8d7FFCE91a888872A9f5431B4Dd6c0c135055c1"
 	config.Config.USDCContractAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
@@ -47,77 +45,6 @@ func init() {
 
 	config.Config.Infura.Secret = "533c2b6ac99b4f11b513d25cfb5dffd1" //test secret, test use only
 	config.Config.Infura.ApiUrl = "https://base-mainnet.infura.io/v3/"
-
-	config.Config.Oblio.Abi = `[{
-		"anonymous": false,
-		"inputs": [
-		  {
-			"indexed": true,
-			"internalType": "address",
-			"name": "to",
-			"type": "address"
-		  },
-		  {
-			"indexed": true,
-			"internalType": "bytes32",
-			"name": "invoiceUuid",
-			"type": "bytes32"
-		  },
-		  {
-			"indexed": false,
-			"internalType": "uint256",
-			"name": "tokenCount",
-			"type": "uint256"
-		  },
-		  {
-			"indexed": false,
-			"internalType": "uint256",
-			"name": "unitUsdPrice",
-			"type": "uint256"
-		  },
-		  {
-			"indexed": false,
-			"internalType": "uint256",
-			"name": "totalR1Spent",
-			"type": "uint256"
-		  }
-		],
-		"name": "LicensesCreated",
-		"type": "event"
-  }]`
-
-	config.Config.AllocLogsAbi = `[{
-"anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "jobId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "nodeAddress",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "nodeOwner",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "usdcAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "RewardsAllocatedV2",
-      "type": "event"
-    }
-]`
 
 	config.Config.BuyLimitUSD.Individual = 10000
 	config.Config.BuyLimitUSD.Company = 200000

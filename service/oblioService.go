@@ -13,6 +13,7 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/process"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/ratio1abi"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -89,7 +90,7 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 		fromBlock = big.NewInt(*latestSeenBlock)
 	}
 
-	eventSignatureAsBytes := []byte(config.Config.Oblio.EventSignature)
+	eventSignatureAsBytes := []byte(ratio1abi.OblioEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
@@ -123,7 +124,7 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 }
 
 func decodeLogs(vLog types.Log) (*model.Event, error) {
-	parsedABI, err := abi.JSON(strings.NewReader(config.Config.Oblio.Abi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.OblioLicensesCreatedAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}

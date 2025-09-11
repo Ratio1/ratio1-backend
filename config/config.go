@@ -17,32 +17,30 @@ var (
 )
 
 type GeneralConfig struct {
-	Api                      ApiConfig
-	Database                 DatabaseConfig
-	Jwt                      JwtConfig
-	Mail                     MailConfig
-	Sumsub                   SumsubConfig
-	MailerLite               MailerLiteConfig
-	AcceptedDomains          AcceptedDomains
-	ChainID                  int
-	Oblio                    Oblio
-	Infura                   Infura
-	JobDetailsApi            string
-	NDContractAddress        string
-	R1ContractAddress        string
-	USDCContractAddress      string
-	PoaiManagerAddress       string
-	AllocationEventSignature string
-	AllocLogsAbi             string
-	TeamAddresses            []string
-	CronJobTiming            map[string]string
-	DailyCronJobTiming       map[string]string
-	MonthlyCronJobTiming     map[string]string
-	AdminAddresses           []string
-	EmailTemplatesPath       string
-	BuyLimitUSD              BuyLimitUSDConfig
-	ViesApi                  ViesConfig
-	InvoiceMessageEmail      string
+	Api                  ApiConfig
+	Database             DatabaseConfig
+	Jwt                  JwtConfig
+	Mail                 MailConfig
+	Sumsub               SumsubConfig
+	MailerLite           MailerLiteConfig
+	AcceptedDomains      AcceptedDomains
+	ChainID              int
+	Oblio                Oblio
+	Infura               Infura
+	JobDetailsApi        string
+	NDContractAddress    string
+	R1ContractAddress    string
+	USDCContractAddress  string
+	PoaiManagerAddress   string
+	TeamAddresses        []string
+	CronJobTiming        map[string]string
+	DailyCronJobTiming   map[string]string
+	MonthlyCronJobTiming map[string]string
+	AdminAddresses       []string
+	EmailTemplatesPath   string
+	BuyLimitUSD          BuyLimitUSDConfig
+	ViesApi              ViesConfig
+	InvoiceMessageEmail  string
 }
 
 type ApiConfig struct {
@@ -102,11 +100,9 @@ type AcceptedDomain struct {
 }
 
 type Oblio struct {
-	AuthUrl        string
-	InvoiceUrl     string
-	ClientSecret   string
-	EventSignature string
-	Abi            string
+	AuthUrl      string
+	InvoiceUrl   string
+	ClientSecret string
 }
 
 type Infura struct {
@@ -145,77 +141,6 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	if err != nil {
 		return nil, errors.New("error while loading config from file: " + err.Error())
 	}
-	cfg.Oblio.Abi = `[{
-		"anonymous": false,
-		"inputs": [
-		  {
-			"indexed": true,
-			"internalType": "address",
-			"name": "to",
-			"type": "address"
-		  },
-		  {
-			"indexed": true,
-			"internalType": "bytes32",
-			"name": "invoiceUuid",
-			"type": "bytes32"
-		  },
-		  {
-			"indexed": false,
-			"internalType": "uint256",
-			"name": "tokenCount",
-			"type": "uint256"
-		  },
-		  {
-			"indexed": false,
-			"internalType": "uint256",
-			"name": "unitUsdPrice",
-			"type": "uint256"
-		  },
-		  {
-			"indexed": false,
-			"internalType": "uint256",
-			"name": "totalR1Spent",
-			"type": "uint256"
-		  }
-		],
-		"name": "LicensesCreated",
-		"type": "event"
-  }]`
-
-	cfg.AllocLogsAbi = `[{
-"anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "jobId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "nodeAddress",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "nodeOwner",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "usdcAmount",
-          "type": "uint256"
-        }
-      ],
-      "name": "RewardsAllocatedV2",
-      "type": "event"
-    }
-]`
-	cfg.AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
 
 	/*	DATABASE ENV VARIABLES	*/
 	cfg.Database.DbName = os.Getenv("DATABASE_NAME")
@@ -286,10 +211,6 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		cfg.Oblio.ClientSecret = os.Getenv("OBLIO_CLIENT_SECRET")
 		if cfg.Oblio.ClientSecret == "" {
 			return nil, errors.New("OBLIO_CLIENT_SECRET is not set")
-		}
-		cfg.Oblio.EventSignature = os.Getenv("OBLIO_EVENT_SIGNATURE")
-		if cfg.Oblio.EventSignature == "" {
-			return nil, errors.New("OBLIO_EVENT_SIGNATURE is not set")
 		}
 
 		/*	MAILERLITE ENV VARIABLES */

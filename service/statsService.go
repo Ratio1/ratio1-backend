@@ -12,6 +12,7 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/ratio1abi"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -180,10 +181,7 @@ func getChainLastBlockNumber() (int64, error) {
 func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 	tokenAddress := common.HexToAddress(config.Config.USDCContractAddress)
 
-	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"},
-	{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
-
-	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
 	if err != nil {
 		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
@@ -227,24 +225,9 @@ func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 }
 
 func getDailyActiveJobs() (int, error) {
-	tokenAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
+    tokenAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
 
-	const poaiManagerAbi = `[{
-      "inputs": [],
-      "name": "nextJobId",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-]`
-
-	parsedABI, err := abi.JSON(strings.NewReader(poaiManagerAbi))
+    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerNextJobIdAbi))
 	if err != nil {
 		return 0, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -282,35 +265,8 @@ func getDailyActiveJobs() (int, error) {
 }
 
 func getAllCSPAddress() (map[string]string, error) { // map[cspAddress]ownerAddress
-	contractAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
-	const cspEscrow = `[{
-      "inputs": [],
-      "name": "getAllCspsWithOwner",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "address",
-              "name": "cspAddress",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "cspOwner",
-              "type": "address"
-            }
-          ],
-          "internalType": "struct CspWithOwner[]",
-          "name": "",
-          "type": "tuple[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-
-]`
-	parsedABI, err := abi.JSON(strings.NewReader(cspEscrow))
+    contractAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
+    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerGetAllCspsWithOwnerAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -363,7 +319,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 	fromBlock := big.NewInt(from)
 	toBlock := big.NewInt(to)
 
-	eventSignatureAsBytes := []byte(config.Config.AllocationEventSignature)
+    eventSignatureAsBytes := []byte(ratio1abi.AllocationEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
@@ -399,7 +355,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 }
 
 func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
-	parsedABI, err := abi.JSON(strings.NewReader(config.Config.AllocLogsAbi))
+    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.AllocationLogsAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
