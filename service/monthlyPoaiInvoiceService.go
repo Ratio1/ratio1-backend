@@ -11,9 +11,9 @@ import (
 	"github.com/google/uuid"
 )
 
-func MonthlyPoaiIncoiceReport() {
+func MonthlyPoaiIncoiceReport() { //TODO check if some invoice generation for this month has already been done and try fix the one not done yet
 	/* Get all Allocations not invoiced*/
-	unclaimedAllocations, err := storage.GetUnClaimedAllocations()
+	unclaimedAllocations, err := storage.GetUnClaimedAllocations() //TODO with data between start-end month
 	if err != nil {
 		fmt.Println("Error retrieving unclaimed allocations: " + err.Error())
 		return

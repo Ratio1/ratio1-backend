@@ -70,10 +70,10 @@ func startApi(ctx *cli.Context) error {
 	templates.LoadAndCacheTemplates()
 
 	if !config.Config.Api.DevTesting {
-		nodeTiming, found := config.Config.GetCronJobTiming(nodeAddress)
+		buyLicenseInvoiceNodeTiming, found := config.Config.GetBuyLicenseInvoiceCronJobTiming(nodeAddress)
 		if found {
 			c := cron.New()
-			_, err = c.AddFunc(nodeTiming, service.ElaborateInvoices)
+			_, err = c.AddFunc(buyLicenseInvoiceNodeTiming, service.ElaborateInvoices)
 			if err != nil {
 				return errors.New("error while starting cronjob: " + err.Error())
 			}

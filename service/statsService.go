@@ -11,8 +11,8 @@ import (
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
-	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/ratio1abi"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -36,6 +36,11 @@ func DailyGetStats() {
 		}
 	}
 
+	if getEpoch(oldStats.CreationTimestamp) == getEpoch(time.Now()) { //get epoch of r1 mainnet, if today is already present, skip.
+		fmt.Println("stats already fetched")
+		return
+	}
+
 	cspAddresses, err := getAllCSPAddress() // map[cspAddress]ownerAddress
 	if err != nil {
 		fmt.Println("Error while retrieving csp addresses: " + err.Error())
@@ -53,6 +58,11 @@ func DailyGetStats() {
 	allocEvents, err := fetchAllocationEvents(cspAddresses, from, to)
 	if err != nil {
 		fmt.Println("Error fetching events: " + err.Error())
+		return
+	}
+
+	if len(allocEvents) == 0 {
+		fmt.Println("No events fetched, allocation hasn't occured yet")
 		return
 	}
 
@@ -181,7 +191,7 @@ func getChainLastBlockNumber() (int64, error) {
 func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 	tokenAddress := common.HexToAddress(config.Config.USDCContractAddress)
 
-    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
 	if err != nil {
 		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
@@ -225,9 +235,9 @@ func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 }
 
 func getDailyActiveJobs() (int, error) {
-    tokenAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
+	tokenAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
 
-    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerNextJobIdAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerNextJobIdAbi))
 	if err != nil {
 		return 0, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -265,8 +275,8 @@ func getDailyActiveJobs() (int, error) {
 }
 
 func getAllCSPAddress() (map[string]string, error) { // map[cspAddress]ownerAddress
-    contractAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
-    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerGetAllCspsWithOwnerAbi))
+	contractAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerGetAllCspsWithOwnerAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -319,7 +329,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 	fromBlock := big.NewInt(from)
 	toBlock := big.NewInt(to)
 
-    eventSignatureAsBytes := []byte(ratio1abi.AllocationEventSignature)
+	eventSignatureAsBytes := []byte(ratio1abi.AllocationEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
@@ -355,7 +365,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 }
 
 func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
-    parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.AllocationLogsAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.AllocationLogsAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -398,4 +408,10 @@ func generateAllocations(allocEevents []model.Allocation) error {
 		}
 	}
 	return nil
+}
+
+/* This function is only available for mainnet*/
+func getEpoch(date time.Time) int {
+	mainnetStart := time.Unix(1748016000, 0)
+	return int(date.Sub(mainnetStart) / (24 * time.Hour))
 }

@@ -17,31 +17,31 @@ var (
 )
 
 type GeneralConfig struct {
-	Api                  ApiConfig
-	Database             DatabaseConfig
-	Jwt                  JwtConfig
-	Mail                 MailConfig
-	Sumsub               SumsubConfig
-	MailerLite           MailerLiteConfig
-	AcceptedDomains      AcceptedDomains
-	ChainID              int
-	Oblio                Oblio
-	Infura               Infura
-	JobDetailsApi        string
-	NDContractAddress    string
-	R1ContractAddress    string
-	USDCContractAddress  string
-	PoaiManagerAddress   string
-	TeamAddresses        []string
-	CronJobTiming        map[string]string
-	DailyCronJobTiming   map[string]string
-	MonthlyCronJobTiming map[string]string
-	AdminAddresses       []string
-	EmailTemplatesPath   string
-	BuyLimitUSD          BuyLimitUSDConfig
-	ViesApi              ViesConfig
-	InvoiceMessageEmail  string
-	Ratio1Url            Ratio1Url
+	Api                            ApiConfig
+	Database                       DatabaseConfig
+	Jwt                            JwtConfig
+	Mail                           MailConfig
+	Sumsub                         SumsubConfig
+	MailerLite                     MailerLiteConfig
+	AcceptedDomains                AcceptedDomains
+	ChainID                        int
+	Oblio                          Oblio
+	Infura                         Infura
+	JobDetailsApi                  string
+	NDContractAddress              string
+	R1ContractAddress              string
+	USDCContractAddress            string
+	PoaiManagerAddress             string
+	TeamAddresses                  []string
+	BuyLicenseInvoiceCronJobTiming map[string]string
+	DailyCronJobTiming             map[string]string
+	MonthlyCronJobTiming           map[string]string
+	AdminAddresses                 []string
+	EmailTemplatesPath             string
+	BuyLimitUSD                    BuyLimitUSDConfig
+	ViesApi                        ViesConfig
+	InvoiceMessageEmail            string
+	Ratio1Url                      Ratio1Url
 }
 
 type ApiConfig struct {
@@ -266,8 +266,8 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	return cfg, nil
 }
 
-func (c *GeneralConfig) GetCronJobTiming(nodeAddress string) (string, bool) {
-	nodeTiming, found := c.CronJobTiming[nodeAddress]
+func (c *GeneralConfig) GetBuyLicenseInvoiceCronJobTiming(nodeAddress string) (string, bool) {
+	nodeTiming, found := c.BuyLicenseInvoiceCronJobTiming[nodeAddress]
 	return nodeTiming, found
 }
 
