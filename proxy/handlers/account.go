@@ -569,37 +569,29 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 		return
 	}
 
-	client, err := service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
+	userInfo, err := storage.GetUserInfoByAddress(address)
 	if err != nil {
-		log.Error("error while retrieving client infos: " + err.Error())
+		log.Error("error while retrieving client info from storage: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
 
-	name := ""
-	if client.Name != nil && client.Surname != nil {
-		name = *client.Name + " " + *client.Surname
-	} else if client.CompanyName != nil {
-		name = *client.CompanyName
-	} else {
-		log.Error("client name and surname are both nil, cannot retrieve client name")
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "client name and surname are both nil, cannot retrieve client name")
+	name, ok := userInfo.GetNameAsString()
+	if !ok {
+		log.Error("cannot parse user name")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "cannot parse user name")
 		return
 	}
 
-	email := ""
-	if account.Email != nil {
-		email = *account.Email
-	}
 	response := clientInfoResponse{
 		Name:               name,
-		Email:              email,
-		IdentificationCode: client.IdentificationCode,
-		Address:            client.Address,
-		State:              client.State,
-		City:               client.City,
-		Country:            client.Country,
-		IsCompany:          client.IsCompany,
+		Email:              userInfo.Email,
+		IdentificationCode: userInfo.IdentificationCode,
+		Address:            userInfo.Address,
+		State:              userInfo.State,
+		City:               userInfo.City,
+		Country:            userInfo.Country,
+		IsCompany:          userInfo.IsCompany,
 	}
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
 }

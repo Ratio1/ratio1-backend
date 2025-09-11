@@ -15,7 +15,9 @@ const (
 	emailKycConfirmedFile    = "email.kyc.confirmed.html"
 	emailAccountResettedFile = "email.account.resetted.html"
 
-	invoiceDraftFile = "invoice.draft.html"
+	invoiceDraftFile  = "invoice.draft.html"
+	emailOperatorFile = "email.operator.draft.html"
+	emailCspFile      = "email.csp.draft.html"
 )
 
 var (
@@ -66,6 +68,14 @@ func LoadAccountResettedEmailTemplate() (*template.Template, error) {
 
 func LoadInvoiceDraftTemplate() (*template.Template, error) {
 	return loadInvoiceTemplate(invoiceDraftFile)
+}
+
+func LoadOperatorDraftTemplate() (*template.Template, error) {
+	return loadInvoiceTemplate(emailOperatorFile)
+}
+
+func LoadCspDraftTemplate() (*template.Template, error) {
+	return loadInvoiceTemplate(emailCspFile)
 }
 
 func loadTemplate(filename string) (*template.Template, error) {

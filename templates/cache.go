@@ -15,7 +15,9 @@ var (
 	kycFinalRejectedEmailTemplate *template.Template
 	accountResettedEmailTemplate  *template.Template
 
-	invoiceDraftTemplate *template.Template
+	invoiceDraftTemplate  *template.Template
+	operatorDraftTemplate *template.Template
+	cspDraftTemplate      *template.Template
 )
 
 func LoadAndCacheTemplates() {
@@ -49,7 +51,15 @@ func LoadAndCacheTemplates() {
 		if err != nil {
 			panic(err)
 		}
-		invoiceDraftTemplate = invoiceDraftFile
+
+		operatorDraftFile, err := LoadOperatorDraftTemplate()
+		if err != nil {
+			panic(err)
+		}
+		cspDraftFile, err := LoadCspDraftTemplate()
+		if err != nil {
+			panic(err)
+		}
 
 		confirmEmailTemplate = confirm
 		blacklistedEmailTemplate = blacklisted
@@ -57,6 +67,10 @@ func LoadAndCacheTemplates() {
 		rejectedStepEmailTemplate = stepReject
 		kycFinalRejectedEmailTemplate = finalReject
 		accountResettedEmailTemplate = accountResetted
+
+		invoiceDraftTemplate = invoiceDraftFile
+		operatorDraftTemplate = operatorDraftFile
+		cspDraftTemplate = cspDraftFile
 	})
 }
 
@@ -86,6 +100,13 @@ func GetAccountResettedEmailTemplate() (*template.Template, error) {
 
 func GetInvoiceDraftTemplate() (*template.Template, error) {
 	return getOrSetTemplate(LoadInvoiceDraftTemplate, invoiceDraftTemplate)
+}
+
+func GetOperatorDraftTemplate() (*template.Template, error) {
+	return getOrSetTemplate(LoadOperatorDraftTemplate, operatorDraftTemplate)
+}
+func GetCspDraftTemplate() (*template.Template, error) {
+	return getOrSetTemplate(LoadCspDraftTemplate, cspDraftTemplate)
 }
 
 func getOrSetTemplate(

@@ -37,6 +37,7 @@ type GeneralConfig struct {
 	TeamAddresses            []string
 	CronJobTiming            map[string]string
 	DailyCronJobTiming       map[string]string
+	MonthlyCronJobTiming     map[string]string
 	AdminAddresses           []string
 	EmailTemplatesPath       string
 	BuyLimitUSD              BuyLimitUSDConfig
@@ -345,5 +346,10 @@ func (c *GeneralConfig) GetCronJobTiming(nodeAddress string) (string, bool) {
 
 func (c *GeneralConfig) GetDailyCronJobTiming(nodeAddress string) (string, bool) {
 	nodeTiming, found := c.DailyCronJobTiming[nodeAddress]
+	return nodeTiming, found
+}
+
+func (c *GeneralConfig) GetMonthlyCronJobTiming(nodeAddress string) (string, bool) {
+	nodeTiming, found := c.MonthlyCronJobTiming[nodeAddress]
 	return nodeTiming, found
 }

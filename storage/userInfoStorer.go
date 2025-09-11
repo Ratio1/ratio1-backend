@@ -42,3 +42,21 @@ func UpdateUserInfo(userInfo *model.UserInfo) error {
 
 	return nil
 }
+
+func GetUserInfoByAddress(address string) (*model.UserInfo, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var userInfo model.UserInfo
+	txRead := db.Find(&userInfo, "blockchain_address = ?", address)
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+	if txRead.RowsAffected == 0 {
+		return nil, nil
+	}
+
+	return &userInfo, nil
+}

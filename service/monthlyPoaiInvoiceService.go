@@ -86,10 +86,22 @@ func MonthlyPoaiIncoiceReport() {
 		}
 	}
 
+	allCSP := make(map[string]bool) //map[email]true to have unique emails
+	allNodeOwner := make(map[string]bool)
 	for _, invoice := range invoices {
-		_ = SendNodeOwnerDraftEmail(invoice.UserProfile.Email) //! doesn't check error
-		_ = SendCspDraftEmail(invoice.CspProfile.Email)
+		allNodeOwner[invoice.UserProfile.Email] = true
+		allCSP[invoice.CspProfile.Email] = true
 	}
+
+	//send unique email for csp and node owner ( even if they have more than 1 invoice)
+	for k := range allNodeOwner {
+		_ = SendNodeOwnerDraftEmail(k) //! doesn't check error
+	}
+
+	for k := range allCSP {
+		_ = SendCspDraftEmail(k) //! doesn't check error
+	}
+
 }
 
 func formKey(address1, address2 string) string {

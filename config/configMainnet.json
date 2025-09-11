@@ -84,6 +84,9 @@
   "DailyCronJobTiming": {
     "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "02 16 * * *"
   },
+  "MonthlyCronJobTiming": {
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "0 12 1 * *"
+  },
   "ChainID": 8453,
   "BuyLimitUSD": {
     "Individual": 10000,

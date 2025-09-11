@@ -80,6 +80,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 				return errors.New("error while sending email: " + err.Error())
 			}
 			userInfo.BlockchainAddress = userAddress
+			userInfo.Email = kyc.Email
 			err = storage.CreateUserInfo(userInfo)
 			if err != nil {
 				return errors.New("error while creating userinfo: " + err.Error())
