@@ -92,6 +92,10 @@
     "Individual": 10000,
     "Company": 15000
   },
+  "Ratio1Url": {
+    "OperatorUrl": "",
+    "CspUrl": ""
+  },
   "ViesApi": {
     "BaseUrl": "https://viesapi.eu/api"
   }

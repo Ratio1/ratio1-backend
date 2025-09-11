@@ -76,7 +76,7 @@ func SendConfirmEmail(address, email string) error {
 	}
 
 	var body bytes.Buffer
-	err = template.Execute(&body, struct{ Url string }{Url: confirmUrl(token)}) //TODO copy this
+	err = template.Execute(&body, struct{ Url string }{Url: confirmUrl(token)})
 	if err != nil {
 		return errors.New("error while executing email template: " + err.Error())
 	}
@@ -160,28 +160,27 @@ func SendAccountResettedEmail(email string) error {
 }
 
 func SendNodeOwnerDraftEmail(email string) error {
-	template, err := templates.GetOperatorDraftTemplate() //TODO add link?
+	template, err := templates.GetOperatorDraftTemplate()
 	if err != nil {
 		return errors.New("error while retrieving email template: " + err.Error())
 	}
 
 	var body bytes.Buffer
-	err = template.Execute(&body, struct{}{})
+	err = template.Execute(&body, struct{ Url string }{Url: config.Config.Ratio1Url.OperatorUrl})
 	if err != nil {
 		return errors.New("error while executing email template: " + err.Error())
 	}
-
 	return callSendEmail(email, subjectEmailAccountResetted, body.String())
 }
 
 func SendCspDraftEmail(email string) error {
-	template, err := templates.GetCspDraftTemplate() //TODO add link?
+	template, err := templates.GetCspDraftTemplate()
 	if err != nil {
 		return errors.New("error while retrieving email template: " + err.Error())
 	}
 
 	var body bytes.Buffer
-	err = template.Execute(&body, struct{}{})
+	err = template.Execute(&body, struct{ Url string }{Url: confirmUrl(config.Config.Ratio1Url.CspUrl)})
 	if err != nil {
 		return errors.New("error while executing email template: " + err.Error())
 	}

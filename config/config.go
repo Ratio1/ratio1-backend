@@ -41,6 +41,7 @@ type GeneralConfig struct {
 	BuyLimitUSD          BuyLimitUSDConfig
 	ViesApi              ViesConfig
 	InvoiceMessageEmail  string
+	Ratio1Url            Ratio1Url
 }
 
 type ApiConfig struct {
@@ -119,6 +120,11 @@ type ViesConfig struct {
 	BaseUrl  string
 	User     string
 	Password string
+}
+
+type Ratio1Url struct {
+	OperatorUrl string
+	CspUrl      string
 }
 
 func (d DatabaseConfig) Url() string {
