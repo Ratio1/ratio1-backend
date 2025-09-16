@@ -99,6 +99,9 @@ func (h *invoiceDraftHandler) getNodeOnwerDraftList(c *gin.Context) {
 
 	userName, _ := drafts[0].UserProfile.GetNameAsString() //it's always the same
 	for _, d := range drafts {
+		if d.UserAddress == d.CspOwner {
+			continue
+		}
 		cspName, _ := d.CspProfile.GetNameAsString()
 		newParsedDraft := getInvoiceDraftsRequest{
 			DraftId:           d.DraftId,
@@ -142,6 +145,9 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 	var parsedDraft []getInvoiceDraftsRequest
 	cspName, _ := drafts[0].CspProfile.GetNameAsString() //it's always the same
 	for _, d := range drafts {
+		if d.UserAddress == d.CspOwner {
+			continue
+		}
 		userName, _ := d.UserProfile.GetNameAsString()
 		newParsedDraft := getInvoiceDraftsRequest{
 			DraftId:           d.DraftId,

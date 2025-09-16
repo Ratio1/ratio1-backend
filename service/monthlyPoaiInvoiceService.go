@@ -11,11 +11,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func MonthlyPoaiIncoiceReport() { //TODO check if some invoice generation for this month has already been done and try fix the one not done yet
+func MonthlyPoaiIncoiceReport() {
 	/* Get all Allocations not invoiced*/
 	unclaimedAllocations, err := storage.GetUnClaimedAllocations() //TODO with data between start-end month
 	if err != nil {
 		fmt.Println("Error retrieving unclaimed allocations: " + err.Error())
+		return
+	}
+
+	if len(unclaimedAllocations) == 0 {
+		fmt.Println("Drafts already done")
 		return
 	}
 
@@ -65,7 +70,7 @@ func MonthlyPoaiIncoiceReport() { //TODO check if some invoice generation for th
 			err = storage.UpdateAllocation(&alloc)
 			if err != nil {
 				fmt.Println("error while updating allocation: " + err.Error())
-				continue
+				return
 			} else {
 				invoices = append(invoices, invoice)
 			}
@@ -75,14 +80,16 @@ func MonthlyPoaiIncoiceReport() { //TODO check if some invoice generation for th
 		err = storage.CreateInvoiceDraft(&invoice)
 		if err != nil {
 			fmt.Println(errors.New("error while saving invoice: " + err.Error()))
-			continue
+			return
 		}
 
-		preference.NextNumber += 1
-		err = storage.UpdatePreference(preference)
-		if err != nil {
-			fmt.Println(errors.New("error while updating preference: " + err.Error()))
-			continue
+		if userAddress != cspOwner {
+			preference.NextNumber += 1
+			err = storage.UpdatePreference(preference)
+			if err != nil {
+				fmt.Println(errors.New("error while updating preference: " + err.Error()))
+				return
+			}
 		}
 	}
 
