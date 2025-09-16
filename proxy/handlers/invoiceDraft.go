@@ -45,9 +45,9 @@ func NewInvoiceDraftHandler(groupHandler *groupHandler) {
 	h := &invoiceDraftHandler{}
 
 	endpoints := []EndpointHandler{
-		{Method: http.MethodGet, Path: getNodeOwnerDraftListEndpoint, HandlerFunc: h.getNodeOnwerDraftList},
+		{Method: http.MethodGet, Path: getNodeOwnerDraftListEndpoint, HandlerFunc: h.getNodeOwnerDraftList},
 		{Method: http.MethodGet, Path: getCspDraftListEndpoint, HandlerFunc: h.getCspDraftList},
-		{Method: http.MethodGet, Path: downloadNodeOwnerDraftEndpoint, HandlerFunc: h.downloadNodeOnwerDraft},
+		{Method: http.MethodGet, Path: downloadNodeOwnerDraftEndpoint, HandlerFunc: h.downloadNodeOwnerDraft},
 		{Method: http.MethodGet, Path: downloadCspDraftEndpoint, HandlerFunc: h.downloadCspDraft},
 
 		{Method: http.MethodPost, Path: changePreferencesEndpoint, HandlerFunc: h.changePreferences},
@@ -73,7 +73,7 @@ func NewInvoiceDraftHandler(groupHandler *groupHandler) {
 ..######...########....##...
 */
 
-func (h *invoiceDraftHandler) getNodeOnwerDraftList(c *gin.Context) {
+func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
@@ -166,7 +166,7 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 	model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
 }
 
-func (h *invoiceDraftHandler) downloadNodeOnwerDraft(c *gin.Context) {
+func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())

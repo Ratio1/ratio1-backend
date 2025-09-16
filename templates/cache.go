@@ -56,6 +56,7 @@ func LoadAndCacheTemplates() {
 		if err != nil {
 			panic(err)
 		}
+
 		cspDraftFile, err := LoadCspDraftTemplate()
 		if err != nil {
 			panic(err)
@@ -105,6 +106,7 @@ func GetInvoiceDraftTemplate() (*template.Template, error) {
 func GetOperatorDraftTemplate() (*template.Template, error) {
 	return getOrSetTemplate(LoadOperatorDraftTemplate, operatorDraftTemplate)
 }
+
 func GetCspDraftTemplate() (*template.Template, error) {
 	return getOrSetTemplate(LoadCspDraftTemplate, cspDraftTemplate)
 }

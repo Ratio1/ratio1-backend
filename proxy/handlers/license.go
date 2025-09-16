@@ -215,10 +215,10 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			return
 		}
 
-		userInfo, err := service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
+		userInfo, err := storage.GetUserInfoByAddress(address)
 		if err != nil {
-			log.Error("error while retrieving Client information: " + err.Error())
-			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			log.Error("error while retrieving client info from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 			return
 		} else if userInfo == nil {
 			log.Error("nil client returned from sumsub api")

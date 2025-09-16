@@ -72,7 +72,7 @@ func DailyGetStats() {
 	}
 
 	for k := range allJobsId {
-		res, err := GetJobDetails(k, config.Config.JobDetailsApi)
+		res, err := GetJobDetails(k, config.Config.DeeployApi)
 		if err != nil {
 			continue
 		}

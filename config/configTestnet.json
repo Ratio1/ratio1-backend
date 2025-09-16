@@ -61,6 +61,7 @@
       }
     ]
   },
+  "DeeployApi": "https://testnet-deeploy-api.ratio1.ai/get_oracle_job_details",
   "CronJobTiming": {},
   "ChainID": 84532,
   "BuyLimitUSD": {

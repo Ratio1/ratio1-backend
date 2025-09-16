@@ -50,12 +50,12 @@ func MonthlyPoaiIncoiceReport() {
 			continue
 		} else if preference != nil {
 			if invoice.CspProfile.Country == invoice.UserProfile.Country {
-				invoice.VatApplied = preference.Country
+				invoice.VatApplied = preference.CountryVat
 			} else if isUeCountry(invoice.UserProfile.Country) {
 				if isUeCountry(invoice.CspProfile.Country) {
-					invoice.VatApplied = preference.Ue
+					invoice.VatApplied = preference.UeVat
 				} else {
-					invoice.VatApplied = preference.ExtraUe
+					invoice.VatApplied = preference.ExtraUeVat
 				}
 			}
 			invoice.InvoiceNumber = preference.NextNumber

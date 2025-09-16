@@ -67,9 +67,9 @@ type Preference struct {
 	UserAddress   string  `gorm:"type:varchar(66);primaryKey" json:"userAddress"`
 	InvoiceSeries string  `gorm:"type:text;default:null"      json:"invoiceSeries"`
 	NextNumber    int     `gorm:"type:integer;default:1"      json:"nextNumber"`
-	Country       float64 `gorm:"type:numeric"                json:"country"`
-	Ue            float64 `gorm:"type:numeric"                json:"ue"`
-	ExtraUe       float64 `gorm:"type:numeric"                json:"extraUe"`
+	CountryVat    float64 `gorm:"type:numeric"                json:"countryVat"`
+	UeVat         float64 `gorm:"type:numeric"                json:"ueVat"`
+	ExtraUeVat    float64 `gorm:"type:numeric"                json:"extraUeVat"`
 	ExtraText     *string `gorm:"type:text;default:null"      json:"extraText"`
 	LocalCurrency string  `gorm:"type:varchar(3)"             json:"localCurrency"` // es. "EUR", "USD"
 	ExtraTaxes    *string `gorm:"type:jsonb;default:'{}'"     json:"extraTaxes"`

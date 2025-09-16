@@ -107,10 +107,11 @@
     "Individual": 10000,
     "Company": 15000
   },
-  "Ratio1Url": {
+  "Ratio1redirectUrl": {
     "OperatorUrl": "",
     "CspUrl": ""
   },
+  "DeeployApi": "https://deeploy-api.ratio1.ai/get_oracle_job_details",
   "ViesApi": {
     "BaseUrl": "https://viesapi.eu/api"
   }
