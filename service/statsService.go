@@ -66,6 +66,24 @@ func DailyGetStats() {
 		return
 	}
 
+	time.Sleep(1 * time.Second)
+
+	/* get all blocks timestamp */
+	blocks := make(map[int64]*time.Time)
+	for _, a := range allocEvents {
+		blocks[a.BlockNumber] = nil
+	}
+
+	for k := range blocks {
+		v, err := getBlockTimestamp(k)
+		if err != nil {
+			fmt.Println("cannot fetch correct timestamp")
+			return
+		}
+		blocks[k] = &v
+		time.Sleep(1 * time.Second)
+	}
+	/* get all jobs details */
 	allJobsId := make(map[string]*Response)
 	for _, a := range allocEvents {
 		allJobsId[a.JobId] = nil
@@ -79,7 +97,11 @@ func DailyGetStats() {
 		allJobsId[k] = res
 	}
 
+	/* in each allocation, add timestamp and job details */
 	for i, a := range allocEvents {
+		if v := blocks[a.BlockNumber]; v != nil {
+			a.AllocationCreation = *v
+		}
 		if v := allJobsId[a.JobId]; v != nil {
 			a.JobName = v.Result.JobName
 			a.JobType = strconv.Itoa(v.Result.JobType)
@@ -398,6 +420,21 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 	}
 	result.SetUsdcAmountPayed(event.UsdcAmount)
 	return &result, nil
+}
+
+func getBlockTimestamp(blockNumber int64) (time.Time, error) {
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return time.Time{}, errors.New("error while dialing client")
+	}
+	defer client.Close()
+
+	block, err := client.BlockByNumber(context.Background(), big.NewInt(blockNumber))
+	if err != nil {
+		return time.Time{}, errors.New("error while retrieving block: " + err.Error())
+	}
+
+	return time.Unix(int64(block.Time()), 0).UTC(), nil
 }
 
 func generateAllocations(allocEevents []model.Allocation) error {

@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"time"
+
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"gorm.io/gorm"
 )
@@ -80,22 +82,26 @@ func GetAllocationsByCspAndUser(cspAddress, userAddress, nodeAddress string) ([]
 	return allocations, nil
 }
 
-func GetUnClaimedAllocations() ([]model.Allocation, error) {
+func GetMonthlyUnclaimedAllocations() ([]model.Allocation, error) {
 	db, err := GetDB()
 	if err != nil {
 		return nil, err
 	}
 
+	now := time.Now().UTC()
+	currStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevStart := currStart.AddDate(0, -1, 0)
+
 	var allocations []model.Allocation
-	txRead := db.
+	tx := db.
+		Where("allocation_creation >= ? AND allocation_creation < ?", prevStart, currStart).
 		Where("invoice_id IS NULL").
 		Preload("CspProfile").
 		Preload("UserProfile").
 		Find(&allocations)
-	if txRead.Error != nil {
-		return nil, txRead.Error
+	if tx.Error != nil {
+		return nil, tx.Error
 	}
-
 	if len(allocations) == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}

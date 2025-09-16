@@ -540,6 +540,15 @@ func getPeriodNdContractBurnedAmount(from, to int64, client *ethclient.Client) (
 	return burnedTotal, nil
 }
 
+func getBlockTimestamp(blockNumber int64, client *ethclient.Client) (time.Time, error) {
+	block, err := client.BlockByNumber(context.Background(), big.NewInt(blockNumber))
+	if err != nil {
+		return time.Time{}, errors.New("error while retrieving block: " + err.Error())
+	}
+
+	return time.Unix(int64(block.Time()), 0).UTC(), nil
+}
+
 type headerCache struct {
 	mu sync.RWMutex
 	m  map[int64]uint64 // blockNumber -> unix ts

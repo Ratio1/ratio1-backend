@@ -93,7 +93,7 @@ func startApi(ctx *cli.Context) error {
 		monthlyNodeTiming, found := config.Config.GetMonthlyCronJobTiming(nodeAddress)
 		if found {
 			c := cron.New()
-			_, err = c.AddFunc(monthlyNodeTiming, service.MonthlyPoaiIncoiceReport)
+			_, err = c.AddFunc(monthlyNodeTiming, service.MonthlyPoaiInvoiceReport)
 			if err != nil {
 				return errors.New("error while starting daily cronjob: " + err.Error())
 			}

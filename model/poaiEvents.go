@@ -11,9 +11,10 @@ import (
 )
 
 type Allocation struct {
-	Id          uint   `gorm:"primaryKey;autoIncrement" json:"id"`
-	BlockNumber int64  `gorm:"type:bigint;not null" json:"blockNumber"`
-	TxHash      string `gorm:"type:varchar(66);not null" json:"txHash"`
+	Id                 uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	AllocationCreation time.Time `json:"allocationCreation"`
+	BlockNumber        int64     `gorm:"type:bigint;not null" json:"blockNumber"`
+	TxHash             string    `gorm:"type:varchar(66);not null" json:"txHash"`
 
 	JobId       string `gorm:"type:text;not null" json:"jobId"`
 	JobName     string `gorm:"type:text;default:null" json:"jobName"`

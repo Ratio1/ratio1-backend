@@ -29,6 +29,7 @@ func main() {
 	DBConnect()
 	CreateAllAllocations()
 }*/
+
 /*
 func main() {
 	var err error
@@ -118,6 +119,21 @@ func GetAllAllocations() []model.Allocation {
 		newAllocEvent = append(newAllocEvent, alloc)
 	}
 
+	blocks := make(map[int64]*time.Time)
+	for _, a := range newAllocEvent {
+		blocks[a.BlockNumber] = nil
+	}
+
+	for k := range blocks {
+		v, err := getBlockTimestamp(k, client)
+		if err != nil {
+			fmt.Println("cannot fetch correct timestamp for block: ", k)
+			continue
+		}
+		blocks[k] = &v
+		time.Sleep(SleepTime)
+	}
+
 	allJobsId := make(map[string]*Response)
 	for _, a := range newAllocEvent {
 		allJobsId[a.JobId] = nil
@@ -132,6 +148,9 @@ func GetAllAllocations() []model.Allocation {
 	}
 
 	for i, a := range newAllocEvent {
+		if v := blocks[a.BlockNumber]; v != nil {
+			a.AllocationCreation = *v
+		}
 		if v := allJobsId[a.JobId]; v != nil {
 			a.JobName = v.Result.JobName
 			a.JobType = strconv.Itoa(v.Result.JobType)

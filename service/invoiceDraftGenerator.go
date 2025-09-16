@@ -1,5 +1,6 @@
 package service
 
+//TODO redo all
 import (
 	"bytes"
 	"fmt"
@@ -201,7 +202,7 @@ func formatUserInfo(u *model.UserInfo) []string {
 		lines = append(lines, cityline)
 	}
 	if u.IdentificationCode != "" {
-		lines = append(lines, "ID: "+u.IdentificationCode)
+		lines = append(lines, u.IdentificationCode)
 	}
 	if u.Email != "" {
 		lines = append(lines, "Email: "+u.Email)

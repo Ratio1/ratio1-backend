@@ -11,13 +11,13 @@ func GetPreferenceByAddress(userAddress string) (*model.Preference, error) {
 		return nil, err
 	}
 
-	var pref *model.Preference
+	var pref model.Preference
 	txRead := db.Where("user_address =  ? ", userAddress).Find(&pref)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
 
-	return pref, nil
+	return &pref, nil
 }
 
 func CreatePreference(pref *model.Preference) error {
