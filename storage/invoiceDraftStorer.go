@@ -49,13 +49,13 @@ func GetDraftByReportId(id, userAddress string) (*model.InvoiceDraft, error) {
 		return nil, err
 	}
 
-	var pInvs *model.InvoiceDraft
+	var pInvs model.InvoiceDraft
 	txRead := db.Preload("CspProfile").Preload("UserProfile").Where("invoice_id =  ? AND user_address = ? ", id, userAddress).Find(&pInvs)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
 
-	return pInvs, nil
+	return &pInvs, nil
 }
 
 func GetCspDraftByReportId(id, userAddress string) (*model.InvoiceDraft, error) {
@@ -64,13 +64,13 @@ func GetCspDraftByReportId(id, userAddress string) (*model.InvoiceDraft, error) 
 		return nil, err
 	}
 
-	var pInvs *model.InvoiceDraft
+	var pInvs model.InvoiceDraft
 	txRead := db.Preload("CspProfile").Preload("UserProfile").Where("invoice_id =  ? AND csp_owner = ? ", id, userAddress).Find(&pInvs)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
 
-	return pInvs, nil
+	return &pInvs, nil
 }
 
 func CreateInvoiceDraft(pInv *model.InvoiceDraft) error {
