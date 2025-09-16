@@ -24,7 +24,11 @@ import (
 /*
 MAKE sure to set all the needed variabels berfore running
 */
-
+/*
+func main() {
+	DBConnect()
+	CreateAllAllocations()
+}*/
 /*
 func main() {
 	var err error
@@ -58,8 +62,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-}
-*/
+}*/
 
 func GetAllAllocations() []model.Allocation {
 	client, err := ethclient.Dial(InfuraApiUrl + InfuraSecret)
@@ -89,9 +92,6 @@ func GetAllAllocations() []model.Allocation {
 	}
 
 	fmt.Println("lenght of newAllocEvent: ", len(newAllocEvent))
-
-	newData, _ := json.Marshal(newAllocEvent)
-	_ = os.WriteFile("new.json", newData, 0644)
 
 	nodeOwner := make(map[string]string) //map[nodeAddress]userAddress
 	for _, alloc := range newAllocEvent {
@@ -139,9 +139,6 @@ func GetAllAllocations() []model.Allocation {
 			newAllocEvent[i] = a
 		}
 	}
-
-	olddata, _ := json.Marshal(oldAllocEvent)
-	_ = os.WriteFile("old.json", olddata, 0644)
 
 	return newAllocEvent
 }
@@ -253,4 +250,25 @@ func loadPrivateKeyFromPemFile(filepath string) (*ecdsa.PrivateKey, error) {
 
 	priv, _ := btcec.PrivKeyFromBytes(ecKey.PrivateKey)
 	return priv.ToECDSA(), nil
+}
+
+func CreateAllAllocations() {
+	data, err := os.ReadFile("allocations.json")
+	if err != nil {
+		fmt.Println("error reading file: ", err.Error())
+		return
+	}
+
+	var allocations []model.Allocation
+	err = json.Unmarshal(data, &allocations)
+	if err != nil {
+		fmt.Println("error while unmarshal json data to allocation: ", err.Error())
+	}
+
+	for _, alloc := range allocations {
+		err = createAllocation(&alloc)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
 }

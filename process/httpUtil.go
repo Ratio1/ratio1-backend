@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -43,7 +42,7 @@ func HttpGet(url string, castTarget interface{}, headers ...HttpHeaderPair) erro
 			log.Warn("HttpGet - error while trying to close response body", "err", bodyCloseErr.Error())
 		}
 	}()
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -75,7 +74,7 @@ func HttpPost(url string, payload interface{}, response interface{}, headers ...
 			log.Warn("HttpPost - error while trying to close response body", "err", bodyCloseErr.Error())
 		}
 	}()
-	resBody, err := ioutil.ReadAll(resp.Body)
+	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

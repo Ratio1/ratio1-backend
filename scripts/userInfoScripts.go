@@ -18,11 +18,13 @@ import (
 /*
 MAKE sure to set all the needed variabels berfore running
 */
-
+/*
 func main() {
 	DBConnect()
 	CreateAllUserInfo()
-}
+
+	CreateUserInfoOnDB
+}*/
 
 func CreateAllUserInfo() {
 	kycs, err := getAllActiveKyc()
@@ -139,4 +141,25 @@ func mapApplicantToInvoiceClient(app model.ApplicantProfile) *model.UserInfo {
 	}
 
 	return &invoiceClient
+}
+
+func CreateUserInfoOnDB() {
+	data, err := os.ReadFile("allUserInfo.json")
+	if err != nil {
+		fmt.Println("error reading file: ", err.Error())
+		return
+	}
+
+	var userinfo []model.UserInfo
+	err = json.Unmarshal(data, &userinfo)
+	if err != nil {
+		fmt.Println("error while unmarshal json data to allocation: ", err.Error())
+	}
+
+	for _, info := range userinfo {
+		err = createUserInfo(&info)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
 }

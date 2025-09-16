@@ -146,6 +146,45 @@ func getStatsAfterBlockASC(blockNumber int64) ([]model.Stats, error) {
 	return out, nil
 }
 
+func getLatestStats() (*model.Stats, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var r statsRow
+	// selezioniamo castando i NUMERIC a testo
+	err = db.Model(&model.Stats{}).
+		Select(`
+			creation_timestamp,
+			daily_active_jobs,
+			daily_usdc_locked::text          AS daily_usdc_locked,
+			daily_token_burn::text           AS daily_token_burn,
+			total_token_burn::text           AS total_token_burn,
+			daily_nd_contract_token_burn::text AS daily_nd_contract_token_burn,
+			total_nd_contract_token_burn::text AS total_nd_contract_token_burn,
+			daily_poai_rewards::text         AS daily_poai_rewards,
+			total_poai_rewards::text         AS total_poai_rewards,
+			daily_minted::text               AS daily_minted,
+			total_minted::text               AS total_minted,
+			total_supply::text               AS total_supply,
+			team_wallets_supply::text        AS team_wallets_supply,
+			last_block_number
+		`).
+		Order("creation_timestamp DESC").
+		Limit(1).
+		Scan(&r).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return rowToModel(&r), nil
+}
+
 func updateStats(stats *model.Stats) error {
 	db, err := GetDB()
 	if err != nil {
@@ -169,6 +208,39 @@ func updateStats(stats *model.Stats) error {
 	}
 
 	res := db.Where("creation_timestamp = ?", stats.CreationTimestamp).Table("stats").Updates(row)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected != 1 {
+		return errors.New("no row inserted")
+	}
+	return nil
+}
+
+func createStats(stats *model.Stats) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+
+	row := map[string]any{
+		"creation_timestamp":           stats.CreationTimestamp,
+		"daily_active_jobs":            stats.DailyActiveJobs,
+		"daily_usdc_locked":            toNumericExpr(stats.DailyUsdcLocked),
+		"daily_token_burn":             toNumericExpr(stats.DailyTokenBurn),
+		"total_token_burn":             toNumericExpr(stats.TotalTokenBurn),
+		"daily_nd_contract_token_burn": toNumericExpr(stats.DailyNdContractTokenBurn),
+		"total_nd_contract_token_burn": toNumericExpr(stats.TotalNdContractTokenBurn),
+		"daily_poai_rewards":           toNumericExpr(stats.DailyPOAIRewards),
+		"total_poai_rewards":           toNumericExpr(stats.TotalPOAIRewards),
+		"daily_minted":                 toNumericExpr(stats.DailyMinted),
+		"total_minted":                 toNumericExpr(stats.TotalMinted),
+		"total_supply":                 toNumericExpr(stats.TotalSupply),
+		"team_wallets_supply":          toNumericExpr(stats.TeamWalletsSupply),
+		"last_block_number":            stats.LastBlockNumber, // bigint
+	}
+
+	res := db.Table("stats").Create(row)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -213,4 +285,42 @@ func rowToModel(r *statsRow) *model.Stats {
 		TeamWalletsSupply:        toBigIntPtr(r.TeamWalletsSupply),
 		LastBlockNumber:          r.LastBlockNumber,
 	}
+}
+
+func createUserInfo(userInfo *model.UserInfo) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+
+	txCreate := db.Create(&userInfo)
+	if txCreate.Error != nil {
+		txCreate.Rollback()
+		return txCreate.Error
+	}
+	if txCreate.RowsAffected == 0 {
+		txCreate.Rollback()
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func createAllocation(alloc *model.Allocation) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+
+	txCreate := db.Create(&alloc)
+	if txCreate.Error != nil {
+		txCreate.Rollback()
+		return txCreate.Error
+	}
+	if txCreate.RowsAffected == 0 {
+		txCreate.Rollback()
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }

@@ -17,13 +17,14 @@ MAKE sure to set all the needed variabels berfore running
 func main() {
 	DBConnect()
 
-	UpdateStatsFromFile() //if you have to change some data on the json file before saving it
-	UpdateOldStats()
+	CreateStatsFromFile()
+	UpdateStatsFromFile()
+	UpdateOldStats() //if you have to change some data on the json file before saving it
 }*/
 
 func UpdateOldStats() {
 	//retrieve old allocations plus all stats
-	data, err := os.ReadFile("old.json")
+	data, err := os.ReadFile("stats.json")
 	if err != nil {
 		fmt.Println("error reading file: ", err.Error())
 		return
@@ -77,7 +78,7 @@ func UpdateOldStats() {
 }
 
 func UpdateStatsFromFile() {
-	data, err := os.ReadFile("changeStats.json")
+	data, err := os.ReadFile("stats.json")
 	if err != nil {
 		fmt.Println("error reading file: ", err.Error())
 		return
@@ -91,5 +92,26 @@ func UpdateStatsFromFile() {
 
 	for _, stat := range stats {
 		updateStats(&stat)
+	}
+}
+
+func CreateStatsFromFile() {
+	data, err := os.ReadFile("stats.json")
+	if err != nil {
+		fmt.Println("error reading file: ", err.Error())
+		return
+	}
+
+	var stats []model.Stats
+	err = json.Unmarshal(data, &stats)
+	if err != nil {
+		fmt.Println("error while unmarshal json data to allocation: ", err.Error())
+	}
+
+	for _, stat := range stats {
+		err = createStats(&stat)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 }
