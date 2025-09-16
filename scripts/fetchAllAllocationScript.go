@@ -127,7 +127,7 @@ func GetAllAllocations() []model.Allocation {
 	for k := range blocks {
 		v, err := getBlockTimestamp(k, client)
 		if err != nil {
-			fmt.Println("cannot fetch correct timestamp for block: ", k)
+			fmt.Println("cannot fetch correct timestamp for block: ", k, "with error: ", err.Error())
 			continue
 		}
 		blocks[k] = &v

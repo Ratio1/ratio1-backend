@@ -429,12 +429,12 @@ func getBlockTimestamp(blockNumber int64) (time.Time, error) {
 	}
 	defer client.Close()
 
-	block, err := client.BlockByNumber(context.Background(), big.NewInt(blockNumber))
+	header, err := client.HeaderByNumber(context.Background(), big.NewInt(blockNumber))
 	if err != nil {
 		return time.Time{}, errors.New("error while retrieving block: " + err.Error())
 	}
 
-	return time.Unix(int64(block.Time()), 0).UTC(), nil
+	return time.Unix(int64(header.Time), 0).UTC(), nil
 }
 
 func generateAllocations(allocEevents []model.Allocation) error {
