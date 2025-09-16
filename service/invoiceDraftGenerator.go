@@ -82,7 +82,7 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 		allocRows = append(allocRows, allocationRow{
 			JobID:       truncate(a.JobId, 26),
 			JobName:     a.JobName,
-			JobType:     a.JobType,
+			JobType:     a.JobType.GetName(),
 			ProjectName: a.ProjectName,
 			NodeAddress: a.NodeAddress,
 			UsdcPaid:    a.UsdcAmountPayed,

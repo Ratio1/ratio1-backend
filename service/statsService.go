@@ -104,7 +104,7 @@ func DailyGetStats() {
 		}
 		if v := allJobsId[a.JobId]; v != nil {
 			a.JobName = v.Result.JobName
-			a.JobType = strconv.Itoa(v.Result.JobType)
+			a.JobType = model.JobType(v.Result.JobType)
 			a.ProjectName = v.Result.ProjectName
 			allocEvents[i] = a
 		}

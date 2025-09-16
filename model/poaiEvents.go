@@ -16,10 +16,10 @@ type Allocation struct {
 	BlockNumber        int64     `gorm:"type:bigint;not null" json:"blockNumber"`
 	TxHash             string    `gorm:"type:varchar(66);not null" json:"txHash"`
 
-	JobId       string `gorm:"type:text;not null" json:"jobId"`
-	JobName     string `gorm:"type:text;default:null" json:"jobName"`
-	JobType     string `gorm:"type:text;default:null" json:"jobType"`
-	ProjectName string `gorm:"type:text;default:null" json:"projectName"`
+	JobId       string  `gorm:"type:text;not null" json:"jobId"`
+	JobName     string  `gorm:"type:text;default:null" json:"jobName"`
+	JobType     JobType `gorm:"type:numeric;default:null" json:"jobType"`
+	ProjectName string  `gorm:"type:text;default:null" json:"projectName"`
 
 	NodeAddress     string     `gorm:"type:varchar(66);not null" json:"nodeAddress"`
 	UserAddress     string     `gorm:"type:varchar(66);not null;index" json:"userAddress"`
