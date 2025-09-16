@@ -129,6 +129,6 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 		model.JsonResponse(c, http.StatusInternalServerError, emails, nodeAddress, strings.Join(errorMsgs, " | "))
 		return
 	}
-	model.JsonResponse(c, http.StatusOK, emails, nodeAddress, "") //TODO remove emails from answers
+	model.JsonResponse(c, http.StatusOK, emails, nodeAddress, "")
 
 }

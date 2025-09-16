@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/ratio1abi"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -15,16 +16,27 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
-
-func GetAmountAsFloatString(amount *big.Int) string {
+func GetAmountAsFloatString(amount *big.Int, decimals int) string {
 	if amount == nil {
 		return ""
 	}
 
+	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
 	amountFloat := new(big.Float).SetInt(amount)
 	amountFloat.Quo(amountFloat, new(big.Float).SetInt(oneToken))
-	return amountFloat.Text('f', 18)
+	return amountFloat.Text('f', decimals)
+}
+
+func GetAmountAsFloat(amount *big.Int, decimals int) float64 {
+	if amount == nil {
+		return 0
+	}
+
+	oneToken := big.NewInt(1).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
+	amountFloat := new(big.Float).SetInt(amount)
+	amountFloat.Quo(amountFloat, new(big.Float).SetInt(oneToken))
+	v, _ := amountFloat.Float64()
+	return v
 }
 
 func CalcCircSupply(teamSupply, totalSupply string) string {
@@ -52,7 +64,7 @@ func getPeriodMintedAmount(from, to int64) (*big.Int, error) {
 	}
 	defer client.Close()
 
-	transferEventSignature := []byte("Transfer(address,address,uint256)")
+	transferEventSignature := []byte(ratio1abi.TransferEventSignature)
 	transferEventSigHash := crypto.Keccak256Hash(transferEventSignature)
 
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
@@ -114,7 +126,7 @@ func getPeriodBurnedAmount(from, to int64) (*big.Int, error) {
 	}
 	defer client.Close()
 
-	transferEventSignature := []byte("Transfer(address,address,uint256)")
+	transferEventSignature := []byte(ratio1abi.TransferEventSignature)
 	transferEventSigHash := crypto.Keccak256Hash(transferEventSignature)
 
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
@@ -177,7 +189,7 @@ func getPeriodNdContractBurnedAmount(from, to int64) (*big.Int, error) {
 	}
 	defer client.Close()
 
-	transferEventSignature := []byte("Transfer(address,address,uint256)")
+	transferEventSignature := []byte(ratio1abi.TransferEventSignature)
 	transferEventSigHash := crypto.Keccak256Hash(transferEventSignature)
 
 	ndContractAddress := common.HexToAddress(config.Config.NDContractAddress)
@@ -236,8 +248,7 @@ func getTotalSupply() (*big.Int, error) {
 
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 
-	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
-	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
 	if err != nil {
 		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
@@ -275,10 +286,7 @@ func getTotalSupply() (*big.Int, error) {
 func getTeamWalletsSupply() (*big.Int, error) {
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 
-	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"},
-	{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
-
-	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
 	if err != nil {
 		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}

@@ -21,8 +21,6 @@ const (
 	enableSellerCodeEndpoint  = "/enable"
 	disableSellerCodeEndpoint = "/disable"
 	getSellerCode             = "/code"
-
-	//TODO add admins seller get clients
 )
 
 type newSellerRequest struct {

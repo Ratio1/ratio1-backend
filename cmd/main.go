@@ -70,10 +70,10 @@ func startApi(ctx *cli.Context) error {
 	templates.LoadAndCacheTemplates()
 
 	if !config.Config.Api.DevTesting {
-		nodeTiming, found := config.Config.GetCronJobTiming(nodeAddress)
+		buyLicenseInvoiceNodeTiming, found := config.Config.GetBuyLicenseInvoiceCronJobTiming(nodeAddress)
 		if found {
 			c := cron.New()
-			_, err = c.AddFunc(nodeTiming, service.ElaborateInvoices)
+			_, err = c.AddFunc(buyLicenseInvoiceNodeTiming, service.ElaborateInvoices)
 			if err != nil {
 				return errors.New("error while starting cronjob: " + err.Error())
 			}
@@ -84,6 +84,16 @@ func startApi(ctx *cli.Context) error {
 		if found {
 			c := cron.New()
 			_, err = c.AddFunc(dailyNodeTiming, service.DailyGetStats)
+			if err != nil {
+				return errors.New("error while starting daily cronjob: " + err.Error())
+			}
+			c.Start()
+		}
+
+		monthlyNodeTiming, found := config.Config.GetMonthlyCronJobTiming(nodeAddress)
+		if found {
+			c := cron.New()
+			_, err = c.AddFunc(monthlyNodeTiming, service.MonthlyPoaiInvoiceReport)
 			if err != nil {
 				return errors.New("error while starting daily cronjob: " + err.Error())
 			}

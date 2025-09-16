@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ .Title }}</title>
+  <style>
+    body { font-family: "Arial", sans-serif; font-size: 10pt; line-height: 1.3; margin: 0; padding: 24mm 20mm; color: #000; }
+    h1   { font-size: 18pt; font-weight: bold; margin: 0 0 8pt 0; }
+    h3   { font-size: 12pt; font-weight: bold; margin: 14pt 0 6pt 0; }
+    p    { margin: 0 0 6pt 0; }
+
+    .row { width: 100%; font-size: 0; }             
+    .col { display: inline-block; vertical-align: top; width: 49.5%; font-size: 10pt; }
+    .right { text-align: right; }
+
+    .meta-line { margin: 0; }
+
+    .party-block p { margin: 0 0 4pt 0; }
+    .small-italic { font-size: 8pt; font-style: italic; margin-top: 2pt; }
+
+    table.alloc { width: 100%; border-collapse: collapse; margin: 10pt 0 10pt 0; table-layout: fixed; }
+    table.alloc th, table.alloc td { border: 0.5pt solid #666; padding: 4pt 4pt; vertical-align: middle; }
+    table.alloc thead th { background-color: #E6E6E6; font-weight: bold; text-align: center; font-size: 10pt; }
+    table.alloc td { font-size: 8.5pt; } 
+
+    .w-20mm { width: 20mm; }  /* Job ID */
+    .w-35mm { width: 35mm; }  /* Job Name */
+    .w-25mm { width: 25mm; }  /* Job Type */
+    .w-35mm2{ width: 35mm; }  /* Project Name */
+    .w-60mm { width: 60mm; }  /* Node Address */
+    .w-20mm-r { width: 20mm; text-align: right; } /* USDC Paid */
+
+    .summary-line { font-size: 10pt; }
+    .summary-line .label { display: inline-block; width: 70%; vertical-align: top; }
+    .summary-line .value { display: inline-block; width: 29%; vertical-align: top; text-align: right; }
+    .summary-total .label, .summary-total .value { font-weight: bold; }
+
+    .spacer-6  { height: 6pt; }
+    .spacer-10 { height: 10pt; }
+
+    .status { text-align: right; font-style: italic; font-size: 9pt; margin-top: 10pt; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="row">
+    <div class="col">
+      <h1>{{ .Title }}</h1>
+      <p>Date: {{ .Date }}</p>
+    </div>
+    <div class="col right">
+      <p class="meta-line">Invoice series: {{ .InvoiceSeries }}</p>
+      <p class="meta-line">Invoice number: {{ .InvoiceNumber }}</p>
+    </div>
+  </div>
+
+  <div class="spacer-6"></div>
+
+  <!-- SELLER (sx) / BUYER (dx) come due blocchi, senza titolo tabellare -->
+  <div class="row">
+    <div class="col party-block">
+      {{ range .SellerLines }}<p>{{ . }}</p>{{ end }}
+      {{ if .SellerWallet }}<p class="small-italic">Seller Wallet: {{ .SellerWallet }}</p>{{ end }}
+    </div>
+    <div class="col party-block right">
+      {{ range .BuyerLines }}<p>{{ . }}</p>{{ end }}
+      {{ if .BuyerWallet }}<p class="small-italic">Buyer Wallet: {{ .BuyerWallet }}</p>{{ end }}
+    </div>
+  </div>
+
+  <div class="spacer-10"></div>
+
+  <!-- ALLOCATIONS / JOBS -->
+  <h3>Allocations</h3>
+  <table class="alloc">
+    <colgroup>
+      <col class="w-20mm">
+      <col class="w-35mm">
+      <col class="w-25mm">
+      <col class="w-35mm2">
+      <col class="w-60mm">
+      <col class="w-20mm">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Job ID</th>
+        <th>Job Name</th>
+        <th>Job Type</th>
+        <th>Project Name</th>
+        <th>Node Address</th>
+        <th>USDC Paid</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range .Allocations }}
+      <tr>
+        <td>{{ .JobID }}</td>
+        <td>{{ .JobName }}</td>
+        <td>{{ .JobType }}</td>
+        <td>{{ .ProjectName }}</td>
+        <td>{{ .NodeAddress }}</td>
+        <td class="w-20mm-r">{{ .UsdcPaid }}</td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+
+  <!-- SUMMARY (no tabella) -->
+  <h3>Summary (amounts include VAT &amp; extras):</h3>
+  <div class="summary">
+    <div class="summary-line">
+      <span class="label">Payments subtotal from allocations (USDC):</span>
+      <span class="value">{{ .TotalUSDC }}</span>
+    </div>
+    <div class="summary-line">
+      <span class="label">Net amount (excl. VAT &amp; extras, derived):</span>
+      <span class="value">{{ .NetBase }}</span>
+    </div>
+    <div class="summary-line">
+      <span class="label">Included VAT ({{ .VatPerc }}%):</span>
+      <span class="value">{{ .VatAmount }}</span>
+    </div>
+
+    {{ if .ExtraLines }}
+      <div class="summary-line"><span class="label"><span class="bold">Included extra taxes:</span></span><span class="value"></span></div>
+      {{ range .ExtraLines }}
+      <div class="summary-line">
+        <span class="label">&nbsp;&nbsp;- {{ .Label }}</span>
+        <span class="value">{{ .Amount }}</span>
+      </div>
+      {{ end }}
+    {{ end }}
+
+    <div class="summary-line summary-total">
+      <span class="label">Total amount (VAT &amp; extras included):</span>
+      <span class="value">{{ .Gross }}</span>
+    </div>
+    <div class="summary-line">
+      <span class="label">Number of jobs:</span>
+      <span class="value">{{ .JobCount }}</span>
+    </div>
+  </div>
+
+  {{ if .Notes }}
+    <div class="spacer-10"></div>
+    <h3>Notes</h3>
+    <p>{{ .Notes }}</p>
+  {{ end }}
+
+  <!-- STATUS -->
+  <div class="status">{{ .Status }}</div>
+
+</body>
+</html>

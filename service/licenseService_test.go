@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -127,4 +128,8 @@ func Test_ConstructClaimAndVerify(t *testing.T) {
 	pubKeyBytes := crypto.FromECDSAPub(recoveredPubKey)
 	success := crypto.VerifySignature(pubKeyBytes, ethSigner.Bytes(), sig[:64])
 	require.True(t, success)
+}
+
+func Test_uuid(t *testing.T) {
+	fmt.Println(uuid.New())
 }

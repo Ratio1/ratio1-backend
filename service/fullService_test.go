@@ -99,7 +99,7 @@ func Test_FullTest(t *testing.T) { //TO TEST THIS RETURN NIL ON emailService.go 
 		ReviewStatus: model.StatusPending,
 		CreatedAtMs:  time.Now().Format("2006-01-02 15:04:05.000"),
 	}
-	err = ProcessKycEvent(event, *kyc)
+	err = ProcessKycEvent(event, *kyc, "")
 	require.Nil(t, err)
 	kyc, found, err = storage.GetKycByUuid(kyc.Uuid)
 	require.Nil(t, err)

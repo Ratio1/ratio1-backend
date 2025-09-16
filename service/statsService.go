@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/ratio1abi"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -34,6 +36,11 @@ func DailyGetStats() {
 		}
 	}
 
+	if getEpoch(oldStats.CreationTimestamp) == getEpoch(time.Now()) { //get epoch of r1 mainnet, if today is already present, skip.
+		fmt.Println("stats already fetched")
+		return
+	}
+
 	cspAddresses, err := getAllCSPAddress() // map[cspAddress]ownerAddress
 	if err != nil {
 		fmt.Println("Error while retrieving csp addresses: " + err.Error())
@@ -54,19 +61,66 @@ func DailyGetStats() {
 		return
 	}
 
+	if len(allocEvents) == 0 {
+		fmt.Println("No events fetched, allocation hasn't occured yet")
+		return
+	}
+
+	time.Sleep(1 * time.Second)
+
+	/* get all blocks timestamp */
+	blocks := make(map[int64]*time.Time)
+	for _, a := range allocEvents {
+		blocks[a.BlockNumber] = nil
+	}
+
+	for k := range blocks {
+		v, err := getBlockTimestamp(k)
+		if err != nil {
+			fmt.Println("cannot fetch correct timestamp")
+			return
+		}
+		blocks[k] = &v
+		time.Sleep(1 * time.Second)
+	}
+	/* get all jobs details */
+	allJobsId := make(map[string]*Response)
+	for _, a := range allocEvents {
+		allJobsId[a.JobId] = nil
+	}
+
+	for k := range allJobsId {
+		res, err := GetJobDetails(k, config.Config.DeeployApi)
+		if err != nil {
+			continue
+		}
+		allJobsId[k] = res
+	}
+
+	/* in each allocation, add timestamp and job details */
+	for i, a := range allocEvents {
+		if v := blocks[a.BlockNumber]; v != nil {
+			a.AllocationCreation = *v
+		}
+		if v := allJobsId[a.JobId]; v != nil {
+			a.JobName = v.Result.JobName
+			a.JobType = model.JobType(v.Result.JobType)
+			a.ProjectName = v.Result.ProjectName
+			allocEvents[i] = a
+		}
+	}
+
 	time.Sleep(1 * time.Second) // to avoid "429 Too Many Requests" error from infura
 
-	/* TODO use for poai
 	err = generateAllocations(allocEvents)
 	if err != nil {
 		fmt.Println("Error generating allocations: " + err.Error())
 		return
 	}
-	*/
 
 	dailyPoaiReward := big.NewInt(0)
 	for _, e := range allocEvents {
-		dailyPoaiReward = dailyPoaiReward.Add(dailyPoaiReward, &e.UsdcAmountPayed)
+		dailyPoaiReward = dailyPoaiReward.Add(dailyPoaiReward, e.GetUsdcAmountPayed())
 	}
 
 	dailyMinted, err := getPeriodMintedAmount(from, to)
@@ -159,10 +213,7 @@ func getChainLastBlockNumber() (int64, error) {
 func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 	tokenAddress := common.HexToAddress(config.Config.USDCContractAddress)
 
-	const erc20ABI = `[{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"","type":"uint256"}],"type":"function"},
-	{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function"}]`
-
-	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
 	if err != nil {
 		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
@@ -208,22 +259,7 @@ func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 func getDailyActiveJobs() (int, error) {
 	tokenAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
 
-	const poaiManagerAbi = `[{
-      "inputs": [],
-      "name": "nextJobId",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-]`
-
-	parsedABI, err := abi.JSON(strings.NewReader(poaiManagerAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerNextJobIdAbi))
 	if err != nil {
 		return 0, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -262,34 +298,7 @@ func getDailyActiveJobs() (int, error) {
 
 func getAllCSPAddress() (map[string]string, error) { // map[cspAddress]ownerAddress
 	contractAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
-	const cspEscrow = `[{
-      "inputs": [],
-      "name": "getAllCspsWithOwner",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "address",
-              "name": "cspAddress",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "cspOwner",
-              "type": "address"
-            }
-          ],
-          "internalType": "struct CspWithOwner[]",
-          "name": "",
-          "type": "tuple[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-
-]`
-	parsedABI, err := abi.JSON(strings.NewReader(cspEscrow))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerGetAllCspsWithOwnerAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -342,7 +351,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 	fromBlock := big.NewInt(from)
 	toBlock := big.NewInt(to)
 
-	eventSignatureAsBytes := []byte(config.Config.AllocationEventSignature)
+	eventSignatureAsBytes := []byte(ratio1abi.AllocationEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
@@ -378,13 +387,12 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 }
 
 func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
-	parsedABI, err := abi.JSON(strings.NewReader(config.Config.AllocLogsAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.AllocationLogsAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
 
 	event := struct {
-		JobId       string
 		NodeAddress common.Address
 		NodeOwner   common.Address
 		UsdcAmount  *big.Int
@@ -395,20 +403,40 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 		return nil, errors.New("error while unpacking interface: " + err.Error())
 	}
 
+	jobIDBig := new(big.Int).SetBytes(vLog.Topics[1].Bytes())
+	var jobID uint64
+	if jobIDBig.BitLen() > 64 {
+		return nil, fmt.Errorf("jobId too large for uint64: %s", jobIDBig.String())
+	}
+	jobID = jobIDBig.Uint64()
 	result := model.Allocation{
 		CspAddress:  vLog.Address.String(),
 		TxHash:      vLog.TxHash.Hex(),
 		BlockNumber: int64(vLog.BlockNumber),
 
-		NodeAddress:     event.NodeAddress.String(),
-		UserAddress:     event.NodeOwner.String(),
-		JobId:           event.JobId,
-		UsdcAmountPayed: *event.UsdcAmount,
+		NodeAddress: event.NodeAddress.String(),
+		UserAddress: event.NodeOwner.String(),
+		JobId:       strconv.Itoa(int(jobID)),
 	}
+	result.SetUsdcAmountPayed(event.UsdcAmount)
 	return &result, nil
 }
 
-/*
+func getBlockTimestamp(blockNumber int64) (time.Time, error) {
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return time.Time{}, errors.New("error while dialing client")
+	}
+	defer client.Close()
+
+	header, err := client.HeaderByNumber(context.Background(), big.NewInt(blockNumber))
+	if err != nil {
+		return time.Time{}, errors.New("error while retrieving block: " + err.Error())
+	}
+
+	return time.Unix(int64(header.Time), 0).UTC(), nil
+}
+
 func generateAllocations(allocEevents []model.Allocation) error {
 	for _, event := range allocEevents {
 		err := storage.CreateAllocation(&event)
@@ -417,4 +445,10 @@ func generateAllocations(allocEevents []model.Allocation) error {
 		}
 	}
 	return nil
-}*/
+}
+
+/* This function is only available for mainnet*/
+func getEpoch(date time.Time) int {
+	mainnetStart := time.Unix(1748016000, 0)
+	return int(date.Sub(mainnetStart) / (24 * time.Hour))
+}

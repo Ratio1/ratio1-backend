@@ -223,7 +223,18 @@ func (h *sumsubHandler) processEvents(c *gin.Context) {
 		return
 	}
 
-	err = service.ProcessKycEvent(kycEvent, *kyc)
+	user, found, err := storage.GetAccountByEmail(kyc.Email)
+	if err != nil {
+		log.Error("error while retrieving account information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	} else if !found {
+		log.Error("account not found in storage")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+		return
+	}
+
+	err = service.ProcessKycEvent(kycEvent, *kyc, user.Address)
 	if err != nil {
 		log.Error("error whil eprocessing event: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())

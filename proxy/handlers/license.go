@@ -67,7 +67,7 @@ func (h *launchpadHandler) linkNode(c *gin.Context) {
 	}
 
 	userNodeAddress, ok := c.GetQuery("nodeAddress")
-	if !ok || nodeAddress == "" {
+	if !ok || userNodeAddress == "" {
 		log.Error("node address not received")
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "node address not received")
 		return
@@ -215,22 +215,34 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 			return
 		}
 
-		client, err = service.GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
+		userInfo, err := storage.GetUserInfoByAddress(address)
 		if err != nil {
-			log.Error("error while retrieving Client information: " + err.Error())
-			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			log.Error("error while retrieving client info from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 			return
-		} else if client == nil {
+		} else if userInfo == nil {
 			log.Error("nil client returned from sumsub api")
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "nil client returned from sumsub api")
 			return
 		}
 
-		err = service.ValidateData(*client)
+		err = service.ValidateData(*userInfo)
 		if err != nil {
 			log.Error("error while validating client data: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 			return
+		}
+
+		client = &model.InvoiceClient{
+			Name:               userInfo.Name,
+			Surname:            userInfo.Surname,
+			CompanyName:        userInfo.CompanyName,
+			IdentificationCode: userInfo.IdentificationCode,
+			Address:            userInfo.Address,
+			City:               userInfo.City,
+			State:              userInfo.State,
+			Country:            userInfo.Country,
+			IsCompany:          userInfo.IsCompany,
 		}
 	}
 

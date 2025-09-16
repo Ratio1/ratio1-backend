@@ -24,6 +24,7 @@ const (
 	subjectEmailAccountResetted  = "Your KYC has been resetted"
 	subjectAddressBlacklisted    = "Address is blacklisted"
 	subjectNewBuyLicenseInvoice  = "A new buy license invoice has been sent"
+	subjectNewInvoiceDraft       = "A new invoice draft has been generated"
 )
 
 var (
@@ -157,6 +158,35 @@ func SendAccountResettedEmail(email string) error {
 	}
 
 	return callSendEmail(email, subjectEmailAccountResetted, body.String())
+}
+
+func SendNodeOwnerDraftEmail(email string) error {
+	template, err := templates.GetOperatorDraftTemplate()
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	var body bytes.Buffer
+	err = template.Execute(&body, struct{ Url string }{Url: config.Config.Ratio1redirectUrl.OperatorUrl})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+	return callSendEmail(email, subjectNewInvoiceDraft, body.String())
+}
+
+func SendCspDraftEmail(email string) error {
+	template, err := templates.GetCspDraftTemplate()
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	var body bytes.Buffer
+	err = template.Execute(&body, struct{ Url string }{Url: confirmUrl(config.Config.Ratio1redirectUrl.CspUrl)})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectNewInvoiceDraft, body.String())
 }
 
 func SendBuyLicenseEmail(email, url, invoiceNumber string) error {

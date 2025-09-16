@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -149,40 +148,6 @@ func NewLinkLicenseTxTemplate(walletAddress, nodeAddres string) (string, error) 
 	}
 
 	return hex.EncodeToString(sig), nil
-}
-
-func ValidateData(client model.InvoiceClient) error {
-	if client.IsCompany && client.CompanyName == nil {
-		return errors.New("company name must be provided")
-	} else if !client.IsCompany && (client.Surname == nil || client.Name == nil) {
-		return errors.New("name and surname must be provided")
-	}
-
-	if client.Name == nil && client.Surname == nil && client.CompanyName == nil {
-		return errors.New("name and surname or company name must be provided")
-	}
-
-	if client.IdentificationCode == "" {
-		return errors.New("identification code must be provided")
-	}
-
-	if client.Address == "" {
-		return errors.New("address must be provided")
-	}
-
-	if client.State == "" {
-		return errors.New("state must be provided")
-	}
-
-	if client.City == "" {
-		return errors.New("city must be provided")
-	}
-
-	if client.Country == "" {
-		return errors.New("country must be provided")
-	}
-
-	return nil
 }
 
 func padTo32Bytes(b []byte) []byte {

@@ -78,17 +78,40 @@
     "0x5d5F16f1848c87b49185A9136cdF042384e82BA8",
     "0x0A27F805Db42089d79B96A4133A93B2e5Ff1b28C"
   ],
-  "CronJobTiming": {
-    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "*/30 * * * *"
+  "BuyLicenseInvoiceCronJobTiming": {
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "00 * * * *",
+    "0xA48C80afb9eC73A9F6731a9Cea6774Ed6249a922": "10 * * * *",
+    "0x3B373897136687af87DDbF65662Eb7004090eAF8": "20 * * * *",
+    "0x7388fC301eb7CF6743ecF9e6c781210758669bAD": "30 * * * *",
+    "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "40 * * * *",
+    "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "50 * * * *"
   },
   "DailyCronJobTiming": {
-    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "02 16 * * *"
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "02 16 * * *",
+    "0xA48C80afb9eC73A9F6731a9Cea6774Ed6249a922": "05 16 * * *",
+    "0x3B373897136687af87DDbF65662Eb7004090eAF8": "10 16 * * *",
+    "0x7388fC301eb7CF6743ecF9e6c781210758669bAD": "15 16 * * *",
+    "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "20 16 * * *",
+    "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "30 16 * * *"
+  },
+  "MonthlyCronJobTiming": {
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "0 08 1 * *",
+    "0xA48C80afb9eC73A9F6731a9Cea6774Ed6249a922": "0 10 1 * *",
+    "0x3B373897136687af87DDbF65662Eb7004090eAF8": "0 12 1 * *",
+    "0x7388fC301eb7CF6743ecF9e6c781210758669bAD": "0 14 1 * *",
+    "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "0 16 1 * *",
+    "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "0 18 1 * *"
   },
   "ChainID": 8453,
   "BuyLimitUSD": {
     "Individual": 10000,
     "Company": 15000
   },
+  "Ratio1redirectUrl": {
+    "OperatorUrl": "",
+    "CspUrl": ""
+  },
+  "DeeployApi": "https://deeploy-api.ratio1.ai/get_oracle_job_details",
   "ViesApi": {
     "BaseUrl": "https://viesapi.eu/api"
   }
