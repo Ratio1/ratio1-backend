@@ -90,7 +90,7 @@ func startApi(ctx *cli.Context) error {
 			c.Start()
 		}
 
-		monthlyNodeTiming, found := config.Config.GetDailyCronJobTiming(nodeAddress)
+		monthlyNodeTiming, found := config.Config.GetMonthlyCronJobTiming(nodeAddress)
 		if found {
 			c := cron.New()
 			_, err = c.AddFunc(monthlyNodeTiming, service.MonthlyPoaiIncoiceReport)
