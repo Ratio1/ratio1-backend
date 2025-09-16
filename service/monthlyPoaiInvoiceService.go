@@ -76,13 +76,6 @@ func MonthlyPoaiIncoiceReport() {
 			}
 		}
 
-		//save draft to db
-		err = storage.CreateInvoiceDraft(&invoice)
-		if err != nil {
-			fmt.Println(errors.New("error while saving invoice: " + err.Error()))
-			return
-		}
-
 		if userAddress != cspOwner {
 			preference.NextNumber += 1
 			err = storage.UpdatePreference(preference)
@@ -90,14 +83,26 @@ func MonthlyPoaiIncoiceReport() {
 				fmt.Println(errors.New("error while updating preference: " + err.Error()))
 				return
 			}
+		} else {
+			invoice.InvoiceNumber = 0
+			invoice.InvoiceSeries = ""
+		}
+
+		//save draft to db
+		err = storage.CreateInvoiceDraft(&invoice)
+		if err != nil {
+			fmt.Println(errors.New("error while saving invoice: " + err.Error()))
+			return
 		}
 	}
 
 	allCSP := make(map[string]bool) //map[email]true to have unique emails
 	allNodeOwner := make(map[string]bool)
 	for _, invoice := range invoices {
-		allNodeOwner[invoice.UserProfile.Email] = true
-		allCSP[invoice.CspProfile.Email] = true
+		if invoice.UserAddress != invoice.CspOwner { // I should not receive emails if i worked on my nodes
+			allNodeOwner[invoice.UserProfile.Email] = true
+			allCSP[invoice.CspProfile.Email] = true
+		}
 	}
 
 	//send unique email for csp and node owner ( even if they have more than 1 invoice)
