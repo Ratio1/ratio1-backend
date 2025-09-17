@@ -1,155 +1,330 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <title>{{ .Title }}</title>
   <style>
-    body { font-family: "Arial", sans-serif; font-size: 10pt; line-height: 1.3; margin: 0; padding: 24mm 20mm; color: #000; }
-    h1   { font-size: 18pt; font-weight: bold; margin: 0 0 8pt 0; }
-    h3   { font-size: 12pt; font-weight: bold; margin: 14pt 0 6pt 0; }
-    p    { margin: 0 0 6pt 0; }
+    body {
+      font-family: "Arial", sans-serif;
+      font-size: 10pt;
+      line-height: 1.35;
+      margin: 0;
+      padding: 14mm;
+      color: #000;
+      background-color: #fff;
+    }
 
-    .row { width: 100%; font-size: 0; }             
-    .col { display: inline-block; vertical-align: top; width: 49.5%; font-size: 10pt; }
-    .right { text-align: right; }
+    .invoice {
+      max-width: 184mm;
+      margin: 0 auto;
+    }
 
-    .meta-line { margin: 0; }
+    h1 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin: 0 0 4pt 0;
+    }
 
-    .party-block p { margin: 0 0 4pt 0; }
-    .small-italic { font-size: 8pt; font-style: italic; margin-top: 2pt; }
+    h3 {
+      font-size: 12pt;
+      font-weight: bold;
+      margin: 12pt 0 6pt 0;
+    }
 
-    table.alloc { width: 100%; border-collapse: collapse; margin: 10pt 0 10pt 0; table-layout: fixed; }
-    table.alloc th, table.alloc td { border: 0.5pt solid #666; padding: 4pt 4pt; vertical-align: middle; }
-    table.alloc thead th { background-color: #E6E6E6; font-weight: bold; text-align: center; font-size: 10pt; }
-    table.alloc td { font-size: 8.5pt; } 
+    p {
+      margin: 0 0 3pt 0;
+    }
 
-    .w-20mm { width: 20mm; }  /* Job ID */
-    .w-35mm { width: 35mm; }  /* Job Name */
-    .w-25mm { width: 25mm; }  /* Job Type */
-    .w-35mm2{ width: 35mm; }  /* Project Name */
-    .w-60mm { width: 60mm; }  /* Node Address */
-    .w-20mm-r { width: 20mm; text-align: right; } /* USDC Paid */
+    table.layout {
+      width: 100%;
+      border-collapse: collapse;
+    }
 
-    .summary-line { font-size: 10pt; }
-    .summary-line .label { display: inline-block; width: 70%; vertical-align: top; }
-    .summary-line .value { display: inline-block; width: 29%; vertical-align: top; text-align: right; }
-    .summary-total .label, .summary-total .value { font-weight: bold; }
+    table.layout td {
+      vertical-align: top;
+    }
 
-    .spacer-6  { height: 6pt; }
-    .spacer-10 { height: 10pt; }
+    .right {
+      text-align: right;
+    }
 
-    .status { text-align: right; font-style: italic; font-size: 9pt; margin-top: 10pt; }
+    .header-block {
+      border-bottom: 1pt solid #000;
+      padding-bottom: 6pt;
+      margin-bottom: 10pt;
+    }
+
+    .meta-inline {
+      font-size: 9pt;
+    }
+
+    .meta-inline div {
+      margin-bottom: 2pt;
+    }
+
+    .meta-inline div:last-child {
+      margin-bottom: 0;
+    }
+
+    .meta-inline strong {
+      font-weight: bold;
+    }
+
+    table.party-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+    }
+
+    table.party-table td {
+      width: 50%;
+      vertical-align: top;
+      padding: 0 4pt 0 0;
+    }
+
+    table.party-table td:last-child {
+      padding-left: 8pt;
+    }
+
+    .party-title {
+      font-weight: bold;
+      margin-bottom: 4pt;
+    }
+
+    .small-italic {
+      font-size: 8pt;
+      font-style: italic;
+      margin-top: 4pt;
+    }
+
+    table.alloc {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8pt 0 10pt 0;
+      table-layout: fixed;
+    }
+
+    table.alloc th,
+    table.alloc td {
+      border: 1pt solid #000;
+      padding: 1pt 2pt;
+      mso-padding-alt: 1pt 2pt 1pt 2pt;
+      font-size: 9pt;
+      text-align: left;
+      line-height: 1.1;
+      mso-line-height-rule: exactly;
+      mso-line-height-alt: 11pt;
+    }
+
+    table.alloc th {
+      text-align: center;
+      font-weight: bold;
+      background-color: #efefef;
+    }
+
+    .w-20mm {
+      width: 20mm;
+    }
+
+    .w-35mm {
+      width: 35mm;
+    }
+
+    .w-25mm {
+      width: 25mm;
+    }
+
+    .w-60mm {
+      width: 60mm;
+    }
+
+    .w-25mm-creation {
+      width: 25mm;
+    }
+
+    .w-20mm-r {
+      width: 20mm;
+      text-align: right;
+    }
+
+    table.summary {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4pt;
+    }
+
+    table.summary th,
+    table.summary td {
+      padding: 1pt 0;
+      mso-padding-alt: 1pt 0 1pt 0;
+      font-size: 9pt;
+      line-height: 1.1;
+      mso-line-height-rule: exactly;
+      mso-line-height-alt: 11pt;
+    }
+
+    table.summary th {
+      text-align: left;
+      font-weight: normal;
+    }
+
+    table.summary td {
+      text-align: right;
+    }
+
+    table.summary tr.total-row th,
+    table.summary tr.total-row td {
+      font-weight: bold;
+      border-top: 1pt solid #000;
+      padding-top: 6pt;
+    }
+
+    .notes {
+      margin-top: 8pt;
+      border-top: 1pt solid #000;
+      padding-top: 6pt;
+    }
+
+    .section-rule {
+      border: 0;
+      border-top: 1pt solid #000;
+      mso-border-top-alt: 1pt solid #000;
+      margin: 8pt 0 6pt 0;
+      height: 0;
+      width: 100%;
+    }
+
+    .status {
+      text-align: right;
+      font-style: italic;
+      font-size: 9pt;
+      margin-top: 18pt;
+    }
   </style>
 </head>
+
 <body>
+  <div class="invoice">
 
-  <!-- HEADER -->
-  <div class="row">
-    <div class="col">
-      <h1>{{ .Title }}</h1>
-      <p>Date: {{ .Date }}</p>
+    <!-- HEADER -->
+    <div class="header-block">
+      <table class="layout">
+        <tr>
+          <td>
+            <h1>{{ .Title }}</h1>
+          </td>
+          <td class="right">
+            <div class="meta-inline">
+              <div><strong>Number:</strong> {{ .InvoiceNumber }}{{ if .InvoiceSeries }}/{{ .InvoiceSeries }}{{ end }}
+              </div>
+              <div><strong>Date:</strong> {{ .Date }}</div>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
-    <div class="col right">
-      <p class="meta-line">Invoice series: {{ .InvoiceSeries }}</p>
-      <p class="meta-line">Invoice number: {{ .InvoiceNumber }}</p>
-    </div>
-  </div>
 
-  <div class="spacer-6"></div>
-
-  <!-- SELLER (sx) / BUYER (dx) come due blocchi, senza titolo tabellare -->
-  <div class="row">
-    <div class="col party-block">
-      {{ range .SellerLines }}<p>{{ . }}</p>{{ end }}
-      {{ if .SellerWallet }}<p class="small-italic">Seller Wallet: {{ .SellerWallet }}</p>{{ end }}
-    </div>
-    <div class="col party-block right">
-      {{ range .BuyerLines }}<p>{{ . }}</p>{{ end }}
-      {{ if .BuyerWallet }}<p class="small-italic">Buyer Wallet: {{ .BuyerWallet }}</p>{{ end }}
-    </div>
-  </div>
-
-  <div class="spacer-10"></div>
-
-  <!-- ALLOCATIONS / JOBS -->
-  <h3>Allocations</h3>
-  <table class="alloc">
-    <colgroup>
-      <col class="w-20mm">
-      <col class="w-35mm">
-      <col class="w-25mm">
-      <col class="w-35mm2">
-      <col class="w-60mm">
-      <col class="w-20mm">
-    </colgroup>
-    <thead>
+    <!-- SELLER / BUYER -->
+    <table class="party-table">
       <tr>
-        <th>Job ID</th>
-        <th>Job Name</th>
-        <th>Job Type</th>
-        <th>Project Name</th>
-        <th>Node Address</th>
-        <th>USDC Paid</th>
+        <td>
+          <div class="party-title">Supplier</div>
+          {{ range .SellerLines }}<p>{{ . }}</p>{{ end }}
+          {{ if .SellerWallet }}<p class="small-italic">Supplier Wallet: {{ .SellerWallet }}</p>{{ end }}
+        </td>
+        <td class="right">
+          <div class="party-title">Customer</div>
+          {{ range .BuyerLines }}<p>{{ . }}</p>{{ end }}
+          {{ if .BuyerWallet }}<p class="small-italic">Customer Wallet: {{ .BuyerWallet }}</p>{{ end }}
+        </td>
       </tr>
-    </thead>
-    <tbody>
-      {{ range .Allocations }}
+    </table>
+
+    <!-- SUMMARY -->
+    <h3>Summary</h3>
+    <table class="summary" cellspacing="0" cellpadding="0">
       <tr>
-        <td>{{ .JobID }}</td>
-        <td>{{ .JobName }}</td>
-        <td>{{ .JobType }}</td>
-        <td>{{ .ProjectName }}</td>
-        <td>{{ .NodeAddress }}</td>
-        <td class="w-20mm-r">{{ .UsdcPaid }}</td>
+        <th>Net Amount</th>
+        <td>{{ .NetBase }}&nbsp;USDC{{ if and .NetBaseLocal .LocalCurrency }} / {{ .NetBaseLocal }}&nbsp;{{
+          .LocalCurrency }}{{ end }}</td>
       </tr>
-      {{ end }}
-    </tbody>
-  </table>
-
-  <!-- SUMMARY (no tabella) -->
-  <h3>Summary (amounts include VAT &amp; extras):</h3>
-  <div class="summary">
-    <div class="summary-line">
-      <span class="label">Payments subtotal from allocations (USDC):</span>
-      <span class="value">{{ .TotalUSDC }}</span>
-    </div>
-    <div class="summary-line">
-      <span class="label">Net amount (excl. VAT &amp; extras, derived):</span>
-      <span class="value">{{ .NetBase }}</span>
-    </div>
-    <div class="summary-line">
-      <span class="label">Included VAT ({{ .VatPerc }}%):</span>
-      <span class="value">{{ .VatAmount }}</span>
-    </div>
-
-    {{ if .ExtraLines }}
-      <div class="summary-line"><span class="label"><span class="bold">Included extra taxes:</span></span><span class="value"></span></div>
+      <tr>
+        <th>VAT ({{ .VatPerc }}%)</th>
+        <td>{{ .VatAmount }}&nbsp;USDC{{ if and .VatAmountLocal .LocalCurrency }} / {{ .VatAmountLocal }}&nbsp;{{
+          .LocalCurrency }}{{ end }}</td>
+      </tr>
+      {{ if .ExtraLines }}
+      <tr>
+        <th>Extra taxes</th>
+        <td></td>
+      </tr>
       {{ range .ExtraLines }}
-      <div class="summary-line">
-        <span class="label">&nbsp;&nbsp;- {{ .Label }}</span>
-        <span class="value">{{ .Amount }}</span>
-      </div>
+      <tr>
+        <th>&nbsp;&nbsp;- {{ .Label }}</th>
+        <td>{{ .AmountUSDC }}&nbsp;USDC{{ if and .AmountLocal $.LocalCurrency }} / {{ .AmountLocal }}&nbsp;{{
+          $.LocalCurrency }}{{ end }}</td>
+      </tr>
       {{ end }}
+      {{ end }}
+      <tr class="total-row">
+        <th>Total Amount (allocations subtotal)</th>
+        <td>{{ .TotalUSDC }}&nbsp;USDC{{ if and .TotalLocal .LocalCurrency }} / {{ .TotalLocal }}&nbsp;{{ .LocalCurrency
+          }}{{ end }}</td>
+      </tr>
+      <tr>
+        <th>Number of allocations</th>
+        <td>{{ .JobCount }}</td>
+      </tr>
+    </table>
+
+    <!-- STATUS -->
+    <div class="status">{{ .Status }}</div>
+
+    {{ if .Notes }}
+    <div class="notes">
+      <h3>Notes</h3>
+      <p>{{ .Notes }}</p>
+    </div>
     {{ end }}
 
-    <div class="summary-line summary-total">
-      <span class="label">Total amount (VAT &amp; extras included):</span>
-      <span class="value">{{ .Gross }}</span>
-    </div>
-    <div class="summary-line">
-      <span class="label">Number of jobs:</span>
-      <span class="value">{{ .JobCount }}</span>
-    </div>
+    <div class="section-rule"></div>
+
+    <!-- ALLOCATIONS / JOBS -->
+    <h3>Allocations Details</h3>
+    <table class="alloc" cellspacing="0" cellpadding="0">
+      <colgroup>
+        <col class="w-25mm-creation">
+        <col class="w-20mm">
+        <col class="w-25mm">
+        <col class="w-35mm">
+        <col class="w-60mm">
+        <col class="w-20mm">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Project</th>
+          <th>Job ID - Name</th>
+          <th>Node</th>
+          <th>USDC Paid</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range .Allocations }}
+        <tr>
+          <td>{{ .AllocationCreation }}</td>
+          <td>{{ .JobType }}</td>
+          <td>{{ .ProjectName }}</td>
+          <td>{{ .JobID }} - {{ .JobName }}</td>
+          <td>{{ .NodeAddress }}</td>
+          <td class="w-20mm-r">{{ .UsdcPaid }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
   </div>
-
-  {{ if .Notes }}
-    <div class="spacer-10"></div>
-    <h3>Notes</h3>
-    <p>{{ .Notes }}</p>
-  {{ end }}
-
-  <!-- STATUS -->
-  <div class="status">{{ .Status }}</div>
-
 </body>
+
 </html>

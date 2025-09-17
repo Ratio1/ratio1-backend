@@ -26,7 +26,7 @@ type Allocation struct {
 	CspAddress      string     `gorm:"type:varchar(66);not null;index" json:"cspAddress"`
 	CspOwner        string     `gorm:"type:varchar(66);not null" json:"cspOwner"`
 	UsdcAmountPayed string     `gorm:"type:numeric;default:null" json:"usdcAmountPayed"`
-	DraftId         *uuid.UUID `gorm:"type:uuid;default:null" json:"invoiceId"`
+	DraftId         *uuid.UUID `gorm:"type:uuid;default:null" json:"draftId"`
 
 	CspProfile  UserInfo `gorm:"foreignKey:CspOwner;references:BlockchainAddress" json:"cspProfile"`
 	UserProfile UserInfo `gorm:"foreignKey:UserAddress;references:BlockchainAddress" json:"userProfile"`
@@ -49,16 +49,18 @@ func (a *Allocation) SetUsdcAmountPayed(amount *big.Int) {
 }
 
 type InvoiceDraft struct {
-	DraftId           uuid.UUID `gorm:"type:uuid;primaryKey" json:"invoiceId"`
-	CreationTimestamp time.Time `gorm:"type:timestamp;not null" json:"creationTimestamp"`
-	UserAddress       string    `gorm:"type:varchar(66);not null;index" json:"userAddress"`
-	CspOwner          string    `gorm:"type:varchar(66);not null;index" json:"cspOwner"`
-	TotalUsdcAmount   float64   `gorm:"type:numeric" json:"totalUsdcAmount"`
-	VatApplied        float64   `gorm:"type:numeric" json:"vatApplied"`
-	InvoiceSeries     string    `gorm:"type:text;default:null" json:"invoiceSeries"`
-	InvoiceNumber     int       `gorm:"type:integer;default:null" json:"invoiceNumber"`
-	ExtraText         *string   `gorm:"type:text;default:null" json:"extraText"`
-	ExtraTaxes        *string   `gorm:"type:jsonb;default:'{}'" json:"extraTaxes"`
+	DraftId                    uuid.UUID `gorm:"type:uuid;primaryKey" json:"invoiceId"`
+	CreationTimestamp          time.Time `gorm:"type:timestamp;not null" json:"creationTimestamp"`
+	UserAddress                string    `gorm:"type:varchar(66);not null;index" json:"userAddress"`
+	CspOwner                   string    `gorm:"type:varchar(66);not null;index" json:"cspOwner"`
+	TotalUsdcAmount            float64   `gorm:"type:numeric" json:"totalUsdcAmount"`
+	VatApplied                 float64   `gorm:"type:numeric" json:"vatApplied"`
+	InvoiceSeries              string    `gorm:"type:text;default:null" json:"invoiceSeries"`
+	InvoiceNumber              int       `gorm:"type:integer;default:null" json:"invoiceNumber"`
+	ExtraText                  *string   `gorm:"type:text;default:null" json:"extraText"`
+	ExtraTaxes                 *string   `gorm:"type:jsonb;default:'{}'" json:"extraTaxes"`
+	LocalCurrency              string    `gorm:"type:varchar(3)" json:"localCurrency"` // es. "EUR", "USD"
+	LocalCurrencyExchangeRatio float64   `gorm:"type:numeric" json:"localCurrencyExchangeRatio"`
 
 	CspProfile  UserInfo `gorm:"foreignKey:CspOwner;references:BlockchainAddress" json:"cspProfile"`
 	UserProfile UserInfo `gorm:"foreignKey:UserAddress;references:BlockchainAddress" json:"userProfile"`
@@ -77,9 +79,9 @@ type Preference struct {
 }
 
 type ExtraTax struct {
-	Description string
-	TaxType     TaxTypeEnum
-	Value       float64
+	Description string      `json:"description"`
+	TaxType     TaxTypeEnum `json:"taxType"`
+	Value       float64     `json:"value"`
 }
 
 func (p *Preference) GetExtraTaxes() ([]ExtraTax, error) {

@@ -42,6 +42,7 @@ type GeneralConfig struct {
 	ViesApi                        ViesConfig
 	InvoiceMessageEmail            string
 	Ratio1redirectUrl              Ratio1redirectUrl
+	FreeCurrencyApiKey             string
 }
 
 type ApiConfig struct {
@@ -246,6 +247,12 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		cfg.ViesApi.Password = os.Getenv("VIES_PASSWORD")
 		if cfg.ViesApi.Password == "" {
 			return nil, errors.New("VIES_PASSWORD is not set")
+		}
+
+		/*FREE CURRENCY API VARIABLES*/
+		cfg.FreeCurrencyApiKey = os.Getenv("FREE_CURRENCY_API_KEY")
+		if cfg.FreeCurrencyApiKey == "" {
+			return nil, errors.New("FREE_CURRENCY_API_KEY is not set")
 		}
 	}
 
