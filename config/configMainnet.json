@@ -108,8 +108,8 @@
     "Company": 15000
   },
   "Ratio1redirectUrl": {
-    "OperatorUrl": "",
-    "CspUrl": ""
+    "OperatorUrl": "https://app.ratio1.ai/invoicing",
+    "CspUrl": "https://deeploy.ratio1.ai/account?tab=invoicing"
   },
   "DeeployApi": "https://deeploy-api.ratio1.ai/get_oracle_job_details",
   "ViesApi": {

@@ -24,7 +24,7 @@ const (
 	subjectEmailAccountResetted  = "Your KYC has been resetted"
 	subjectAddressBlacklisted    = "Address is blacklisted"
 	subjectNewBuyLicenseInvoice  = "A new buy license invoice has been sent"
-	subjectNewInvoiceDraft       = "A new invoice draft has been generated"
+	subjectNewInvoiceDraft       = "New draft invoices have been issued"
 )
 
 var (

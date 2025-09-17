@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -13,7 +12,8 @@ import (
 
 func MonthlyPoaiInvoiceReport() {
 	/* Get all Allocations not invoiced*/
-	unclaimedAllocations, err := storage.GetMonthlyUnclaimedAllocations()
+	now := time.Now().UTC()
+	unclaimedAllocations, err := storage.GetMonthlyUnclaimedAllocations(now)
 	if err != nil {
 		fmt.Println("Error retrieving unclaimed allocations: " + err.Error())
 		return
@@ -21,6 +21,12 @@ func MonthlyPoaiInvoiceReport() {
 
 	if len(unclaimedAllocations) == 0 {
 		fmt.Println("Drafts already done")
+		return
+	}
+
+	currencyMap, err := GetFreeCurrencyValues() //map[USD,EUR...]ratio always based 1 usd -> value
+	if err != nil {
+		fmt.Println("could not fetch currency map: ", err.Error())
 		return
 	}
 
@@ -62,6 +68,7 @@ func MonthlyPoaiInvoiceReport() {
 			invoice.InvoiceSeries = preference.InvoiceSeries
 			invoice.ExtraTaxes = preference.ExtraTaxes
 			invoice.ExtraText = preference.ExtraText
+			invoice.LocalCurrency = preference.LocalCurrency
 		}
 
 		for _, alloc := range allocations {
@@ -71,16 +78,14 @@ func MonthlyPoaiInvoiceReport() {
 			if err != nil {
 				fmt.Println("error while updating allocation: " + err.Error())
 				return
-			} else {
-				invoices = append(invoices, invoice)
 			}
 		}
 
-		if userAddress != cspOwner {
+		if userAddress != cspOwner && preference != nil {
 			preference.NextNumber += 1
 			err = storage.UpdatePreference(preference)
 			if err != nil {
-				fmt.Println(errors.New("error while updating preference: " + err.Error()))
+				fmt.Println("error while updating preference: " + err.Error())
 				return
 			}
 		} else {
@@ -88,11 +93,18 @@ func MonthlyPoaiInvoiceReport() {
 			invoice.InvoiceSeries = ""
 		}
 
+		invoices = append(invoices, invoice)
+	}
+
+	for i, inv := range invoices {
+		if v, ok := currencyMap[inv.LocalCurrency]; ok {
+			invoices[i].LocalCurrencyExchangeRatio = v
+		}
 		//save draft to db
-		err = storage.CreateInvoiceDraft(&invoice)
+		err = storage.CreateInvoiceDraft(&inv)
 		if err != nil {
-			fmt.Println(errors.New("error while saving invoice: " + err.Error()))
-			return
+			fmt.Println("error while saving invoice: " + err.Error())
+			continue
 		}
 	}
 

@@ -4,7 +4,7 @@ package service
 import (
 	"bytes"
 	"fmt"
-	"math/big"
+	"sort"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/templates"
@@ -29,17 +29,19 @@ func GenerateInvoiceDOC(invoice model.InvoiceDraft, allocations []model.Allocati
 // ------------------ View model & helpers ------------------
 
 type allocationRow struct {
-	JobID       string
-	JobName     string
-	JobType     string
-	ProjectName string
-	NodeAddress string
-	UsdcPaid    string
+	JobID              string
+	JobName            string
+	JobType            string
+	ProjectName        string
+	AllocationCreation string
+	NodeAddress        string
+	UsdcPaid           string
 }
 
 type extraLineVM struct {
-	Label  string
-	Amount string
+	Label       string
+	AmountUSDC  string
+	AmountLocal string
 }
 
 type invoiceVM struct {
@@ -54,44 +56,51 @@ type invoiceVM struct {
 	BuyerWallet  string
 
 	Allocations []allocationRow
+	NetBase     string
+	VatPerc     string
+	VatAmount   string
 
-	TotalUSDC string
-	NetBase   string
-	VatPerc   string
-	VatAmount string
+	LocalCurrency  string
+	TotalUSDC      string
+	TotalLocal     string
+	NetBaseLocal   string
+	VatAmountLocal string
 
 	ExtraLines []extraLineVM
 
-	Gross    string
 	JobCount int
 	Notes    string
 	Status   string
 }
 
 func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation) invoiceVM {
+	/*Order allocations based on creation timestamp*/
+	sort.Slice(allocations, func(i, j int) bool {
+		return allocations[i].AllocationCreation.Before(allocations[j].AllocationCreation)
+	})
+
 	// Seller/Buyer lines
 	from := &invoice.UserProfile
 	to := &invoice.CspProfile
 	fromLines := formatUserInfo(from)
 	toLines := formatUserInfo(to)
 
-	// Alloc rows + subtotal USDC
-	totalUSDC := big.NewInt(0)
+	// Alloc rows
 	var allocRows []allocationRow
 	for _, a := range allocations {
 		allocRows = append(allocRows, allocationRow{
-			JobID:       truncate(a.JobId, 26),
-			JobName:     a.JobName,
-			JobType:     a.JobType.GetName(),
-			ProjectName: a.ProjectName,
-			NodeAddress: a.NodeAddress,
-			UsdcPaid:    a.UsdcAmountPayed,
+
+			AllocationCreation: a.AllocationCreation.Format("2006-01-02"),
+			JobID:              truncate(a.JobId, 26),
+			JobName:            a.JobName,
+			JobType:            a.JobType.GetName(),
+			ProjectName:        a.ProjectName,
+			NodeAddress:        a.NodeAddress[:5] + "..." + a.NodeAddress[len(a.NodeAddress)-5:],
+			UsdcPaid:           GetAmountAsFloatString(a.GetUsdcAmountPayed(), model.UsdcDecimals),
 		})
-		totalUSDC.Add(totalUSDC, a.GetUsdcAmountPayed())
 	}
 
 	// Economic summary
-	gross := invoice.TotalUsdcAmount
 	vatPerc := invoice.VatApplied
 
 	extras, _ := invoice.GetExtraTaxes()
@@ -107,7 +116,7 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 	den := 1.0 + (vatPerc / 100.0) + (sumExtraPerc / 100.0)
 	netBase := 0.0
 	if den > 0 {
-		netBase = (gross - sumFixed) / den
+		netBase = (invoice.TotalUsdcAmount - sumFixed) / den
 	}
 	if netBase < 0 {
 		netBase = 0
@@ -119,13 +128,15 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 		switch e.TaxType {
 		case model.Fixed:
 			extraVM = append(extraVM, extraLineVM{
-				Label:  e.Description,
-				Amount: fmt.Sprintf("%.2f", e.Value),
+				Label:       e.Description,
+				AmountUSDC:  fmt.Sprintf("%.2f", e.Value),
+				AmountLocal: fmt.Sprintf("%.2f", e.Value*invoice.LocalCurrencyExchangeRatio),
 			})
 		case model.Percentage:
 			extraVM = append(extraVM, extraLineVM{
-				Label:  fmt.Sprintf("%s (%.2f%%)", e.Description, e.Value),
-				Amount: fmt.Sprintf("%.2f", netBase*(e.Value/100.0)),
+				Label:       fmt.Sprintf("%s (%.2f%%)", e.Description, e.Value),
+				AmountUSDC:  fmt.Sprintf("%.2f", netBase*(e.Value/100.0)),
+				AmountLocal: fmt.Sprintf("%.2f", netBase*(e.Value/100.0)*invoice.LocalCurrencyExchangeRatio),
 			})
 		}
 	}
@@ -146,17 +157,21 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 
 		Allocations: allocRows,
 
-		TotalUSDC: totalUSDC.String(),
-		NetBase:   fmt.Sprintf("%.2f", netBase),
-		VatPerc:   fmt.Sprintf("%.2f", vatPerc),
-		VatAmount: fmt.Sprintf("%.2f", vatAmount),
+		TotalUSDC:    fmt.Sprintf("%.2f", invoice.TotalUsdcAmount),
+		NetBase:      fmt.Sprintf("%.2f", netBase),
+		NetBaseLocal: fmt.Sprintf("%.2f", netBase*invoice.LocalCurrencyExchangeRatio),
+		VatPerc:      fmt.Sprintf("%.2f", vatPerc),
+		VatAmount:    fmt.Sprintf("%.2f", vatAmount),
 
 		ExtraLines: extraVM,
 
-		Gross:    fmt.Sprintf("%.2f", gross),
 		JobCount: len(allocations),
 		Notes:    stringOrEmpty(invoice.ExtraText),
 		Status:   status,
+
+		LocalCurrency:  invoice.LocalCurrency,
+		TotalLocal:     fmt.Sprintf("%.2f", invoice.TotalUsdcAmount*invoice.LocalCurrencyExchangeRatio),
+		VatAmountLocal: fmt.Sprintf("%.2f", vatAmount*invoice.LocalCurrencyExchangeRatio),
 	}
 	return vm
 }

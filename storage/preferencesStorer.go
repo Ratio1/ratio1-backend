@@ -15,6 +15,8 @@ func GetPreferenceByAddress(userAddress string) (*model.Preference, error) {
 	txRead := db.Where("user_address =  ? ", userAddress).Find(&pref)
 	if txRead.Error != nil {
 		return nil, txRead.Error
+	} else if txRead.RowsAffected == 0 {
+		return nil, nil
 	}
 
 	return &pref, nil

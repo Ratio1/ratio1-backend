@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -28,7 +29,7 @@ const (
 )
 
 type getInvoiceDraftsRequest struct {
-	DraftId           uuid.UUID `json:"invoiceId"`
+	DraftId           uuid.UUID `json:"draftId"`
 	CreationTimestamp time.Time `json:"creationTimestamp"`
 	UserAddress       string    `json:"userAddress"`
 	CspOwner          string    `json:"cspOwnerAddress"`
@@ -81,6 +82,33 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 		return
 	}
 
+	if config.Config.Api.DevTesting { //TODO to be a return error?
+		service.BuildMocks()
+		i, _ := service.GetOperatorData()
+		userName, _ := i[0].UserProfile.GetNameAsString()
+		var parsedDraft []getInvoiceDraftsRequest
+		for _, d := range i {
+			if d.UserAddress == d.CspOwner {
+				continue
+			}
+			cspName, _ := d.CspProfile.GetNameAsString()
+			newParsedDraft := getInvoiceDraftsRequest{
+				DraftId:           d.DraftId,
+				CreationTimestamp: d.CreationTimestamp,
+				UserAddress:       d.UserAddress,
+				CspOwner:          d.CspOwner,
+				TotalUsdcAmount:   d.TotalUsdcAmount,
+				InvoiceSeries:     d.InvoiceSeries,
+				InvoiceNumber:     d.InvoiceNumber,
+				NodeOwnerName:     userName,
+				CspOwnerName:      cspName,
+			}
+			parsedDraft = append(parsedDraft, newParsedDraft)
+		}
+		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
+		return
+	}
+
 	userAddress, err := middleware.AddressFromBearer(c)
 	if err != nil {
 		log.Error("error while retrieving address from bearer: " + err.Error())
@@ -96,7 +124,6 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 	}
 
 	var parsedDraft []getInvoiceDraftsRequest
-
 	userName, _ := drafts[0].UserProfile.GetNameAsString() //it's always the same
 	for _, d := range drafts {
 		if d.UserAddress == d.CspOwner {
@@ -125,6 +152,33 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	if config.Config.Api.DevTesting { //TODO to be a return error?
+		service.BuildMocks()
+		i, _ := service.GetCspData()
+		var parsedDraft []getInvoiceDraftsRequest
+		cspName, _ := i[0].CspProfile.GetNameAsString() //it's always the same
+		for _, d := range i {
+			if d.UserAddress == d.CspOwner {
+				continue
+			}
+			userName, _ := d.UserProfile.GetNameAsString()
+			newParsedDraft := getInvoiceDraftsRequest{
+				DraftId:           d.DraftId,
+				CreationTimestamp: d.CreationTimestamp,
+				UserAddress:       d.UserAddress,
+				CspOwner:          d.CspOwner,
+				TotalUsdcAmount:   d.TotalUsdcAmount,
+				InvoiceSeries:     d.InvoiceSeries,
+				InvoiceNumber:     d.InvoiceNumber,
+				NodeOwnerName:     userName,
+				CspOwnerName:      cspName,
+			}
+			parsedDraft = append(parsedDraft, newParsedDraft)
+		}
+		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
 		return
 	}
 
@@ -174,17 +228,41 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 		return
 	}
 
-	userAddress, err := middleware.AddressFromBearer(c)
-	if err != nil {
-		log.Error("error while retrieving address from bearer: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
-	}
-
 	draftId, ok := c.GetQuery("draftId")
 	if !ok || draftId == "" {
 		log.Error("draft id not received")
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "draft id not received")
+		return
+	}
+
+	if config.Config.Api.DevTesting { //TODO to be a return error?
+		service.BuildMocks()
+		i, a := service.GetOperatorData()
+		idAsInt, err := strconv.Atoi(draftId)
+		if err != nil {
+			log.Error("error while parsing draftId: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while parsing draftId: "+err.Error())
+			return
+		} else if idAsInt >= len(i) {
+			log.Error("id is grater then current mock available, please retry")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "id is grater then current mock available, please retry")
+			return
+		}
+		byteFile, err := service.GenerateInvoiceDOC(i[idAsInt], a)
+		if err != nil {
+			log.Error("error while generating invoice doc: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		c.Header("Content-Disposition", "attachment; filename=invoice_draft.doc")
+		c.Data(http.StatusOK, "application/msword", byteFile)
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
 
@@ -221,17 +299,41 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 		return
 	}
 
-	userAddress, err := middleware.AddressFromBearer(c)
-	if err != nil {
-		log.Error("error while retrieving address from bearer: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
-	}
-
 	draftId, ok := c.GetQuery("draftId")
 	if !ok || draftId == "" {
 		log.Error("draft id not received")
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "draft id not received")
+		return
+	}
+
+	if config.Config.Api.DevTesting { //TODO to be a return error?
+		service.BuildMocks()
+		i, a := service.GetCspData()
+		idAsInt, err := strconv.Atoi(draftId)
+		if err != nil {
+			log.Error("error while parsing draftId: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while parsing draftId: "+err.Error())
+			return
+		} else if idAsInt >= len(i) {
+			log.Error("id is grater then current mock available, please retry")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "id is grater then current mock available, please retry")
+			return
+		}
+		byteFile, err := service.GenerateInvoiceDOC(i[idAsInt], a)
+		if err != nil {
+			log.Error("error while generating invoice doc: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		c.Header("Content-Disposition", "attachment; filename=invoice_draft.doc")
+		c.Data(http.StatusOK, "application/msword", byteFile)
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
 
