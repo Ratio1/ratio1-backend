@@ -1,9 +1,8 @@
 name: Build and Release Ratio1 Backend
 
 on:
-    push:
-        branches:
-            - main
+    # only allow manual runs
+    workflow_dispatch:
 
 jobs:
     build:
