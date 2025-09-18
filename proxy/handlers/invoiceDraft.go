@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -238,17 +237,20 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 	if config.Config.Api.DevTesting { //TODO to be a return error?
 		service.BuildMocks()
 		i, a := service.GetOperatorData()
-		idAsInt, err := strconv.Atoi(draftId)
-		if err != nil {
-			log.Error("error while parsing draftId: " + err.Error())
-			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while parsing draftId: "+err.Error())
-			return
-		} else if idAsInt >= len(i) {
-			log.Error("id is grater then current mock available, please retry")
-			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "id is grater then current mock available, please retry")
+		var invoice model.InvoiceDraft
+		found := false
+		for _, v := range i {
+			if v.DraftId.String() == draftId {
+				found = true
+				invoice = v
+			}
+		}
+		if !found {
+			log.Error("draft id not found in storage")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "draft id not found in storage")
 			return
 		}
-		byteFile, err := service.GenerateInvoiceDOC(i[idAsInt], a)
+		byteFile, err := service.GenerateInvoiceDOC(invoice, a)
 		if err != nil {
 			log.Error("error while generating invoice doc: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
@@ -309,17 +311,22 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 	if config.Config.Api.DevTesting { //TODO to be a return error?
 		service.BuildMocks()
 		i, a := service.GetCspData()
-		idAsInt, err := strconv.Atoi(draftId)
-		if err != nil {
-			log.Error("error while parsing draftId: " + err.Error())
-			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while parsing draftId: "+err.Error())
-			return
-		} else if idAsInt >= len(i) {
-			log.Error("id is grater then current mock available, please retry")
-			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "id is grater then current mock available, please retry")
+
+		var invoice model.InvoiceDraft
+		found := false
+		for _, v := range i {
+			if v.DraftId.String() == draftId {
+				found = true
+				invoice = v
+			}
+		}
+		if !found {
+			log.Error("draft id not found in storage")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "draft id not found in storage")
 			return
 		}
-		byteFile, err := service.GenerateInvoiceDOC(i[idAsInt], a)
+
+		byteFile, err := service.GenerateInvoiceDOC(invoice, a)
 		if err != nil {
 			log.Error("error while generating invoice doc: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
