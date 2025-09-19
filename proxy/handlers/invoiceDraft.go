@@ -21,6 +21,7 @@ const (
 	downloadNodeOwnerDraftEndpoint = "/download-draft"
 	createPreferenceEndpoint       = "/create-preferences"
 	changePreferencesEndpoint      = "/change-preferences"
+	getPreferencesEndpoint         = "/get-preferences"
 
 	/* CSP endpoints */
 	getCspDraftListEndpoint  = "/get-csp-drafts"
@@ -47,6 +48,7 @@ func NewInvoiceDraftHandler(groupHandler *groupHandler) {
 	endpoints := []EndpointHandler{
 		{Method: http.MethodGet, Path: getNodeOwnerDraftListEndpoint, HandlerFunc: h.getNodeOwnerDraftList},
 		{Method: http.MethodGet, Path: getCspDraftListEndpoint, HandlerFunc: h.getCspDraftList},
+		{Method: http.MethodGet, Path: getPreferencesEndpoint, HandlerFunc: h.getPreferences},
 		{Method: http.MethodGet, Path: downloadNodeOwnerDraftEndpoint, HandlerFunc: h.downloadNodeOwnerDraft},
 		{Method: http.MethodGet, Path: downloadCspDraftEndpoint, HandlerFunc: h.downloadCspDraft},
 
@@ -367,6 +369,31 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 
 	c.Header("Content-Disposition", "attachment; filename=invoice_draft.doc")
 	c.Data(http.StatusOK, "application/msword", byteFile)
+}
+
+func (h *invoiceDraftHandler) getPreferences(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	preference, err := storage.GetPreferenceByAddress(userAddress)
+	if err != nil {
+		log.Error("error while retrieving report: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, preference, nodeAddress, "")
 }
 
 /*

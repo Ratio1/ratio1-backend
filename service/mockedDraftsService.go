@@ -23,6 +23,11 @@ var (
 
 func BuildMocks() {
 	mutexForMock.Lock()
+	defer mutexForMock.Unlock()
+	if len(mockedCSPAllocations) != 0 {
+		return
+	}
+
 	now := time.Now().UTC()
 
 	cspOwnerAddr := "0xCSP00000000000000000000000000000000000001"
@@ -225,7 +230,6 @@ func BuildMocks() {
 		}
 		mockedOperatorAllocations = append(mockedOperatorAllocations, alloc)
 	}
-	mutexForMock.Unlock()
 }
 
 func GetCspData() ([]model.InvoiceDraft, []model.Allocation) {
