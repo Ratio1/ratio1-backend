@@ -232,13 +232,13 @@ func BuildMocks() {
 	}
 }
 
-func GetCspData() ([]model.InvoiceDraft, []model.Allocation) {
+func GetMockCspData() ([]model.InvoiceDraft, []model.Allocation) {
 	mutexForMock.Lock()
 	defer mutexForMock.Unlock()
 	return mockedInvoiceDraftsForCSP, mockedCSPAllocations
 }
 
-func GetOperatorData() ([]model.InvoiceDraft, []model.Allocation) {
+func GetMockOperatorData() ([]model.InvoiceDraft, []model.Allocation) {
 	mutexForMock.Lock()
 	defer mutexForMock.Unlock()
 	return mockedInvoiceDraftsForNodeOwner, mockedOperatorAllocations

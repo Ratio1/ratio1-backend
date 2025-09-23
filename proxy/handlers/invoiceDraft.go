@@ -85,7 +85,7 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 
 	if config.Config.Api.DevTesting { //TODO to be a return error?
 		service.BuildMocks()
-		i, _ := service.GetOperatorData()
+		i, _ := service.GetMockOperatorData()
 		userName, _ := i[0].UserProfile.GetNameAsString()
 		var parsedDraft []getInvoiceDraftsRequest
 		for _, d := range i {
@@ -162,7 +162,7 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 
 	if config.Config.Api.DevTesting { //TODO to be a return error?
 		service.BuildMocks()
-		i, _ := service.GetCspData()
+		i, _ := service.GetMockCspData()
 		var parsedDraft []getInvoiceDraftsRequest
 		cspName, _ := i[0].CspProfile.GetNameAsString() //it's always the same
 		for _, d := range i {
@@ -246,7 +246,7 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 
 	if config.Config.Api.DevTesting { //TODO to be a return error?
 		service.BuildMocks()
-		i, a := service.GetOperatorData()
+		i, a := service.GetMockOperatorData()
 		var invoice model.InvoiceDraft
 		found := false
 		for _, v := range i {
@@ -320,7 +320,7 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 
 	if config.Config.Api.DevTesting { //TODO to be a return error?
 		service.BuildMocks()
-		i, a := service.GetCspData()
+		i, a := service.GetMockCspData()
 
 		var invoice model.InvoiceDraft
 		found := false
