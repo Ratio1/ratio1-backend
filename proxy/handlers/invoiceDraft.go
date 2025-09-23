@@ -125,6 +125,10 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 	}
 
 	var parsedDraft []getInvoiceDraftsRequest
+	if len(drafts) == 0 {
+		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
+		return
+	}
 	userName, _ := drafts[0].UserProfile.GetNameAsString() //it's always the same
 	for _, d := range drafts {
 		if d.UserAddress == d.CspOwner {
@@ -198,6 +202,10 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 	}
 
 	var parsedDraft []getInvoiceDraftsRequest
+	if len(drafts) == 0 {
+		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
+		return
+	}
 	cspName, _ := drafts[0].CspProfile.GetNameAsString() //it's always the same
 	for _, d := range drafts {
 		if d.UserAddress == d.CspOwner {
