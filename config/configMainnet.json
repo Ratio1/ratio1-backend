@@ -105,7 +105,7 @@
   "ChainID": 8453,
   "BuyLimitUSD": {
     "Individual": 10000,
-    "Company": 15000
+    "Company": 500000
   },
   "Ratio1redirectUrl": {
     "OperatorUrl": "https://app.ratio1.ai/invoicing",

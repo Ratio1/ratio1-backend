@@ -71,9 +71,9 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
 			status = model.StatusApproved
-			userInfo, err := getViesData(&kyc)
+			userInfo, err := fetchUserInfo(&kyc)
 			if err != nil {
-				return errors.New("error while getting vies data: " + err.Error())
+				return errors.New("error while getting user info: " + err.Error())
 			}
 			err = SendKycConfirmedEmail(kyc.Email)
 			if err != nil {
@@ -139,7 +139,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 	return nil
 }
 
-func getViesData(kyc *model.Kyc) (*model.UserInfo, error) { //TODO change logic to make sense
+func fetchUserInfo(kyc *model.Kyc) (*model.UserInfo, error) { //TODO change logic to make sense
 	client, err := GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
 	if err != nil {
 		return nil, err

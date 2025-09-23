@@ -17,10 +17,6 @@ func GetDraftListByNodeOwner(userAddress string) ([]model.InvoiceDraft, error) {
 		return nil, txRead.Error
 	}
 
-	if len(pInvs) == 0 {
-		return nil, gorm.ErrRecordNotFound
-	}
-
 	return pInvs, nil
 }
 
@@ -34,10 +30,6 @@ func GetDraftListByCSP(userAddress string) ([]model.InvoiceDraft, error) {
 	txRead := db.Preload("CspProfile").Preload("UserProfile").Where("csp_owner =  ? ", userAddress).Find(&pInvs)
 	if txRead.Error != nil {
 		return nil, txRead.Error
-	}
-
-	if len(pInvs) == 0 {
-		return nil, gorm.ErrRecordNotFound
 	}
 
 	return pInvs, nil
