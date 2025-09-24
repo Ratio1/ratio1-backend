@@ -48,23 +48,19 @@ func startApi(ctx *cli.Context) error {
 	}
 
 	generalConfigPath := ctx.GlobalString(generalConfigFile.Name)
-	nodes, err := config.LoadNodes(generalConfigPath + "nodes.json")
-	if err != nil {
-		err = errors.New("error while loading nodes: " + err.Error())
+	network := os.Getenv("EE_EVM_NET")
+	if network == "" {
+		err = errors.New("EE_EVM_NET environment variable not set, cannot load config")
 		return err
 	}
 
-	if value, exist := nodes[nodeAddress]; exist {
-		cfg, err := config.LoadConfig(generalConfigPath + "config" + value + ".json")
-		if err != nil {
-			err = errors.New("error while loading configs: " + err.Error())
-			return err
-		}
-
-		config.Config = *cfg
-	} else {
-		return errors.New("the node is not in the whitelist")
+	cfg, err := config.LoadConfig(generalConfigPath + "config." + network + ".json")
+	if err != nil {
+		err = errors.New("error while loading configs: " + err.Error())
+		return err
 	}
+
+	config.Config = *cfg
 
 	storage.Connect()
 	templates.LoadAndCacheTemplates()
