@@ -124,7 +124,7 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 		return
 	}
 
-	var parsedDraft []getInvoiceDraftsRequest
+	parsedDraft := []getInvoiceDraftsRequest{}
 	if len(drafts) == 0 {
 		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
 		return
@@ -201,7 +201,7 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 		return
 	}
 
-	var parsedDraft []getInvoiceDraftsRequest
+	parsedDraft := []getInvoiceDraftsRequest{}
 	if len(drafts) == 0 {
 		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
 		return
