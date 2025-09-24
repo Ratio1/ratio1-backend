@@ -191,7 +191,7 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 	}
 
 	product := model.InvoiceProduct{
-		Name:          "License",
+		Name:          "R1 Node License for the operation of a R1 Edge Node software on a beneficiary provided hardware under the terms of Ratio1.ai EULA and T&C",
 		Price:         int64(invoiceRequest.UnitUsdPrice),
 		Quantity:      int64(invoiceRequest.NumLicenses),
 		MeasuringUnit: "unit",
