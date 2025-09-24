@@ -186,6 +186,12 @@
       padding-top: 6pt;
     }
 
+    .description {
+      margin-top: 8pt;
+      border-top: 1pt solid #000;
+      padding-top: 6pt;
+    }
+
     .section-rule {
       border: 0;
       border-top: 1pt solid #000;
@@ -280,6 +286,12 @@
 
     <!-- STATUS -->
     <div class="status">{{ .Status }}</div>
+
+    <div class="description">
+      <h3>Description</h3>
+      <p>PaaS services: Edge Node CPU/GPU/storage/bandwith compute consumption resulting from the utilization by the
+        Beneficiary of the node operated by the Supplier</p>
+    </div>
 
     {{ if .Notes }}
     <div class="notes">
