@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>{{ .Title }}</title>
+  <style>
+    body {
+      font-family: "Arial", sans-serif;
+      font-size: 10pt;
+      line-height: 1.35;
+      margin: 0;
+      padding: 14mm;
+      color: #000;
+      background-color: #fff;
+    }
+
+    .burn-report {
+      max-width: 184mm;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 18pt;
+      font-weight: bold;
+      margin: 0 0 4pt 0;
+    }
+
+    h2,
+    h3 {
+      font-size: 12pt;
+      font-weight: bold;
+      margin: 12pt 0 6pt 0;
+    }
+
+    p {
+      margin: 0 0 3pt 0;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .header-block {
+      border-bottom: 1pt solid #000;
+      padding-bottom: 6pt;
+      margin-bottom: 10pt;
+    }
+
+    .meta-inline {
+      font-size: 9pt;
+    }
+
+    .meta-inline div {
+      margin-bottom: 2pt;
+    }
+
+    .meta-inline div:last-child {
+      margin-bottom: 0;
+    }
+
+    .meta-inline strong {
+      font-weight: bold;
+    }
+
+    .section-rule {
+      border-top: 1pt solid #000;
+      margin: 14pt 0 12pt 0;
+    }
+
+    .summary {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 6pt 0 10pt 0;
+    }
+
+    .summary th,
+    .summary td {
+      text-align: left;
+      vertical-align: top;
+      font-size: 9pt;
+      padding: 4pt 2pt;
+      mso-padding-alt: 4pt 2pt 4pt 2pt;
+      border-bottom: 1pt solid #ddd;
+    }
+
+    .summary th {
+      width: 45mm;
+      font-weight: bold;
+    }
+
+    .summary .total {
+      font-size: 11pt;
+      font-weight: bold;
+    }
+
+    table.report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8pt 0 10pt 0;
+      table-layout: fixed;
+    }
+
+    table.report-table th,
+    table.report-table td {
+      border: 1pt solid #000;
+      padding: 2pt 3pt;
+      mso-padding-alt: 2pt 3pt 2pt 3pt;
+      font-size: 9pt;
+      line-height: 1.15;
+      mso-line-height-rule: exactly;
+      mso-line-height-alt: 12pt;
+    }
+
+    table.report-table th {
+      text-align: center;
+      font-weight: bold;
+      background-color: #efefef;
+    }
+
+    .w-30mm {
+      width: 30mm;
+    }
+
+    .w-60mm {
+      width: 60mm;
+    }
+
+    .right-align {
+      text-align: right;
+    }
+
+    .note {
+      font-size: 8pt;
+      margin-top: 4pt;
+    }
+
+    .definition {
+      background-color: #f8f8f8;
+      padding: 6pt;
+      border: 1pt solid #ddd;
+      font-size: 9pt;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="burn-report">
+    <div class="header-block">
+      <table class="layout" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td>
+            <h1>{{ .Title }}</h1>
+            <p><strong>CSP:</strong> {{ .CSPName }}</p>
+            {{ if .ReportingPeriod }}<p><strong>Reporting Period:</strong> {{ .ReportingPeriod }}</p>{{ end }}
+          </td>
+          <td class="right">
+            <div class="meta-inline">
+              {{ if .ProtocolName }}<div><strong>Protocol:</strong> {{ .ProtocolName }}</div>{{ end }}
+              {{ if .GeneratedDate }}<div><strong>Generated:</strong> {{ .GeneratedDate }}</div>{{ end }}
+              {{ if .DocumentId }}<div><strong>Report ID:</strong> {{ .DocumentId }}</div>{{ end }}
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="definition">
+      <h2>About This Report</h2>
+      <p>{{ if .BurnDescription }}{{ .BurnDescription }}{{ else }}This document summarizes all token burns executed by the
+        protocol for the CSP during the reporting period. A burn permanently removes tokens from circulation to balance
+        supply and align incentives across network participants.{{ end }}</p>
+      <p>{{ if .BurnRationale }}{{ .BurnRationale }}{{ else }}Burns are performed to settle protocol fees, maintain
+        monetary stability, and reward long-term stewardship of shared infrastructure.{{ end }}</p>
+    </div>
+
+    <h2>Burn Summary</h2>
+    <table class="summary" cellspacing="0" cellpadding="0">
+      <tr>
+        <th>Total Burns</th>
+        <td>{{ .TotalBurnCount }}</td>
+      </tr>
+      <tr>
+        <th>Total Amount Burned</th>
+        <td class="total">{{ .TotalBurnAmount }} {{ .Currency }}</td>
+      </tr>
+      {{ if .BurnFeesRecovered }}
+      <tr>
+        <th>Fees Recovered</th>
+        <td>{{ .BurnFeesRecovered }} {{ .Currency }}</td>
+      </tr>
+      {{ end }}
+      {{ if .AdditionalSummaryLines }}
+      {{ range .AdditionalSummaryLines }}
+      <tr>
+        <th>{{ .Label }}</th>
+        <td>{{ .Value }}</td>
+      </tr>
+      {{ end }}
+      {{ end }}
+    </table>
+
+    {{ if .Notes }}
+    <div class="note">
+      <strong>Notes:</strong> {{ .Notes }}
+    </div>
+    {{ end }}
+
+    <div class="section-rule"></div>
+
+    <h2>Burn Details</h2>
+    <table class="report-table" cellspacing="0" cellpadding="0">
+      <colgroup>
+        <col class="w-30mm">
+        <col class="w-60mm">
+        <col>
+        <col class="w-30mm">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Transaction</th>
+          <th>Description</th>
+          <th>Amount ({{ .Currency }})</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ if .BurnEntries }}
+        {{ range .BurnEntries }}
+        <tr>
+          <td>{{ .Date }}</td>
+          <td>{{ .TransactionRef }}</td>
+          <td>{{ .Narrative }}</td>
+          <td class="right-align">{{ .Amount }}</td>
+        </tr>
+        {{ end }}
+        {{ else }}
+        <tr>
+          <td colspan="4">No burns were recorded for this period.</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+
+    {{ if .SignOff }}
+    <div class="section-rule"></div>
+    <h2>Sign-off</h2>
+    <p>{{ .SignOff }}</p>
+    {{ end }}
+  </div>
+</body>
+
+</html>
