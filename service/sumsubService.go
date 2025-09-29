@@ -139,7 +139,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 	return nil
 }
 
-func fetchUserInfo(kyc *model.Kyc) (*model.UserInfo, error) { //TODO change logic to make sense
+func fetchUserInfo(kyc *model.Kyc) (*model.UserInfo, error) {
 	client, err := GetClientInfos(kyc.ApplicantId, kyc.Uuid.String())
 	if err != nil {
 		return nil, err

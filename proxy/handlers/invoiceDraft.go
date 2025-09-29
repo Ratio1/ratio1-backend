@@ -83,7 +83,7 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 		return
 	}
 
-	if config.Config.Api.DevTesting { //TODO to be a return error?
+	if config.Config.Api.DevTesting {
 		service.BuildMocks()
 		i, _ := service.GetMockOperatorData()
 		userName, _ := i[0].UserProfile.GetNameAsString()
@@ -160,7 +160,7 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 		return
 	}
 
-	if config.Config.Api.DevTesting { //TODO to be a return error?
+	if config.Config.Api.DevTesting {
 		service.BuildMocks()
 		i, _ := service.GetMockCspData()
 		var parsedDraft []getInvoiceDraftsRequest
@@ -244,7 +244,7 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 		return
 	}
 
-	if config.Config.Api.DevTesting { //TODO to be a return error?
+	if config.Config.Api.DevTesting {
 		service.BuildMocks()
 		i, a := service.GetMockOperatorData()
 		var invoice model.InvoiceDraft
@@ -260,7 +260,7 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "draft id not found in storage")
 			return
 		}
-		byteFile, err := service.GenerateInvoiceDOC(invoice, a)
+		byteFile, err := service.FillInvoiceDraftTemplate(invoice, a)
 		if err != nil {
 			log.Error("error while generating invoice doc: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
@@ -292,7 +292,7 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 		return
 	}
 
-	byteFile, err := service.GenerateInvoiceDOC(*drafts, allocations)
+	byteFile, err := service.FillInvoiceDraftTemplate(*drafts, allocations)
 	if err != nil {
 		log.Error("error while generating invoice doc: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
@@ -318,7 +318,7 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 		return
 	}
 
-	if config.Config.Api.DevTesting { //TODO to be a return error?
+	if config.Config.Api.DevTesting {
 		service.BuildMocks()
 		i, a := service.GetMockCspData()
 
@@ -336,7 +336,7 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 			return
 		}
 
-		byteFile, err := service.GenerateInvoiceDOC(invoice, a)
+		byteFile, err := service.FillInvoiceDraftTemplate(invoice, a)
 		if err != nil {
 			log.Error("error while generating invoice doc: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
@@ -368,7 +368,7 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 		return
 	}
 
-	byteFile, err := service.GenerateInvoiceDOC(*drafts, allocations)
+	byteFile, err := service.FillInvoiceDraftTemplate(*drafts, allocations)
 	if err != nil {
 		log.Error("error while generating invoice doc: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())

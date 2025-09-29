@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ func MonthlyPoaiInvoiceReport() {
 	}
 
 	/* Generate invoices for each unique pair of csp and node owner*/
-	var invoices []model.InvoiceDraft
+	var drafts []model.InvoiceDraft
 	for k, allocations := range reports {
 		userAddress, cspOwner := splitKey(k)
 		invoice := model.InvoiceDraft{
@@ -46,9 +47,9 @@ func MonthlyPoaiInvoiceReport() {
 			UserAddress:       userAddress,
 			CspOwner:          cspOwner,
 			CreationTimestamp: time.Now(),
+			UserProfile:       allocations[0].UserProfile,
+			CspProfile:        allocations[0].CspProfile,
 		}
-		invoice.UserProfile = allocations[0].UserProfile
-		invoice.CspProfile = allocations[0].CspProfile
 
 		preference, err := storage.GetPreferenceByAddress(userAddress)
 		if err != nil {
@@ -63,25 +64,42 @@ func MonthlyPoaiInvoiceReport() {
 				} else {
 					invoice.VatApplied = preference.ExtraUeVat
 				}
+			} else {
+				invoice.VatApplied = preference.ExtraUeVat
 			}
 			invoice.InvoiceNumber = preference.NextNumber
 			invoice.InvoiceSeries = preference.InvoiceSeries
 			invoice.ExtraTaxes = preference.ExtraTaxes
 			invoice.ExtraText = preference.ExtraText
 			invoice.LocalCurrency = preference.LocalCurrency
+		} else {
+			preference = &model.Preference{
+				UserAddress:   userAddress,
+				NextNumber:    1,
+				InvoiceSeries: "NODE",
+				CountryVat:    0,
+				UeVat:         0,
+				ExtraUeVat:    0,
+				LocalCurrency: "USD",
+			}
+			invoice.VatApplied = preference.ExtraUeVat
+			invoice.InvoiceNumber = preference.NextNumber
+			invoice.InvoiceSeries = preference.InvoiceSeries
 		}
 
+		totalUsdcAmount := big.NewInt(0)
 		for _, alloc := range allocations {
-			invoice.TotalUsdcAmount += GetAmountAsFloat(alloc.GetUsdcAmountPayed(), model.UsdcDecimals)
+			totalUsdcAmount.Add(totalUsdcAmount, alloc.GetUsdcAmountPayed())
 			alloc.DraftId = &invoice.DraftId
-			err = storage.UpdateAllocation(&alloc)
+			err = storage.UpdateAllocation(&alloc) //TODO create more stable system with rollback for all invoices
 			if err != nil {
 				fmt.Println("error while updating allocation: " + err.Error())
 				return
 			}
 		}
+		invoice.TotalUsdcAmount += GetAmountAsFloat(totalUsdcAmount, model.UsdcDecimals)
 
-		if userAddress != cspOwner && preference != nil {
+		if userAddress != cspOwner {
 			preference.NextNumber += 1
 			err = storage.UpdatePreference(preference)
 			if err != nil {
@@ -93,24 +111,20 @@ func MonthlyPoaiInvoiceReport() {
 			invoice.InvoiceSeries = ""
 		}
 
-		invoices = append(invoices, invoice)
-	}
-
-	for i, inv := range invoices {
-		if v, ok := currencyMap[inv.LocalCurrency]; ok {
-			invoices[i].LocalCurrencyExchangeRatio = v
+		if v, ok := currencyMap[invoice.LocalCurrency]; ok {
+			invoice.LocalCurrencyExchangeRatio = v
 		}
-		//save draft to db
-		err = storage.CreateInvoiceDraft(&inv)
+		err = storage.CreateInvoiceDraft(&invoice)
 		if err != nil {
 			fmt.Println("error while saving invoice: " + err.Error())
 			continue
 		}
+		drafts = append(drafts, invoice)
 	}
 
 	allCSP := make(map[string]bool) //map[email]true to have unique emails
 	allNodeOwner := make(map[string]bool)
-	for _, invoice := range invoices {
+	for _, invoice := range drafts {
 		if invoice.UserAddress != invoice.CspOwner { // I should not receive emails if i worked on my nodes
 			allNodeOwner[invoice.UserProfile.Email] = true
 			allCSP[invoice.CspProfile.Email] = true
@@ -125,7 +139,6 @@ func MonthlyPoaiInvoiceReport() {
 	for k := range allCSP {
 		_ = SendCspDraftEmail(k) //! doesn't check error
 	}
-
 }
 
 func formKey(address1, address2 string) string {
