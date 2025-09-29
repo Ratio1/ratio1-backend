@@ -79,6 +79,7 @@ func MonthlyPoaiInvoiceReport() {
 				CountryVat:    0,
 				UeVat:         0,
 				ExtraUeVat:    0,
+				LocalCurrency: "USD",
 			}
 			invoice.VatApplied = preference.ExtraUeVat
 			invoice.InvoiceNumber = preference.NextNumber
