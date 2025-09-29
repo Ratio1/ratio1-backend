@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func MonthlyPoaiInvoiceReport() {
 			preference = &model.Preference{
 				UserAddress:   userAddress,
 				NextNumber:    1,
-				InvoiceSeries: "-NODE",
+				InvoiceSeries: "NODE",
 				CountryVat:    0,
 				UeVat:         0,
 				ExtraUeVat:    0,
@@ -86,8 +87,9 @@ func MonthlyPoaiInvoiceReport() {
 			invoice.InvoiceSeries = preference.InvoiceSeries
 		}
 
+		totalUsdcAmount := big.NewInt(0)
 		for _, alloc := range allocations {
-			invoice.TotalUsdcAmount += GetAmountAsFloat(alloc.GetUsdcAmountPayed(), model.UsdcDecimals)
+			totalUsdcAmount.Add(totalUsdcAmount, alloc.GetUsdcAmountPayed())
 			alloc.DraftId = &invoice.DraftId
 			err = storage.UpdateAllocation(&alloc) //TODO create more stable system with rollback for all invoices
 			if err != nil {
@@ -95,6 +97,7 @@ func MonthlyPoaiInvoiceReport() {
 				return
 			}
 		}
+		invoice.TotalUsdcAmount += GetAmountAsFloat(totalUsdcAmount, model.UsdcDecimals)
 
 		if userAddress != cspOwner {
 			preference.NextNumber += 1

@@ -81,7 +81,7 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 
 	// Economic summary
 	extras, _ := invoice.GetExtraTaxes()
-	var sumFixedLocalCurrency, sumExtraPerc float64
+	sumFixedLocalCurrency, sumExtraPerc := 0.0, 0.0
 	for _, e := range extras {
 		switch e.TaxType {
 		case model.Fixed:
@@ -91,13 +91,13 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 		}
 	}
 
-	sumFixed := sumFixedLocalCurrency / invoice.LocalCurrencyExchangeRatio
+	sumFixed := 0.0
+	if sumFixedLocalCurrency > 0 {
+		sumFixed = sumFixedLocalCurrency / invoice.LocalCurrencyExchangeRatio
+	}
 
 	den := 1.0 + (invoice.VatApplied / 100.0) + (sumExtraPerc / 100.0)
-	netBase := 0.0
-	if den > 0 {
-		netBase = (invoice.TotalUsdcAmount - sumFixed) / den
-	}
+	netBase := (invoice.TotalUsdcAmount - sumFixed) / den
 	if netBase < 0 {
 		netBase = 0
 	}
