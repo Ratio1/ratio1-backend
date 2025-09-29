@@ -108,7 +108,7 @@ func Test_generateInvoiceDraft(t *testing.T) {
 	}
 
 	// --- Generate .doc ---
-	file, err := GenerateInvoiceDOC(invoice, allocations)
+	file, err := FillInvoiceDraftTemplate(invoice, allocations)
 	require.Nil(t, err)
 
 	if err := os.WriteFile("invoice_draft.doc", file, 0644); err != nil {
