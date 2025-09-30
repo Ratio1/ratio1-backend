@@ -120,11 +120,36 @@ func DailyGetStats() {
 		allocEvents[i] = a
 	}
 
-	/* in each burn, add timestamp */
+	/* get all currency*/
+	currencyMap, err := GetFreeCurrencyValues() //map[USD,EUR...]ratio always based 1 usd -> value
+	if err != nil {
+		fmt.Println("could not fetch currency map: ", err.Error())
+		return
+	}
+
+	/* get preferences for eache csp owner*/
+	cspPreferences := make(map[string]*model.Preference) // map[cspOwnerAddress]Preference
+	for _, v := range cspAddresses {
+		preference, err := storage.GetPreferenceByAddress(v)
+		if err != nil || preference == nil {
+			preference = &model.Preference{
+				LocalCurrency: "USD",
+			}
+		}
+		cspPreferences[v] = preference
+	}
+
+	/* in each burn, add timestamp + exchange ratio and preferred currency*/
 	for i, b := range burnEvents {
 		if v := blocks[b.BlockNumber]; v != nil {
 			b.BurnTimestamp = *v
 			burnEvents[i] = b
+		}
+		if pref, ok := cspPreferences[b.CspOwner]; ok && pref != nil {
+			b.PreferredCurrency = pref.LocalCurrency
+			if ratio, ok := currencyMap[pref.LocalCurrency]; ok {
+				b.ExchangeRatio = ratio
+			}
 		}
 	}
 
