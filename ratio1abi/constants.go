@@ -49,6 +49,31 @@ const AllocationLogsAbi = `[{"anonymous": false,
     }
 ]`
 
+// Burn event related
+const BurnEventSignature = "TokensBurned(uint256,uint256)"
+
+const BurnLogsAbi = `
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdcAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "r1Amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokensBurned",
+      "type": "event"
+    }
+`
+
 // Oblio event ABI
 const OblioLicensesCreatedAbi = `[{"anonymous": false,
         "inputs": [
