@@ -50,12 +50,14 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 	totalRecord := []string{
 		"Total USDC swapped:",
 		fmt.Sprintf("%.2f", GetAmountAsFloat(totalUsdcSwapped, model.UsdcDecimals)),
-		"",
+	}
+	if err := writer.Write(totalRecord); err != nil {
+		return nil, err
+	}
+
+	totalRecord = []string{
 		"Total R1 burned:",
 		fmt.Sprintf("%.2f", GetAmountAsFloat(totalR1Burned, model.R1Decimals)),
-		"",
-		"Total Local Currency:",
-		fmt.Sprintf("%.2f", totalPreferredCurrency),
 	}
 	if err := writer.Write(totalRecord); err != nil {
 		return nil, err
