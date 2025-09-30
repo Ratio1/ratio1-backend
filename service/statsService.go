@@ -143,14 +143,14 @@ func DailyGetStats() {
 	for i, b := range burnEvents {
 		if v := blocks[b.BlockNumber]; v != nil {
 			b.BurnTimestamp = *v
-			burnEvents[i] = b
 		}
 		if pref, ok := cspPreferences[b.CspOwner]; ok && pref != nil {
-			b.PreferredCurrency = pref.LocalCurrency
+			b.LocalCurrency = pref.LocalCurrency
 			if ratio, ok := currencyMap[pref.LocalCurrency]; ok {
 				b.ExchangeRatio = ratio
 			}
 		}
+		burnEvents[i] = b
 	}
 
 	/* store all allocation events */
@@ -517,7 +517,7 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 }
 
 func decodeBurnLogs(vLog types.Log) (*model.BurnEvent, error) {
-	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.AllocationLogsAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.BurnLogsAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}

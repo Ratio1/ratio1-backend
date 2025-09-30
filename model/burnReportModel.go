@@ -15,7 +15,7 @@ type BurnEvent struct {
 	CspOwner          string  `gorm:"type:varchar(66);not null" json:"cspOwner"`
 	UsdcAmountSwapped string  `gorm:"type:numeric;default:null" json:"usdcAmountSwapped"`
 	R1AmountBurned    string  `gorm:"type:numeric;default:null" json:"r1AmountBurned"`
-	PreferredCurrency string  `gorm:"type:varchar(3);" json:"preferredCurrency"`
+	LocalCurrency     string  `gorm:"type:varchar(3);" json:"localCurrency"`
 	ExchangeRatio     float64 `gorm:"type:numeric" json:"exchangeRatio"`
 
 	CspProfile UserInfo `gorm:"foreignKey:CspOwner;references:BlockchainAddress" json:"cspProfile"`

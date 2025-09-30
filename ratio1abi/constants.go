@@ -53,7 +53,7 @@ const AllocationLogsAbi = `[{"anonymous": false,
 const BurnEventSignature = "TokensBurned(uint256,uint256)"
 
 const BurnLogsAbi = `
-    {
+    [{
       "anonymous": false,
       "inputs": [
         {
@@ -71,7 +71,7 @@ const BurnLogsAbi = `
       ],
       "name": "TokensBurned",
       "type": "event"
-    }
+    }]
 `
 
 // Oblio event ABI
