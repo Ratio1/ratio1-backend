@@ -7,7 +7,7 @@ import (
 
 type BurnEvent struct {
 	Id            uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	BurnTimeStamp time.Time `json:"burnTimeStamp"`
+	BurnTimestamp time.Time `json:"burnTimestamp"`
 	BlockNumber   int64     `gorm:"type:bigint;not null" json:"blockNumber"`
 	TxHash        string    `gorm:"type:varchar(66);not null" json:"txHash"`
 

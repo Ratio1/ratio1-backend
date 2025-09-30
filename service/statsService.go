@@ -123,7 +123,7 @@ func DailyGetStats() {
 	/* in each burn, add timestamp */
 	for i, b := range burnEvents {
 		if v := blocks[b.BlockNumber]; v != nil {
-			b.BurnTimeStamp = *v
+			b.BurnTimestamp = *v
 			burnEvents[i] = b
 		}
 	}
