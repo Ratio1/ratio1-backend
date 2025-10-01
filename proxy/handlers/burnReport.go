@@ -37,7 +37,7 @@ func NewBurnReportHandler(groupHandler *groupHandler) {
 	h := &burnReportHandler{}
 
 	endpoints := []EndpointHandler{
-		{Method: http.MethodGet, Path: getCspBurnReportEndpoint, HandlerFunc: h.getBurnRepoort},
+		{Method: http.MethodGet, Path: getCspBurnReportEndpoint, HandlerFunc: h.getBurnReport},
 		{Method: http.MethodGet, Path: downloadCspBurnReportEndpoint, HandlerFunc: h.downloadBurnReport},
 	}
 
@@ -60,7 +60,7 @@ func NewBurnReportHandler(groupHandler *groupHandler) {
 ..######...########....##...
 */
 
-func (h *burnReportHandler) getBurnRepoort(c *gin.Context) {
+func (h *burnReportHandler) getBurnReport(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
@@ -194,6 +194,7 @@ func (h *burnReportHandler) downloadBurnReport(c *gin.Context) {
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "invalid endTime format, expected DD-MM-YYYY")
 		return
 	}
+	endTime = endTime.Add(24*time.Hour - time.Nanosecond) // include all the endTime day
 
 	if config.Config.Api.DevTesting {
 		service.BuildMocks()

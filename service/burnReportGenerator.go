@@ -35,7 +35,7 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 			"R1",
 			fmt.Sprintf("%.2f", GetAmountAsFloat(event.GetUsdcAmountSwapped(), model.UsdcDecimals)*event.ExchangeRatio),
 			event.LocalCurrency,
-			event.BurnTimestamp.Format(time.RFC3339),
+			event.BurnTimestamp.Format(time.RFC3339) + "(UTC)",
 			event.TxHash,
 		}
 		if err := writer.Write(record); err != nil {
