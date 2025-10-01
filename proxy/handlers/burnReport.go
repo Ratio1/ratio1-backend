@@ -105,11 +105,11 @@ func (h *burnReportHandler) getBurnReport(c *gin.Context) {
 		b := service.GetMockBurnEvents()
 		burnReport := []burnReportStruct{}
 		eventRequested := b[startPosInt : startPosInt+pageDimInt]
-		for _, b := range eventRequested {
+		for _, be := range eventRequested {
 			newBurnreport := burnReportStruct{
-				CreationTimestamp: b.BurnTimestamp,
-				TotalUsdcAmount:   service.GetAmountAsFloat(b.GetUsdcAmountSwapped(), model.UsdcDecimals),
-				TotalR1Amount:     service.GetAmountAsFloat(b.GetR1AmountBurned(), model.R1Decimals),
+				CreationTimestamp: be.BurnTimestamp,
+				TotalUsdcAmount:   service.GetAmountAsFloat(be.GetUsdcAmountSwapped(), model.UsdcDecimals),
+				TotalR1Amount:     service.GetAmountAsFloat(be.GetR1AmountBurned(), model.R1Decimals),
 			}
 			burnReport = append(burnReport, newBurnreport)
 		}
