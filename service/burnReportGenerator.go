@@ -15,7 +15,7 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 	writer := csv.NewWriter(&csvData)
 
 	// Write CSV header
-	header := []string{"USDC swapped", "", "R1 burned", "", "Local Currrency", "", "Burn Timestamp", "Transaction Hash"}
+	header := []string{"USDC swapped", "", "R1 burned", "", "Local Currrency", "", "Burn Timestamp(UTC)", "Transaction Hash"}
 	if err := writer.Write(header); err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 			"R1",
 			fmt.Sprintf("%.2f", GetAmountAsFloat(event.GetUsdcAmountSwapped(), model.UsdcDecimals)*event.ExchangeRatio),
 			event.LocalCurrency,
-			event.BurnTimestamp.Format(time.RFC3339) + "(UTC)",
+			event.BurnTimestamp.Format(time.RFC3339),
 			event.TxHash,
 		}
 		if err := writer.Write(record); err != nil {
