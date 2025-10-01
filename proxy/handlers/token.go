@@ -32,15 +32,6 @@ type tokenSupplyResponse struct {
 	NodeAddress       string `json:"nodeAddress"`
 }
 
-/*
-epoch (in base a quando hai l'ultima statistica)
-circulating supply
-total supply
-epoch nd burn r1
-epoch poai rewards usdc
-epoch poai burn r1
-total burn
-*/
 type botStatsResponse struct {
 	Epoch                int64  `json:"epoch"`
 	CirculatingSupply    string `json:"circulatingSupply"`
