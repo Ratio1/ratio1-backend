@@ -208,11 +208,11 @@ func (h *burnReportHandler) downloadBurnReport(c *gin.Context) {
 
 		byteFile, err := service.GenerateBurnReportCSV(requestedBurnEvents)
 		if err != nil {
-			log.Error("error while generating invoice doc: " + err.Error())
+			log.Error("error while generating burn report: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 			return
 		}
-		c.Header("Content-Disposition", "attachment; filename=invoice_draft.doc")
+		c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
 		c.Data(http.StatusOK, "application/msword", byteFile)
 		return
 	}
@@ -231,11 +231,11 @@ func (h *burnReportHandler) downloadBurnReport(c *gin.Context) {
 
 	byteFile, err := service.GenerateBurnReportCSV(burnEvents)
 	if err != nil {
-		log.Error("error while generating invoice doc: " + err.Error())
+		log.Error("error while generating burn report: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
 
-	c.Header("Content-Disposition", "attachment; filename=invoice_draft.doc")
+	c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
 	c.Data(http.StatusOK, "application/msword", byteFile)
 }
