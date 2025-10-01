@@ -213,7 +213,7 @@ func (h *burnReportHandler) downloadBurnReport(c *gin.Context) {
 			return
 		}
 		c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
-		c.Data(http.StatusOK, "application/msword", byteFile)
+		c.Data(http.StatusOK, "text/csv", byteFile)
 		return
 	}
 
@@ -237,5 +237,5 @@ func (h *burnReportHandler) downloadBurnReport(c *gin.Context) {
 	}
 
 	c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
-	c.Data(http.StatusOK, "application/msword", byteFile)
+	c.Data(http.StatusOK, "text/csv", byteFile)
 }
