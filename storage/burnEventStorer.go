@@ -48,7 +48,7 @@ func GetBurnEventsForUserInTimeRange(start, end time.Time, userAddress string) (
 	}
 
 	var bEvent []model.BurnEvent
-	txRead := db.Preload("CspProfile").Where("burn_timestamp > ? AND burn_timestamp < ? AND csp_owner = ?", start, end, userAddress).Order("block_number DESC").Find(&bEvent)
+	txRead := db.Preload("CspProfile").Where("burn_timestamp >= ? AND burn_timestamp <= ? AND csp_owner = ?", start, end, userAddress).Order("block_number DESC").Find(&bEvent)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
