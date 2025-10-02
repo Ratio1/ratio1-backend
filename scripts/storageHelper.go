@@ -324,3 +324,22 @@ func createAllocation(alloc *model.Allocation) error {
 
 	return nil
 }
+
+func getAllAllocations() ([]model.Allocation, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var allocations []model.Allocation
+	txRead := db.Find(&allocations)
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+
+	if len(allocations) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return allocations, nil
+}
