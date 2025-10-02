@@ -28,7 +28,7 @@ const (
 	downloadCspDraftEndpoint = "/download-csp-draft"
 )
 
-type getInvoiceDraftsRequest struct {
+type getInvoiceDraftsResponse struct {
 	DraftId           uuid.UUID `json:"draftId"`
 	CreationTimestamp time.Time `json:"creationTimestamp"`
 	UserAddress       string    `json:"userAddress"`
@@ -87,13 +87,13 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 		service.BuildMocks()
 		i, _ := service.GetMockOperatorData()
 		userName, _ := i[0].UserProfile.GetNameAsString()
-		var parsedDraft []getInvoiceDraftsRequest
+		var parsedDraft []getInvoiceDraftsResponse
 		for _, d := range i {
 			if d.UserAddress == d.CspOwner {
 				continue
 			}
 			cspName, _ := d.CspProfile.GetNameAsString()
-			newParsedDraft := getInvoiceDraftsRequest{
+			newParsedDraft := getInvoiceDraftsResponse{
 				DraftId:           d.DraftId,
 				CreationTimestamp: d.CreationTimestamp,
 				UserAddress:       d.UserAddress,
@@ -124,7 +124,7 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 		return
 	}
 
-	parsedDraft := []getInvoiceDraftsRequest{}
+	parsedDraft := []getInvoiceDraftsResponse{}
 	if len(drafts) == 0 {
 		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
 		return
@@ -135,7 +135,7 @@ func (h *invoiceDraftHandler) getNodeOwnerDraftList(c *gin.Context) {
 			continue
 		}
 		cspName, _ := d.CspProfile.GetNameAsString()
-		newParsedDraft := getInvoiceDraftsRequest{
+		newParsedDraft := getInvoiceDraftsResponse{
 			DraftId:           d.DraftId,
 			CreationTimestamp: d.CreationTimestamp,
 			UserAddress:       d.UserAddress,
@@ -163,14 +163,14 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 	if config.Config.Api.DevTesting {
 		service.BuildMocks()
 		i, _ := service.GetMockCspData()
-		var parsedDraft []getInvoiceDraftsRequest
+		var parsedDraft []getInvoiceDraftsResponse
 		cspName, _ := i[0].CspProfile.GetNameAsString() //it's always the same
 		for _, d := range i {
 			if d.UserAddress == d.CspOwner {
 				continue
 			}
 			userName, _ := d.UserProfile.GetNameAsString()
-			newParsedDraft := getInvoiceDraftsRequest{
+			newParsedDraft := getInvoiceDraftsResponse{
 				DraftId:           d.DraftId,
 				CreationTimestamp: d.CreationTimestamp,
 				UserAddress:       d.UserAddress,
@@ -201,7 +201,7 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 		return
 	}
 
-	parsedDraft := []getInvoiceDraftsRequest{}
+	parsedDraft := []getInvoiceDraftsResponse{}
 	if len(drafts) == 0 {
 		model.JsonResponse(c, http.StatusOK, parsedDraft, nodeAddress, "")
 		return
@@ -212,7 +212,7 @@ func (h *invoiceDraftHandler) getCspDraftList(c *gin.Context) {
 			continue
 		}
 		userName, _ := d.UserProfile.GetNameAsString()
-		newParsedDraft := getInvoiceDraftsRequest{
+		newParsedDraft := getInvoiceDraftsResponse{
 			DraftId:           d.DraftId,
 			CreationTimestamp: d.CreationTimestamp,
 			UserAddress:       d.UserAddress,

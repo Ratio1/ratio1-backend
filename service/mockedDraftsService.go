@@ -19,6 +19,7 @@ var (
 	mockedInvoiceDraftsForNodeOwner []model.InvoiceDraft
 	mockedCSPAllocations            []model.Allocation
 	mockedOperatorAllocations       []model.Allocation
+	mockedBurnEvents                []model.BurnEvent
 )
 
 func BuildMocks() {
@@ -230,6 +231,23 @@ func BuildMocks() {
 		}
 		mockedOperatorAllocations = append(mockedOperatorAllocations, alloc)
 	}
+
+	// Burn reports mocked data (1 users, 200 events different months)
+	for i := 0; i < 200; i++ {
+		usdc := 30.0 + float64(i%10)*7.5
+		r1 := usdc * 0.84
+		be := model.BurnEvent{
+			Id:                uint(200 - i),
+			BurnTimestamp:     now.Add(-(time.Duration(i) * 24 * time.Hour)), //create in reverse order
+			BlockNumber:       int64(30_000 - i),
+			CspOwner:          cspOwnerAddr,
+			CspProfile:        allUserInfos[cspOwnerAddr],
+			UsdcAmountSwapped: fmt.Sprintf("%.2f", usdc),
+			R1AmountBurned:    fmt.Sprintf("%.2f", r1),
+			TxHash:            fmt.Sprintf("0xBURNtx%064d", i+1),
+		}
+		mockedBurnEvents = append(mockedBurnEvents, be)
+	}
 }
 
 func GetMockCspData() ([]model.InvoiceDraft, []model.Allocation) {
@@ -242,6 +260,12 @@ func GetMockOperatorData() ([]model.InvoiceDraft, []model.Allocation) {
 	mutexForMock.Lock()
 	defer mutexForMock.Unlock()
 	return mockedInvoiceDraftsForNodeOwner, mockedOperatorAllocations
+}
+
+func GetMockBurnEvents() []model.BurnEvent {
+	mutexForMock.Lock()
+	defer mutexForMock.Unlock()
+	return mockedBurnEvents
 }
 
 // ------------------------ Helpers ------------------------
