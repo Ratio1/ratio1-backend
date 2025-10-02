@@ -3,6 +3,7 @@ package handlers
 import (
 	"math/big"
 	"net/http"
+	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -12,9 +13,10 @@ import (
 )
 
 const (
-	baseTokenEndpoint = "/token"
-	getSupplyEndpoint = "/supply"
-	getStatsEncpoint  = "/stats"
+	baseTokenEndpoint   = "/token"
+	getSupplyEndpoint   = "/supply"
+	getStatsEndpoint    = "/stats"
+	getBotStatsEndpoint = "/bot-stats"
 )
 
 var oneToken = big.NewInt(1).Exp(big.NewInt(10), big.NewInt(18), nil)
@@ -30,6 +32,17 @@ type tokenSupplyResponse struct {
 	NodeAddress       string `json:"nodeAddress"`
 }
 
+type botStatsResponse struct {
+	Epoch                int64  `json:"epoch"`
+	CirculatingSupply    string `json:"circulatingSupply"`
+	TotalSupply          string `json:"totalSupply"`
+	EpochNdBurnR1        string `json:"epochNdBurnR1"`
+	EpochPoaiRewardsUsdc string `json:"epochPoaiRewardsUsdc"`
+	EpochPoaiBurnR1      string `json:"epochPoaiBurnR1"`
+	TotalBurn            string `json:"totalBurn"`
+	NodeAddress          string `json:"nodeAddress"`
+}
+
 type tokenHandler struct{}
 
 func NewTokenHandler(groupHandler *groupHandler) {
@@ -37,7 +50,8 @@ func NewTokenHandler(groupHandler *groupHandler) {
 
 	publicEndpoints := []EndpointHandler{
 		{Method: http.MethodGet, Path: getSupplyEndpoint, HandlerFunc: h.getTokenSupply},
-		{Method: http.MethodGet, Path: getStatsEncpoint, HandlerFunc: h.getStats},
+		{Method: http.MethodGet, Path: getStatsEndpoint, HandlerFunc: h.getStats},
+		{Method: http.MethodGet, Path: getBotStatsEndpoint, HandlerFunc: h.getStatsForBot},
 	}
 
 	publicEndpointsGroupHandler := EndpointGroupHandler{
@@ -190,4 +204,47 @@ func (h *tokenHandler) getStats(c *gin.Context) {
 	}
 
 	model.JsonResponse(c, http.StatusOK, stats, nodeAddress, "")
+}
+
+func (h *tokenHandler) getStatsForBot(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	if config.Config.Api.DevTesting {
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "node is not on mainnet")
+		return
+	}
+
+	stats, err := storage.GetLatestStats()
+	if err != nil {
+		log.Error("error while retrieving stats from db: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving stats from db: "+err.Error())
+		return
+	} else if stats == nil {
+		log.Error("no stats found in db")
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "no stats found in db")
+		return
+	}
+
+	response := botStatsResponse{
+		Epoch:                int64(getEpoch(stats.CreationTimestamp)),
+		CirculatingSupply:    service.GetAmountAsFloatString(big.NewInt(0).Sub(stats.TotalSupply, stats.TeamWalletsSupply), model.R1Decimals),
+		TotalSupply:          service.GetAmountAsFloatString(stats.TotalSupply, model.R1Decimals),
+		EpochNdBurnR1:        service.GetAmountAsFloatString(stats.DailyNdContractTokenBurn, model.R1Decimals),
+		EpochPoaiRewardsUsdc: service.GetAmountAsFloatString(stats.DailyPOAIRewards, model.UsdcDecimals),
+		EpochPoaiBurnR1:      service.GetAmountAsFloatString(big.NewInt(0).Sub(stats.DailyTokenBurn, stats.DailyNdContractTokenBurn), model.R1Decimals),
+		TotalBurn:            service.GetAmountAsFloatString(stats.TotalTokenBurn, model.R1Decimals),
+		NodeAddress:          nodeAddress,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func getEpoch(date time.Time) int {
+	mainnetStart := time.Unix(1748016000, 0)
+	return int(date.Sub(mainnetStart) / (24 * time.Hour))
 }
