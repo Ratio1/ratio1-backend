@@ -41,4 +41,4 @@ jobs:
                   build-args: |
                       VERSION=${{ steps.vars.outputs.sha_short }}
                   tags: |
-                      ratio1/ratio1_backend:develop
+                      ratio1/dapp_api:develop

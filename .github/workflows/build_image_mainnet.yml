@@ -46,7 +46,7 @@ jobs:
                   build-args: |
                       VERSION=${{ steps.version.outputs.version }}
                   tags: |
-                      ratio1/ratio1_backend:main
+                      ratio1/dapp_api:main
 
             - name: Create GitHub Release
               uses: softprops/action-gh-release@v2
