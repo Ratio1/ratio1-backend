@@ -159,7 +159,7 @@ func DailyGetStats() {
 
 	time.Sleep(1 * time.Second) // to avoid "429 Too Many Requests" error from infura
 
-	dailyUsdcLocked, err := getDailyUsdcLocked(cspAddresses)
+	dailyUsdcLocked, err := getDailyUsdcLocked()
 	if err != nil {
 		fmt.Println("error getting daily USDC locked: " + err.Error())
 		return
@@ -210,10 +210,9 @@ func getChainLastBlockNumber() (int64, error) {
 	return header.Number.Int64(), nil
 }
 
-func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
-	tokenAddress := common.HexToAddress(config.Config.USDCContractAddress)
-
-	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.Erc20ABI))
+func getDailyUsdcLocked() (*big.Int, error) {
+	managerAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerTotalBalanceAbi))
 	if err != nil {
 		return big.NewInt(0), errors.New("error while parsing abi: " + err.Error())
 	}
@@ -224,36 +223,29 @@ func getDailyUsdcLocked(cspAddresses map[string]string) (*big.Int, error) {
 	}
 	defer client.Close()
 
-	var totalCspContractBalance = big.NewInt(0)
-
-	for addrStr := range cspAddresses {
-		teamAddress := common.HexToAddress(addrStr)
-
-		// Pack balanceOf call
-		balanceData, err := parsedABI.Pack("balanceOf", teamAddress)
-		if err != nil {
-			return big.NewInt(0), errors.New("error packing balanceOf: " + err.Error())
-		}
-
-		msg := ethereum.CallMsg{
-			To:   &tokenAddress,
-			Data: balanceData,
-		}
-
-		result, err := client.CallContract(context.Background(), msg, nil)
-		if err != nil {
-			return big.NewInt(0), errors.New("error calling balanceOf for " + addrStr)
-		}
-
-		var balance *big.Int
-		err = parsedABI.UnpackIntoInterface(&balance, "balanceOf", result)
-		if err != nil {
-			return big.NewInt(0), errors.New("error unpacking balanceOf for " + addrStr + ": " + err.Error())
-		}
-
-		totalCspContractBalance = totalCspContractBalance.Add(totalCspContractBalance, balance)
+	// Pack getTotalEscrowsBalance call
+	balanceData, err := parsedABI.Pack("getTotalEscrowsBalance")
+	if err != nil {
+		return big.NewInt(0), errors.New("error packing getTotalEscrowsBalance: " + err.Error())
 	}
-	return totalCspContractBalance, nil
+
+	msg := ethereum.CallMsg{
+		To:   &managerAddress,
+		Data: balanceData,
+	}
+
+	result, err := client.CallContract(context.Background(), msg, nil)
+	if err != nil {
+		return big.NewInt(0), errors.New("error calling getTotalEscrowsBalance: " + err.Error())
+	}
+
+	var totalBalance *big.Int
+	err = parsedABI.UnpackIntoInterface(&totalBalance, "getTotalEscrowsBalance", result)
+	if err != nil {
+		return big.NewInt(0), errors.New("error unpacking getTotalEscrowsBalance: " + err.Error())
+	}
+
+	return totalBalance, nil
 }
 
 func getDailyActiveJobs() (int, error) {

@@ -88,3 +88,19 @@ const OblioLicensesCreatedAbi = `[{"anonymous": false,
   }]`
 
 const OblioEventSignature = "LicensesCreated(address,bytes32,uint256,uint256,uint256)"
+
+// CSP contract ABI
+const PoaiManagerTotalBalanceAbi = `[{
+      "inputs": [],
+      "name": "getTotalEscrowsBalance",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "totalBalance",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+]`

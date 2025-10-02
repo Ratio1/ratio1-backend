@@ -10,6 +10,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	allAllocations, err := getAllAllocations()
 	if err != nil {
 		panic(err)
@@ -38,6 +39,11 @@ func main() {
 		}
 	}
 
+	// recalculate total daily usdc locked
+	for i, stat := range allStats {
+		allStats[i].DailyUsdcLocked = big.NewInt(0).Sub(stat.DailyUsdcLocked, stat.TotalPOAIRewards)
+	}
+
 	//save on storage
 	for _, stat := range allStats {
 		err = updateStats(&stat)
@@ -45,5 +51,4 @@ func main() {
 			panic(err)
 		}
 	}
-
 }
