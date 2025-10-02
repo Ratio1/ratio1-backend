@@ -54,7 +54,7 @@ func DailyGetStats() {
 		return
 	}
 
-	/*Fetch all allocation events and create allocations on db*/
+	/*Fetch all allocation events*/
 	allocEvents, err := fetchAllocationEvents(cspAddresses, from, to)
 	if err != nil {
 		fmt.Println("Error fetching events: " + err.Error())
@@ -68,7 +68,16 @@ func DailyGetStats() {
 
 	time.Sleep(1 * time.Second)
 
-	/* get all blocks timestamp */
+	/*Fetch all burned events */
+	burnEvents, err := fetchBurnEvents(cspAddresses, from, to)
+	if err != nil {
+		fmt.Println("Error fetching events: " + err.Error())
+		return
+	} //if allocation has happened, burn has happened too, so no need to check len(burnEvents)==0
+
+	time.Sleep(1 * time.Second)
+
+	/* get all blocks timestamp(burned event happen same time as allocation)*/
 	blocks := make(map[int64]*time.Time)
 	for _, a := range allocEvents {
 		blocks[a.BlockNumber] = nil
@@ -83,6 +92,7 @@ func DailyGetStats() {
 		blocks[k] = &v
 		time.Sleep(1 * time.Second)
 	}
+
 	/* get all jobs details */
 	allJobsId := make(map[string]*Response)
 	for _, a := range allocEvents {
@@ -106,21 +116,61 @@ func DailyGetStats() {
 			a.JobName = v.Result.JobName
 			a.JobType = model.JobType(v.Result.JobType)
 			a.ProjectName = v.Result.ProjectName
-			allocEvents[i] = a
 		}
+		allocEvents[i] = a
 	}
 
-	time.Sleep(1 * time.Second) // to avoid "429 Too Many Requests" error from infura
+	/* get all currency*/
+	currencyMap, err := GetFreeCurrencyValues() //map[USD,EUR...]ratio always based 1 usd -> value
+	if err != nil {
+		fmt.Println("could not fetch currency map: ", err.Error())
+		return
+	}
 
+	/* get preferences for eache csp owner*/
+	cspPreferences := make(map[string]*model.Preference) // map[cspOwnerAddress]Preference
+	for _, v := range cspAddresses {
+		preference, err := storage.GetPreferenceByAddress(v)
+		if err != nil || preference == nil {
+			preference = &model.Preference{
+				LocalCurrency: "USD",
+			}
+		}
+		cspPreferences[v] = preference
+	}
+
+	/* in each burn, add timestamp + exchange ratio and preferred currency*/
+	for i, b := range burnEvents {
+		if v := blocks[b.BlockNumber]; v != nil {
+			b.BurnTimestamp = *v
+		}
+		if pref, ok := cspPreferences[b.CspOwner]; ok && pref != nil {
+			b.LocalCurrency = pref.LocalCurrency
+			if ratio, ok := currencyMap[pref.LocalCurrency]; ok {
+				b.ExchangeRatio = ratio
+			}
+		}
+		burnEvents[i] = b
+	}
+
+	/* store all allocation events */
 	err = generateAllocations(allocEvents)
 	if err != nil {
 		fmt.Println("Error generating allocations: " + err.Error())
 		return
 	}
 
+	/* store all burn events */
+	err = generateBurns(burnEvents)
+	if err != nil {
+		fmt.Println("Error generating burns: " + err.Error())
+		return
+	}
+
+	/* calculate daily stats */
 	dailyPoaiReward := big.NewInt(0)
 	for _, e := range allocEvents {
-		dailyPoaiReward = dailyPoaiReward.Add(dailyPoaiReward, e.GetUsdcAmountPayed())
+		dailyPoaiReward.Add(dailyPoaiReward, e.GetUsdcAmountPayed()) //no need to assign to dailyPoaiReward
 	}
 
 	dailyMinted, err := getPeriodMintedAmount(from, to)
@@ -414,6 +464,76 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 	return &result, nil
 }
 
+func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnEvent, error) {
+	var addresses []common.Address
+	for k := range cspOwners {
+		addresses = append(addresses, common.HexToAddress(k))
+	}
+
+	fromBlock := big.NewInt(from)
+	toBlock := big.NewInt(to)
+
+	eventSignatureAsBytes := []byte(ratio1abi.BurnEventSignature)
+	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
+
+	query := ethereum.FilterQuery{
+		FromBlock: fromBlock,
+		ToBlock:   toBlock,
+		Addresses: addresses,
+		Topics:    [][]common.Hash{{eventHash}},
+	}
+
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return nil, errors.New("error while dialing client: " + err.Error())
+	}
+	defer client.Close()
+
+	logs, err := client.FilterLogs(context.Background(), query)
+	if err != nil {
+		return nil, errors.New("error while filtering logs: " + err.Error())
+	}
+
+	var events []model.BurnEvent
+	for _, vLog := range logs {
+		event, err := decodeBurnLogs(vLog)
+		if err != nil {
+			fmt.Println("error while decoding logs: " + err.Error())
+			continue
+		}
+		event.CspOwner = cspOwners[event.CspAddress]
+		events = append(events, *event)
+	}
+
+	return events, nil
+}
+
+func decodeBurnLogs(vLog types.Log) (*model.BurnEvent, error) {
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.BurnLogsAbi))
+	if err != nil {
+		return nil, errors.New("error while parsing abi: " + err.Error())
+	}
+
+	event := struct {
+		UsdcAmount *big.Int
+		R1Amount   *big.Int
+	}{}
+
+	err = parsedABI.UnpackIntoInterface(&event, "TokensBurned", vLog.Data)
+	if err != nil {
+		return nil, errors.New("error while unpacking interface: " + err.Error())
+	}
+
+	result := model.BurnEvent{
+		CspAddress:  vLog.Address.String(),
+		TxHash:      vLog.TxHash.Hex(),
+		BlockNumber: int64(vLog.BlockNumber),
+	}
+	result.SetUsdcAmountSwapped(event.UsdcAmount)
+	result.SetR1AmountBurned(event.R1Amount)
+	return &result, nil
+}
+
 func getBlockTimestamp(blockNumber int64) (time.Time, error) {
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -434,6 +554,15 @@ func generateAllocations(allocEevents []model.Allocation) error {
 		err := storage.CreateAllocation(&event)
 		if err != nil {
 			return errors.New("error while saving allocation: " + err.Error())
+		}
+	}
+	return nil
+}
+func generateBurns(burnEvents []model.BurnEvent) error {
+	for _, event := range burnEvents {
+		err := storage.CreateBurnEvent(&event)
+		if err != nil {
+			return errors.New("error while saving Burn events: " + err.Error())
 		}
 	}
 	return nil
