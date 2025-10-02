@@ -1,4 +1,4 @@
-name: Build and Push Container Image
+name: Build and Push Mainnet Container Image
 
 on:
     push:
@@ -38,7 +38,7 @@ jobs:
               uses: docker/build-push-action@v5
               with:
                   context: .
-                  file: ./Dockerfile_allnet
+                  file: ./Dockerfile
                   push: true
                   platforms: linux/amd64
                   cache-from: type=gha
@@ -46,7 +46,7 @@ jobs:
                   build-args: |
                       VERSION=${{ steps.version.outputs.version }}
                   tags: |
-                      vitaliitoderian/ratio1_backend
+                      ratio1/ratio1_backend:main
 
             - name: Create GitHub Release
               uses: softprops/action-gh-release@v2
