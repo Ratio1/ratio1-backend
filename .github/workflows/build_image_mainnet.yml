@@ -35,6 +35,7 @@ jobs:
                   version_format: "${major}.${minor}.${patch}"
 
             - name: Build & Push Image
+              id: build_image
               uses: docker/build-push-action@v5
               with:
                   context: .
@@ -53,6 +54,11 @@ jobs:
               with:
                   tag_name: ${{ steps.version.outputs.version_tag }}
                   name: v${{ steps.version.outputs.version }}
+                  body: |
+                      Docker image details:
+                      - tag: ratio1/dapp_api:main
+                      - digest: ${{ steps.build_image.outputs.digest }}
+                      - image id: ${{ steps.build_image.outputs.imageid }}
                   draft: false
                   prerelease: false
               env:
