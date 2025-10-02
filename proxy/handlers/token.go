@@ -236,12 +236,12 @@ func (h *tokenHandler) getStatsForBot(c *gin.Context) {
 		TotalSupply:          service.GetAmountAsFloatString(stats.TotalSupply, model.R1Decimals),
 		EpochNdBurnR1:        service.GetAmountAsFloatString(stats.DailyNdContractTokenBurn, model.R1Decimals),
 		EpochPoaiRewardsUsdc: service.GetAmountAsFloatString(stats.DailyPOAIRewards, model.UsdcDecimals),
-		EpochPoaiBurnR1:      service.GetAmountAsFloatString(big.NewInt(0).Sub(stats.DailyTokenBurn, stats.TotalNdContractTokenBurn), model.R1Decimals),
+		EpochPoaiBurnR1:      service.GetAmountAsFloatString(big.NewInt(0).Sub(stats.DailyTokenBurn, stats.DailyNdContractTokenBurn), model.R1Decimals),
 		TotalBurn:            service.GetAmountAsFloatString(stats.TotalTokenBurn, model.R1Decimals),
 		NodeAddress:          nodeAddress,
 	}
 
-	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
+	c.JSON(http.StatusOK, response)
 }
 
 func getEpoch(date time.Time) int {
