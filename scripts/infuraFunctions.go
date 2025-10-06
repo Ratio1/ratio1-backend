@@ -270,7 +270,7 @@ func getAllCSPAddress(client *ethclient.Client) (map[string]string, error) { // 
 
 	result, err := client.CallContract(context.Background(), msg, nil)
 	if err != nil {
-		return nil, errors.New("error while calling contract")
+		return nil, errors.New("error while calling contract: " + err.Error())
 	}
 
 	addresses := []struct {

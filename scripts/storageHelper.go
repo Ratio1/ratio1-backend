@@ -360,3 +360,22 @@ func getPreferenceByAddress(userAddress string) (*model.Preference, error) {
 
 	return &pref, nil
 }
+
+func createBurnEvent(burnEvent *model.BurnEvent) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+
+	txCreate := db.Create(&burnEvent)
+	if txCreate.Error != nil {
+		txCreate.Rollback()
+		return txCreate.Error
+	}
+	if txCreate.RowsAffected == 0 {
+		txCreate.Rollback()
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
