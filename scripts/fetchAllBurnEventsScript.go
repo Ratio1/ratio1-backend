@@ -8,8 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-/*
-func main() {
+/*func main() {
 	DBConnect()
 	events := GetBurnEvents()
 	if len(events) == 0 {
@@ -22,6 +21,13 @@ func main() {
 		return
 	}
 	os.WriteFile("burnEvents.json", fileByte, 0644)
+
+	for _, e := range events {
+		err := createBurnEvent(&e)
+		if err != nil {
+			fmt.Println("error while inserting burn event:", err, "for event:", e)
+		}
+	}
 }*/
 
 func GetBurnEvents() []model.BurnEvent {
