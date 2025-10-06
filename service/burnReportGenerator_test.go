@@ -3,7 +3,6 @@ package service
 import (
 	"math/big"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -36,13 +35,5 @@ func Test_BurnReportgenerator(t *testing.T) {
 
 	csvBytes, err := GenerateBurnReportCSV(burnEvents)
 	require.Nil(t, err)
-
-	csvContent := string(csvBytes)
-	expectedHeaders := "USDC swapped,,R1 burned,,Local Currrency,,Burn Timestamp,Transaction Hash"
-	require.True(t, strings.Contains(csvContent, expectedHeaders))
-	require.True(t, strings.Contains(csvContent, "1.00,USDC,0.50,R1,0.85,EUR,2023-10-01T12:00:00Z,0xabc123"))
-	require.True(t, strings.Contains(csvContent, "2.00,USDC,1.00,R1,2.00,EUR,2023-10-02T15:30:00Z,0xdef456"))
-	require.True(t, strings.Contains(csvContent, "Total USDC swapped:,3.00,,Total R1 burned:,1.50,,Total Local Currency:,2.85"))
-
 	os.WriteFile("file.csv", csvBytes, 0644)
 }

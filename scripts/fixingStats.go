@@ -1,8 +1,6 @@
 package main
 
-import (
-	"math/big"
-)
+import "math/big"
 
 func main() {
 	DBConnect()
