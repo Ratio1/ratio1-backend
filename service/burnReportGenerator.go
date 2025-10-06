@@ -69,7 +69,7 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 		return nil, err
 	}
 
-	disclaimerLines := strings.Split(DislaimerText, "\n")
+	disclaimerLines := strings.Split(DisclaimerText, "\n")
 	for _, line := range disclaimerLines {
 		if err := writer.Write([]string{line}); err != nil {
 			return nil, err
@@ -84,7 +84,7 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 	return []byte(csvData.String()), nil
 }
 
-const DislaimerText = `Protocol Burn Fee.
+const DisclaimerText = `Protocol Burn Fee.
 The 'burn' recorded in this report represents a protocol-level fee required to execute computation on Ratio1 Edge Nodes.
 The burned tokens are irrevocably destroyed on-chain and permanently removed from circulation.
 This amount is not a payment to Ratio1, its affiliates, or any Node Provider, and is economically analogous to blockchain network (gas) fees.
