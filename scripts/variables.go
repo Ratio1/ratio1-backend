@@ -10,9 +10,11 @@ import (
 )
 
 var (
-	once     sync.Once
-	database *gorm.DB
-
+	/*General*/
+	SleepTime = 1 * time.Second
+	/*Database connection*/
+	once      sync.Once
+	database  *gorm.DB
 	NoDBError = errors.New("no DB Connection")
 
 	Database = DatabaseConfig{
@@ -25,25 +27,30 @@ var (
 		MaxIdleConns: 100,
 		SslMode:      "disable",
 	}
+
+	/*Sumsub connection*/
 	SumsubAppToken  = ""
 	SumsubSecretKey = ""
 
+	/*Free currency api*/
+	FreeCurrencyApiKey = ""
+
+	/*Ratio1 oraclses auth*/
 	sk             *ecdsa.PrivateKey
 	PrivateKeyPath = ""
 
-	SleepTime = 1 * time.Second
-
+	/*Ethereum connection*/
 	InfuraSecret = ""
 	InfuraApiUrl = "https://base-mainnet.infura.io/v3/"
 
+	/*Smart contracts*/
 	OldAllocationEventSignature = "RewardsAllocated(uint256,address[],uint256)"
-
-	AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
-	PoaiManagerAddress       = "0xa8d7FFCE91a888872A9f5431B4Dd6c0c135055c1"
-	UsdcContractAddress      = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-	NdContractAddress        = "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423"
-	R1ContractAddress        = "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF"
-	TeamAddresses            = []string{
+	AllocationEventSignature    = "RewardsAllocatedV2(uint256,address,address,uint256)"
+	PoaiManagerAddress          = "0xa8d7FFCE91a888872A9f5431B4Dd6c0c135055c1"
+	UsdcContractAddress         = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+	NdContractAddress           = "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423"
+	R1ContractAddress           = "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF"
+	TeamAddresses               = []string{
 		"0xABdaAC00E36007fB71b2059fc0E784690a991923",
 		"0x9a7055e3FBA00F5D5231994B97f1c0216eE1C091",
 		"0x745C01f91c59000E39585441a3F1900AeF72c5C1",
@@ -109,4 +116,28 @@ var (
       "type": "event"
     }
 ]`
+
+	BurnEventSignature = "TokensBurned(uint256,uint256)"
+
+	BurnLogsAbi = `
+    [{
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "usdcAmount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "r1Amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokensBurned",
+      "type": "event"
+    }]
+`
 )

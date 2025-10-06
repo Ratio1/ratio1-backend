@@ -270,7 +270,7 @@ func getAllCSPAddress(client *ethclient.Client) (map[string]string, error) { // 
 
 	result, err := client.CallContract(context.Background(), msg, nil)
 	if err != nil {
-		return nil, errors.New("error while calling contract")
+		return nil, errors.New("error while calling contract: " + err.Error())
 	}
 
 	addresses := []struct {
@@ -538,6 +538,70 @@ func getPeriodNdContractBurnedAmount(from, to int64, client *ethclient.Client) (
 	}
 
 	return burnedTotal, nil
+}
+
+func fetchBurnEvents(cspOwners map[string]string, from, to int64, client *ethclient.Client) ([]model.BurnEvent, error) {
+	var addresses []common.Address
+	for k := range cspOwners {
+		addresses = append(addresses, common.HexToAddress(k))
+	}
+
+	fromBlock := big.NewInt(from)
+	toBlock := big.NewInt(to)
+
+	eventSignatureAsBytes := []byte(BurnEventSignature)
+	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
+
+	query := ethereum.FilterQuery{
+		FromBlock: fromBlock,
+		ToBlock:   toBlock,
+		Addresses: addresses,
+		Topics:    [][]common.Hash{{eventHash}},
+	}
+
+	logs, err := client.FilterLogs(context.Background(), query)
+	if err != nil {
+		return nil, errors.New("error while filtering logs: " + err.Error())
+	}
+
+	var events []model.BurnEvent
+	for _, vLog := range logs {
+		event, err := decodeBurnLogs(vLog)
+		if err != nil {
+			fmt.Println("error while decoding logs: " + err.Error())
+			continue
+		}
+		event.CspOwner = cspOwners[event.CspAddress]
+		events = append(events, *event)
+	}
+
+	return events, nil
+}
+
+func decodeBurnLogs(vLog types.Log) (*model.BurnEvent, error) {
+	parsedABI, err := abi.JSON(strings.NewReader(BurnLogsAbi))
+	if err != nil {
+		return nil, errors.New("error while parsing abi: " + err.Error())
+	}
+
+	event := struct {
+		UsdcAmount *big.Int
+		R1Amount   *big.Int
+	}{}
+
+	err = parsedABI.UnpackIntoInterface(&event, "TokensBurned", vLog.Data)
+	if err != nil {
+		return nil, errors.New("error while unpacking interface: " + err.Error())
+	}
+
+	result := model.BurnEvent{
+		CspAddress:  vLog.Address.String(),
+		TxHash:      vLog.TxHash.Hex(),
+		BlockNumber: int64(vLog.BlockNumber),
+	}
+	result.SetUsdcAmountSwapped(event.UsdcAmount)
+	result.SetR1AmountBurned(event.R1Amount)
+	return &result, nil
 }
 
 func getBlockTimestamp(blockNumber int64, client *ethclient.Client) (time.Time, error) {
