@@ -5,13 +5,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateBrand(seller *model.Branding) error {
+func SaveBrand(seller *model.Branding) error {
 	db, err := GetDB()
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&seller)
+	txCreate := db.Save(&seller)
 	if txCreate.Error != nil {
 		txCreate.Rollback()
 		return txCreate.Error

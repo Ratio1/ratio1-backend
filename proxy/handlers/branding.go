@@ -15,12 +15,11 @@ import (
 
 const (
 	baseBrandingEndpoint = "/branding"
-	newBrandingEndpoint  = "/new"
-	editBrandEndpoint    = "/edit" //TODO decide on how-to remove links
+	editBrandEndpoint    = "/edit"
 	getBrandsEndpoints   = "/get-brands"
 )
 
-type newBrandingRequest struct {
+type editBrandRequest struct {
 	Name        string            `json:"name"`
 	Description string            `json:"description"`
 	Links       map[string]string `json:"links"`
@@ -59,7 +58,7 @@ func NewBrandingHandler(groupHandler *groupHandler) {
 
 	//auth endpooints
 	authEndpoints := []EndpointHandler{
-		{Method: http.MethodPost, Path: newBrandingEndpoint, HandlerFunc: h.newBranding},
+		{Method: http.MethodPost, Path: editBrandEndpoint, HandlerFunc: h.editBrand},
 	}
 
 	auth := middleware.Authorization(config.Config.Jwt.Secret)
@@ -71,7 +70,7 @@ func NewBrandingHandler(groupHandler *groupHandler) {
 	groupHandler.AddEndpointGroupHandler(authEndpointGroupHandler)
 }
 
-func (h *brandingHandler) newBranding(c *gin.Context) {
+func (h *brandingHandler) editBrand(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
@@ -86,7 +85,7 @@ func (h *brandingHandler) newBranding(c *gin.Context) {
 		return
 	}
 
-	var req newBrandingRequest
+	var req editBrandRequest
 	err = c.Bind(&req)
 	if err != nil {
 		err = errors.New("error while binding request: " + err.Error())
@@ -117,9 +116,9 @@ func (h *brandingHandler) newBranding(c *gin.Context) {
 		return
 	}
 
-	err = storage.CreateBrand(&brand)
+	err = storage.SaveBrand(&brand)
 	if err != nil {
-		err = errors.New("error while creating branding: " + err.Error())
+		err = errors.New("error while saving brand: " + err.Error())
 		log.Error(err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
