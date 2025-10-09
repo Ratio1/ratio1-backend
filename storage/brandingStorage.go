@@ -24,21 +24,21 @@ func CreateBrand(seller *model.Branding) error {
 	return nil
 }
 
-func GetAllBrands() ([]model.Branding, error) {
+func GetBrandByAddress(address string) (*model.Branding, error) {
 	db, err := GetDB()
 	if err != nil {
 		return nil, err
 	}
 
-	var b []model.Branding
-	txRead := db.Find(&b)
+	var b model.Branding
+	txRead := db.First(&b, "user_address = ?", address)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
 	if txRead.RowsAffected == 0 {
 		return nil, nil
 	}
-	return b, nil
+	return &b, nil
 }
 
 //TODO add getBrands with pagination

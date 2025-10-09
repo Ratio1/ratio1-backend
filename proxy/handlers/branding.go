@@ -17,7 +17,7 @@ const (
 	baseBrandingEndpoint = "/branding"
 	newBrandingEndpoint  = "/new"
 	editBrandEndpoint    = "/edit" //TODO decide on how-to remove links
-	getAllBrandEndpoints = "/get-all"
+	getBrandsEndpoints   = "/get-brands"
 )
 
 type newBrandingRequest struct {
@@ -26,7 +26,11 @@ type newBrandingRequest struct {
 	Links       map[string]string `json:"links"`
 }
 
-type getAllBrandResponse struct {
+type getBrandsrequest struct {
+	Addresses []string `json:"brandAddresses"`
+}
+
+type getBrandsResponse struct {
 	Brands []ParsedBrands `json:"brands"`
 }
 
@@ -44,7 +48,7 @@ func NewBrandingHandler(groupHandler *groupHandler) {
 
 	//pub endpoiints
 	pubEndpoints := []EndpointHandler{
-		{Method: http.MethodGet, Path: getAllBrandEndpoints, HandlerFunc: h.getAllBrand},
+		{Method: http.MethodPost, Path: getBrandsEndpoints, HandlerFunc: h.getBrands},
 	}
 	pubEndpointGroupHandler := EndpointGroupHandler{
 		Root:             baseBrandingEndpoint,
@@ -124,7 +128,7 @@ func (h *brandingHandler) newBranding(c *gin.Context) {
 	model.JsonResponse(c, http.StatusOK, nil, nodeAddress, "")
 }
 
-func (h *brandingHandler) getAllBrand(c *gin.Context) {
+func (h *brandingHandler) getBrands(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
@@ -132,16 +136,27 @@ func (h *brandingHandler) getAllBrand(c *gin.Context) {
 		return
 	}
 
-	brands, err := storage.GetAllBrands()
+	var req getBrandsrequest
+	err = c.Bind(&req)
 	if err != nil {
-		err = errors.New("error while retrieving brands: " + err.Error())
+		err = errors.New("error while binding request: " + err.Error())
 		log.Error(err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
 
-	var response getAllBrandResponse
-	for _, b := range brands {
+	var response getBrandsResponse
+	for _, a := range req.Addresses {
+		b, err := storage.GetBrandByAddress(a)
+		if err != nil {
+			err = errors.New("error while retrieving brand: " + err.Error())
+			log.Error(err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		if b == nil {
+			continue
+		}
 		links, err := b.GetLinks()
 		if err != nil {
 			err = errors.New("error while retrieving links for brand " + b.Name + " :" + err.Error())
