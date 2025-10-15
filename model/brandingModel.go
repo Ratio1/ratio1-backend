@@ -116,15 +116,8 @@ func (p Platform) isValid() bool {
 
 func (p Platform) GetPlatforms() []string {
 	var result []string
-	i := 1 //start from first platform skipping PlatformUnknown
-	var val string
-	for {
-		val = Platform(i).String()
-		if val == PlatformUnknown.String() { //if value is "Unknown" break
-			break
-		}
-		result = append(result, val)
-		i++ //go to next platform
+	for _, v := range platformNames {
+		result = append(result, v)
 	}
 	return result
 }
