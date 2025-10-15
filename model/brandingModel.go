@@ -1,20 +1,45 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
+
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
+	"github.com/Ratio1/ratio1_sdk_go/pkg/r1fs"
 )
 
 type Branding struct {
-	UserAddress string `gorm:"type:varchar(66);primaryKey" json:"userAddress"`
-	Name        string `gorm:"type:text"  json:"name"`
-	Description string `gorm:"type:text"  json:"description"`
-	Links       string `gorm:"type:jsonb;default:'{}'"  json:"links"`
-	//TODO add Logo
+	UserAddress string  `gorm:"type:varchar(66);primaryKey" json:"userAddress"`
+	Name        string  `gorm:"type:text"  json:"name"`
+	Description string  `gorm:"type:text"  json:"description"`
+	Links       string  `gorm:"type:jsonb;default:'{}'"  json:"links"`
+	CidLogo     *string `gorm:"type:text"  json:"cidLogo"`
 }
 
-func (b *Branding) GetLinks() (map[string]string, error) { //type
+func (b *Branding) GetLogoBase64() ([]byte, error) {
+	if b.CidLogo == nil {
+		return nil, errors.New("no cid found")
+	}
+	data, _, err := config.Config.R1fsClient.GetFileBase64(context.Background(), *b.CidLogo, "")
+	if err != nil {
+		return nil, errors.New("error while retrieving file from r1fs: " + err.Error())
+	}
+	return data, nil
+}
+
+func (b *Branding) SetLogoBase64(logoReader io.Reader, filename string) error {
+	cid, err := config.Config.R1fsClient.AddFileBase64(context.Background(), logoReader, &r1fs.DataOptions{Filename: filename})
+	if err != nil {
+		return errors.New("error while uploading file to r1fs: " + err.Error())
+	}
+	b.CidLogo = &cid
+	return nil
+}
+
+func (b *Branding) GetLinks() (map[string]string, error) {
 	platformsLinks := make(map[Platform]string)
 	err := json.Unmarshal([]byte(b.Links), &platformsLinks)
 	if err != nil {
@@ -87,4 +112,19 @@ func parsePlatform(s string) Platform {
 func (p Platform) isValid() bool {
 	_, ok := platformNames[p]
 	return ok
+}
+
+func (p Platform) GetPlatforms() []string {
+	var result []string
+	i := 1 //start from first platform skipping PlatformUnknown
+	var val string
+	for {
+		val = Platform(i).String()
+		if val == PlatformUnknown.String() { //if value is "Unknown" break
+			break
+		}
+		result = append(result, val)
+		i++ //go to next platform
+	}
+	return result
 }

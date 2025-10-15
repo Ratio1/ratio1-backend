@@ -40,5 +40,3 @@ func GetBrandByAddress(address string) (*model.Branding, error) {
 	}
 	return &b, nil
 }
-
-//TODO add getBrands with pagination
