@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"strings"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/Ratio1/ratio1_sdk_go/pkg/r1fs"
@@ -109,7 +108,7 @@ func (p Platform) String() string {
 }
 
 func parsePlatform(s string) Platform {
-	if p, ok := platformValues[strings.ToLower(s)]; ok {
+	if p, ok := platformValues[s]; ok {
 		return p
 	}
 	return PlatformUnknown
