@@ -74,6 +74,12 @@ func (b *Branding) SetLinks(links string) error {
 	return nil
 }
 
+const (
+	X        = "X"
+	Linkedin = "Linkedin"
+	Website  = "Website"
+)
+
 type Platform int
 
 const (
@@ -84,15 +90,15 @@ const (
 )
 
 var platformNames = map[Platform]string{
-	PlatformX:        "X",
-	PlatformLinkedin: "Linkedin",
-	PlatformWebsite:  "Website",
+	PlatformX:        X,
+	PlatformLinkedin: Linkedin,
+	PlatformWebsite:  Website,
 }
 
 var platformValues = map[string]Platform{
-	"x":        PlatformX,
-	"linkedin": PlatformLinkedin,
-	"website":  PlatformWebsite,
+	X:        PlatformX,
+	Linkedin: PlatformLinkedin,
+	Website:  PlatformWebsite,
 }
 
 func (p Platform) String() string {
