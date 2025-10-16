@@ -266,7 +266,7 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 
 	cfg.InvoiceMessageEmail = "corina.erhan@ratio1.ai"
 
-	r1fsClient, _, err := r1fs.NewFromEnv()
+	r1fsClient, err := r1fs.NewFromEnv()
 	if err != nil {
 		return nil, errors.New("error while connecting to r1fs: " + err.Error())
 	}

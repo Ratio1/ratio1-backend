@@ -22,10 +22,9 @@ require (
 	gorm.io/gorm v1.23.2
 )
 
-require github.com/Ratio1/ratio1_sdk_go v0.0.10
-
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/Ratio1/ratio1_sdk_go v0.0.11
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
