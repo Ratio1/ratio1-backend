@@ -53,6 +53,7 @@ func TryMigrate() error {
 		&model.InvoiceDraft{},
 		&model.UserInfo{},
 		&model.BurnEvent{},
+		&model.Branding{},
 	)
 	if err != nil {
 		return err
