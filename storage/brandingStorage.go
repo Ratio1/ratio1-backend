@@ -32,7 +32,7 @@ func GetBrandByAddress(address string) (*model.Branding, error) {
 
 	var b model.Branding
 	txRead := db.First(&b, "user_address = ?", address)
-	if txRead.Error != nil {
+	if txRead.Error != nil && txRead.Error != gorm.ErrRecordNotFound {
 		return nil, txRead.Error
 	}
 	if txRead.RowsAffected == 0 {
