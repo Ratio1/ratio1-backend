@@ -45,6 +45,7 @@ func NewWebServer() (*WebServer, error) {
 	handlers.NewAdminHandler(groupHandler)
 	handlers.NewInvoiceDraftHandler(groupHandler)
 	handlers.NewBurnReportHandler(groupHandler)
+	handlers.NewBrandingHandler(groupHandler)
 
 	groupHandler.RegisterEndpoints(router)
 
