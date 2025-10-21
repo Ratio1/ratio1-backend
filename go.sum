@@ -51,8 +51,8 @@ github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/Ratio1/ratio1_sdk_go v0.0.10 h1:Gj7ajFpMujo1F5Pfe64R0mvUErXce5W6lWvPEc/E9DA=
-github.com/Ratio1/ratio1_sdk_go v0.0.10/go.mod h1:SyxrKWkJpU1h/2Cs6ssNLZfv5qasCUATYNullCXaCwc=
+github.com/Ratio1/edge_sdk_go v0.0.12 h1:95YfmKQ1r/99EsErfHzBrFX1CTEdU0or6nEG7NmTlqo=
+github.com/Ratio1/edge_sdk_go v0.0.12/go.mod h1:DBxREssSVfJlwiYihzmteevk8VuxFtWuEhiJQqjwOac=
 github.com/Ratio1/ratio1_sdk_go v0.0.11 h1:u5RMxSC8IUaHgV+8efYlAyzMIasBjg880UDSqM9Cts4=
 github.com/Ratio1/ratio1_sdk_go v0.0.11/go.mod h1:SyxrKWkJpU1h/2Cs6ssNLZfv5qasCUATYNullCXaCwc=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=

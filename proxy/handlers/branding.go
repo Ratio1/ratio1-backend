@@ -187,10 +187,9 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	} else if brand == nil {
-		err = errors.New("error while retrieving brand: no brand found")
-		log.Error(err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
+		brand = &model.Branding{
+			UserAddress: userAddress,
+		}
 	}
 
 	err = brand.SetLogoBase64(fileReader, file.Filename)

@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
-	"github.com/Ratio1/ratio1_sdk_go/pkg/r1fs"
+	"github.com/Ratio1/edge_sdk_go/pkg/r1fs"
 )
 
 type Branding struct {

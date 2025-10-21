@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/Ratio1/ratio1_sdk_go/pkg/r1fs"
+	"github.com/Ratio1/edge_sdk_go/pkg/r1fs"
 )
 
 var (
