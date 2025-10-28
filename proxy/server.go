@@ -69,6 +69,7 @@ func (w *WebServer) Run() *http.Server {
 		Handler:        w.router,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
+		IdleTimeout:    30 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
