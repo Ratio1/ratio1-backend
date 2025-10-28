@@ -113,10 +113,10 @@ func (h *brandingHandler) editBrand(c *gin.Context) {
 	} else if brand == nil {
 		brand = &model.Branding{
 			UserAddress: userAddress,
-			Name:        req.Name,
-			Description: req.Description,
 		}
 	}
+	brand.Name = req.Name
+	brand.Description = req.Description
 
 	linksAsByte, err := json.Marshal(req.Links)
 	if err != nil {
@@ -197,6 +197,7 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 	} else if brand == nil {
 		brand = &model.Branding{
 			UserAddress: userAddress,
+			Links:       "{}",
 		}
 	}
 
