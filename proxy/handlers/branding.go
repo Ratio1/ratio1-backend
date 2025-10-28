@@ -102,10 +102,18 @@ func (h *brandingHandler) editBrand(c *gin.Context) {
 		return
 	}
 
-	brand := model.Branding{
-		UserAddress: userAddress,
-		Name:        req.Name,
-		Description: req.Description,
+	brand, err := storage.GetBrandByAddress(userAddress)
+	if err != nil {
+		err = errors.New("error while retrieving brand: " + err.Error())
+		log.Error(err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	} else if brand == nil {
+		brand = &model.Branding{
+			UserAddress: userAddress,
+			Name:        req.Name,
+			Description: req.Description,
+		}
 	}
 
 	linksAsByte, err := json.Marshal(req.Links)
@@ -124,7 +132,7 @@ func (h *brandingHandler) editBrand(c *gin.Context) {
 		return
 	}
 
-	err = storage.SaveBrand(&brand)
+	err = storage.SaveBrand(brand)
 	if err != nil {
 		err = errors.New("error while saving brand: " + err.Error())
 		log.Error(err.Error())
