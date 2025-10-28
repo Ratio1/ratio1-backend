@@ -168,9 +168,6 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if ext == "" {
-		ext = ".jpg" // fallback
-	}
 	if !isAllowedExt(ext) {
 		err = errors.New("invalid extension")
 		log.Error(err.Error())
