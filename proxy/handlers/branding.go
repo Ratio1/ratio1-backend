@@ -42,7 +42,7 @@ type ParsedBrands struct {
 	UserAddress string            `json:"brandAddress"`
 	Name        string            `json:"name,omitempty"`
 	Description string            `json:"description,omitempty"`
-	Links       map[string]string `json:"links,omitempty"`
+	Links       map[string]string `json:"links"`
 }
 
 type brandingHandler struct{}
