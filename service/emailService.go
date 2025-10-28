@@ -181,7 +181,7 @@ func SendCspDraftEmail(email string) error {
 	}
 
 	var body bytes.Buffer
-	err = template.Execute(&body, struct{ Url string }{Url: confirmUrl(config.Config.Ratio1redirectUrl.CspUrl)})
+	err = template.Execute(&body, struct{ Url string }{Url: config.Config.Ratio1redirectUrl.CspUrl})
 	if err != nil {
 		return errors.New("error while executing email template: " + err.Error())
 	}

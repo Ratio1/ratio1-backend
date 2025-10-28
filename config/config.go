@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/Ratio1/edge_sdk_go/pkg/r1fs"
 )
 
 var (
@@ -43,6 +44,7 @@ type GeneralConfig struct {
 	InvoiceMessageEmail            string
 	Ratio1redirectUrl              Ratio1redirectUrl
 	FreeCurrencyApiKey             string
+	R1fsClient                     *r1fs.Client
 }
 
 type ApiConfig struct {
@@ -263,6 +265,13 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	}
 
 	cfg.InvoiceMessageEmail = "corina.erhan@ratio1.ai"
+
+	r1fsClient, err := r1fs.NewFromEnv()
+	if err != nil {
+		return nil, errors.New("error while connecting to r1fs: " + err.Error())
+	}
+
+	cfg.R1fsClient = r1fsClient
 
 	return cfg, nil
 }
