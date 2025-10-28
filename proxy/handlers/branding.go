@@ -93,6 +93,8 @@ func (h *brandingHandler) editBrand(c *gin.Context) {
 		return
 	}
 
+	userAddress = strings.ToLower(userAddress)
+
 	var req editBrandRequest
 	err = c.Bind(&req)
 	if err != nil {
@@ -157,6 +159,7 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
+	userAddress = strings.ToLower(userAddress)
 
 	//get file
 	file, err := c.FormFile("logo")
@@ -235,6 +238,7 @@ func (h *brandingHandler) getBrands(c *gin.Context) {
 
 	var response getBrandsResponse
 	for _, a := range req.Addresses {
+		a = strings.ToLower(a)
 		b, err := storage.GetBrandByAddress(a)
 		if err != nil {
 			err = errors.New("error while retrieving brand: " + err.Error())
@@ -279,6 +283,7 @@ func (h *brandingHandler) getBrandLogo(c *gin.Context) {
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
+	address = strings.ToLower(address)
 
 	brand, err := storage.GetBrandByAddress(address)
 	if err != nil {
