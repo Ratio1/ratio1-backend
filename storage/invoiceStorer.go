@@ -12,7 +12,7 @@ func GetLatestInvoiceBlock() (*int64, bool, error) {
 	}
 
 	var invoice model.InvoiceClient
-	txRead := db.Order("block_number DESC").First(&invoice)
+	txRead := db.Order("block_number DESC").First(&invoice, "block_number IS NOT NULL")
 	if txRead.Error != nil {
 		if txRead.Error == gorm.ErrRecordNotFound {
 			return nil, false, nil
