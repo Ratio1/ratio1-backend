@@ -46,7 +46,7 @@ const AllocationLogsAbi = `[
 
 ]`
 
-const ReaderNodeOnwersAbi = `[
+const ReaderNodeOwnersAbi = `[
     {
       "inputs": [
         {

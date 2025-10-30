@@ -596,7 +596,7 @@ func getEpoch(date time.Time) int {
 
 func getNodeOwners(nodes []string) (map[string]string, error) { // map[nodeAddress]nodeOwner
 	contractAddress := common.HexToAddress(config.Config.ReaderAddress)
-	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.ReaderNodeOnwersAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.ReaderNodeOwnersAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing abi: " + err.Error())
 	}
