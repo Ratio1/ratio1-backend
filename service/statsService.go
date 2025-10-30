@@ -68,6 +68,28 @@ func DailyGetStats() {
 
 	time.Sleep(1 * time.Second)
 
+	/* get all unique nodes and fetch their owner */
+	nodeToOwner := make(map[string]string) // map[nodeAddress]ownerAddress
+	for _, a := range allocEvents {
+		nodeToOwner[a.NodeAddress] = ""
+	}
+	uniqueNodes := make([]string, 0, len(nodeToOwner))
+	for nodeAddr := range nodeToOwner {
+		uniqueNodes = append(uniqueNodes, nodeAddr)
+	}
+
+	nodeToOwner, err = getNodeOwners(uniqueNodes)
+	if err != nil {
+		fmt.Println("Error fetching node owners: " + err.Error())
+		return
+	}
+
+	for i, a := range allocEvents {
+		if owner, ok := nodeToOwner[a.NodeAddress]; ok {
+			allocEvents[i].UserAddress = owner
+		}
+	}
+
 	/*Fetch all burned events */
 	burnEvents, err := fetchBurnEvents(cspAddresses, from, to)
 	if err != nil {
@@ -436,11 +458,10 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 
 	event := struct {
 		NodeAddress common.Address
-		NodeOwner   common.Address
 		UsdcAmount  *big.Int
 	}{}
 
-	err = parsedABI.UnpackIntoInterface(&event, "RewardsAllocatedV2", vLog.Data)
+	err = parsedABI.UnpackIntoInterface(&event, "RewardsAllocatedV3", vLog.Data)
 	if err != nil {
 		return nil, errors.New("error while unpacking interface: " + err.Error())
 	}
@@ -457,7 +478,6 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 		BlockNumber: int64(vLog.BlockNumber),
 
 		NodeAddress: event.NodeAddress.String(),
-		UserAddress: event.NodeOwner.String(),
 		JobId:       strconv.Itoa(int(jobID)),
 	}
 	result.SetUsdcAmountPayed(event.UsdcAmount)
@@ -572,4 +592,55 @@ func generateBurns(burnEvents []model.BurnEvent) error {
 func getEpoch(date time.Time) int {
 	mainnetStart := time.Unix(1748016000, 0)
 	return int(date.Sub(mainnetStart) / (24 * time.Hour))
+}
+
+func getNodeOwners(nodes []string) (map[string]string, error) { // map[nodeAddress]nodeOwner
+	contractAddress := common.HexToAddress(config.Config.ReaderAddress)
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.ReaderNodeOwnersAbi))
+	if err != nil {
+		return nil, errors.New("error while parsing abi: " + err.Error())
+	}
+
+	addrs := make([]common.Address, len(nodes))
+	for i, s := range nodes {
+		addrs[i] = common.HexToAddress(s)
+	}
+
+	data, err := parsedABI.Pack("getNdNodesOwners", addrs)
+	if err != nil {
+		return nil, errors.New("error while packing interface: " + err.Error())
+	}
+
+	msg := ethereum.CallMsg{
+		To:   &contractAddress,
+		Data: data,
+	}
+
+	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
+	if err != nil {
+		return nil, errors.New("error while dialing client")
+	}
+	defer client.Close()
+
+	result, err := client.CallContract(context.Background(), msg, nil)
+	if err != nil {
+		return nil, errors.New("error while calling contract")
+	}
+
+	addresses := []struct {
+		NodeAddress common.Address
+		Owner       common.Address
+	}{}
+
+	err = parsedABI.UnpackIntoInterface(&addresses, "getNdNodesOwners", result)
+	if err != nil {
+		return nil, errors.New("error while unpacking interface: " + err.Error())
+	}
+
+	nodeOwners := make(map[string]string)
+	for _, a := range addresses {
+		nodeOwners[a.NodeAddress.String()] = a.Owner.String()
+	}
+
+	return nodeOwners, nil
 }

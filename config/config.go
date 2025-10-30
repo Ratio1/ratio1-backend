@@ -33,6 +33,7 @@ type GeneralConfig struct {
 	R1ContractAddress              string
 	USDCContractAddress            string
 	PoaiManagerAddress             string
+	ReaderAddress                  string
 	TeamAddresses                  []string
 	BuyLicenseInvoiceCronJobTiming map[string]string
 	DailyCronJobTiming             map[string]string
