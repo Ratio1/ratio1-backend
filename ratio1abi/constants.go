@@ -15,9 +15,11 @@ const PoaiManagerNextJobIdAbi = `[{"inputs":[],"name":"nextJobId","outputs":[{"i
 const PoaiManagerGetAllCspsWithOwnerAbi = `[{"inputs":[],"name":"getAllCspsWithOwner","outputs":[{"components":[{"internalType":"address","name":"cspAddress","type":"address"},{"internalType":"address","name":"cspOwner","type":"address"}],"internalType":"struct CspWithOwner[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"}]`
 
 // Allocation event related
-const AllocationEventSignature = "RewardsAllocatedV2(uint256,address,address,uint256)"
+const AllocationEventSignature = "RewardsAllocatedV3(uint256,address,uint256)"
 
-const AllocationLogsAbi = `[{"anonymous": false,
+const AllocationLogsAbi = `[
+    {
+      "anonymous": false,
       "inputs": [
         {
           "indexed": true,
@@ -33,19 +35,48 @@ const AllocationLogsAbi = `[{"anonymous": false,
         },
         {
           "indexed": false,
-          "internalType": "address",
-          "name": "nodeOwner",
-          "type": "address"
-        },
-        {
-          "indexed": false,
           "internalType": "uint256",
           "name": "usdcAmount",
           "type": "uint256"
         }
       ],
-      "name": "RewardsAllocatedV2",
+      "name": "RewardsAllocatedV3",
       "type": "event"
+    }
+
+]`
+
+const ReaderNodeOnwersAbi = `[
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "nodeAddresses",
+          "type": "address[]"
+        }
+      ],
+      "name": "getNdNodesOwners",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "nodeAddress",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct NdNodeOwner[]",
+          "name": "nodesOwners",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     }
 ]`
 
