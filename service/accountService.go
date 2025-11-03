@@ -219,8 +219,10 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 	}
 
 	UsdBuyLimit := 0
+	vatPercentage := 0
 	if config.Config.Api.DevTesting {
 		UsdBuyLimit = config.Config.BuyLimitUSD.Individual
+		vatPercentage = 2200
 	}
 	return &model.AccountDto{
 		Email:             StringOrEmpty(account.Email),
@@ -235,7 +237,7 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 		IsBlacklisted:     account.IsBlacklisted,
 		BlacklistedReason: account.BlacklistedReason,
 		UsdBuyLimit:       UsdBuyLimit,
-		VatPercentage:     0,
+		VatPercentage:     int64(vatPercentage),
 		UsedSellerCode:    account.UsedSellerCode,
 	}, nil
 
