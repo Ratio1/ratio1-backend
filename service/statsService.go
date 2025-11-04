@@ -99,6 +99,11 @@ func DailyGetStats() {
 
 	time.Sleep(1 * time.Second)
 
+	poaiTokenBurn := big.NewInt(0)
+	for _, b := range burnEvents {
+		poaiTokenBurn.Add(poaiTokenBurn, b.GetR1AmountBurned())
+	}
+
 	/* get all blocks timestamp(burned event happen same time as allocation)*/
 	blocks := make(map[int64]*time.Time)
 	for _, a := range allocEvents {
@@ -253,6 +258,8 @@ func DailyGetStats() {
 		DailyPOAIRewards:         dailyPoaiReward,
 		TotalSupply:              totalSupply,
 		TeamWalletsSupply:        teamWalletsSupply,
+		DailyPoaiTokenBurn:       poaiTokenBurn,
+		TotalPoaiTokenBurn:       big.NewInt(0).Add(oldStats.TotalPoaiTokenBurn, poaiTokenBurn),
 		TotalTokenBurn:           big.NewInt(0).Add(oldStats.TotalTokenBurn, dailyTokenBurn),
 		TotalNdContractTokenBurn: big.NewInt(0).Add(oldStats.TotalNdContractTokenBurn, dailyNdContractTokenBurn),
 		TotalMinted:              big.NewInt(0).Add(oldStats.TotalMinted, dailyMinted),

@@ -41,6 +41,7 @@ type botStatsResponse struct {
 	EpochPoaiBurnR1      string `json:"epochPoaiBurnR1"`
 	TotalBurn            string `json:"totalBurn"`
 	PoaiTvl              string `json:"poaiTvl"`
+	DailyTokenBurn       string `json:"dailyTokenBurn"`
 	NodeAddress          string `json:"nodeAddress"`
 }
 
@@ -237,9 +238,10 @@ func (h *tokenHandler) getStatsForBot(c *gin.Context) {
 		TotalSupply:          service.GetAmountAsFloatString(stats.TotalSupply, model.R1Decimals),
 		EpochNdBurnR1:        service.GetAmountAsFloatString(stats.DailyNdContractTokenBurn, model.R1Decimals),
 		EpochPoaiRewardsUsdc: service.GetAmountAsFloatString(stats.DailyPOAIRewards, model.UsdcDecimals),
-		EpochPoaiBurnR1:      service.GetAmountAsFloatString(big.NewInt(0).Sub(stats.DailyTokenBurn, stats.DailyNdContractTokenBurn), model.R1Decimals),
+		EpochPoaiBurnR1:      service.GetAmountAsFloatString(stats.DailyPoaiTokenBurn, model.R1Decimals),
 		TotalBurn:            service.GetAmountAsFloatString(stats.TotalTokenBurn, model.R1Decimals),
 		PoaiTvl:              service.GetAmountAsFloatString(stats.DailyUsdcLocked, model.UsdcDecimals),
+		DailyTokenBurn:       service.GetAmountAsFloatString(stats.DailyTokenBurn, model.R1Decimals),
 		NodeAddress:          nodeAddress,
 	}
 

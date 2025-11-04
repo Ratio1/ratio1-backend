@@ -2,9 +2,9 @@ package main
 
 import (
 	"math/big"
-	"time"
 )
 
+/*
 func main() {
 	DBConnect()
 	allStats, err := getStatsAfterBlockASC(0)
@@ -59,4 +59,32 @@ func main() {
 func getEpoch(date time.Time) int {
 	mainnetStart := time.Unix(1748016000, 0)
 	return int(date.Sub(mainnetStart) / (24 * time.Hour))
+}
+*/
+
+func main() {
+	DBConnect()
+	allStats, err := getStatsAfterBlockASC(0)
+	if err != nil {
+		panic(err)
+	}
+
+	for i, stat := range allStats {
+		if allStats[i].DailyPoaiTokenBurn == nil {
+			allStats[i].DailyPoaiTokenBurn = new(big.Int)
+		}
+		if allStats[i].TotalPoaiTokenBurn == nil {
+			allStats[i].TotalPoaiTokenBurn = new(big.Int)
+		}
+		allStats[i].DailyPoaiTokenBurn.Sub(stat.DailyTokenBurn, stat.DailyNdContractTokenBurn)
+		allStats[i].TotalPoaiTokenBurn.Sub(stat.TotalTokenBurn, stat.TotalNdContractTokenBurn)
+	}
+
+	//save on storage
+	for _, stat := range allStats {
+		err = updateStats(&stat)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
