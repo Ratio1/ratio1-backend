@@ -13,6 +13,8 @@ type Stats struct {
 	TotalTokenBurn           *big.Int  `gorm:"type:numeric;default:null" json:"totalTokenBurn"`
 	DailyNdContractTokenBurn *big.Int  `gorm:"type:numeric;default:null" json:"dailyNdContractTokenBurn"`
 	TotalNdContractTokenBurn *big.Int  `gorm:"type:numeric;default:null" json:"totalNdContractTokenBurn"`
+	DailyPoaiTokenBurn       *big.Int  `gorm:"type:numeric;default:null" json:"dailyPoaiTokenBurn"`
+	TotalPoaiTokenBurn       *big.Int  `gorm:"type:numeric;default:null" json:"totalPoaiTokenBurn"`
 	DailyPOAIRewards         *big.Int  `gorm:"type:numeric;default:null" json:"dailyPOAIRewards"`
 	TotalPOAIRewards         *big.Int  `gorm:"type:numeric;default:null" json:"totalPOAIRewards"`
 	DailyMinted              *big.Int  `gorm:"type:numeric;default:null" json:"dailyMinted"`

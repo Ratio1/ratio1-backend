@@ -30,6 +30,8 @@ func CreateStats(stats *model.Stats) error {
 		"total_supply":                 toNumericExpr(stats.TotalSupply),
 		"team_wallets_supply":          toNumericExpr(stats.TeamWalletsSupply),
 		"last_block_number":            stats.LastBlockNumber, // bigint
+		"daily_poai_token_burn":        toNumericExpr(stats.DailyPoaiTokenBurn),
+		"total_poai_token_burn":        toNumericExpr(stats.TotalPoaiTokenBurn),
 	}
 
 	res := db.Table("stats").Create(row)
@@ -62,6 +64,8 @@ func UpdateStats(stats *model.Stats) error {
 		"total_supply":                 toNumericExpr(stats.TotalSupply),
 		"team_wallets_supply":          toNumericExpr(stats.TeamWalletsSupply),
 		"last_block_number":            stats.LastBlockNumber, // bigint
+		"daily_poai_token_burn":        toNumericExpr(stats.DailyPoaiTokenBurn),
+		"total_poai_token_burn":        toNumericExpr(stats.TotalPoaiTokenBurn),
 	}
 
 	res := db.Where("creation_timestamp = ?", stats.CreationTimestamp).Table("stats").Updates(row)
@@ -97,7 +101,9 @@ func GetLatestStats() (*model.Stats, error) {
 			total_minted::text               AS total_minted,
 			total_supply::text               AS total_supply,
 			team_wallets_supply::text        AS team_wallets_supply,
-			last_block_number
+			last_block_number,
+			daily_poai_token_burn::text      AS daily_poai_token_burn,
+			total_poai_token_burn::text      AS total_poai_token_burn
 		`).
 		Order("creation_timestamp DESC").
 		Limit(1).
@@ -135,7 +141,9 @@ func GetAllStatsASC() (*[]model.Stats, error) {
 			total_minted::text               AS total_minted,
 			total_supply::text               AS total_supply,
 			team_wallets_supply::text        AS team_wallets_supply,
-			last_block_number
+			last_block_number,
+			daily_poai_token_burn::text      AS daily_poai_token_burn,
+			total_poai_token_burn::text      AS total_poai_token_burn
 		`).
 		Order("creation_timestamp ASC").
 		Scan(&rows).Error
@@ -168,6 +176,8 @@ type statsRow struct {
 	TotalSupply              *string
 	TeamWalletsSupply        *string
 	LastBlockNumber          int64
+	DailyPoaiTokenBurn       *string
+	TotalPoaiTokenBurn       *string
 }
 
 func toNumericExpr(x *big.Int) any {
@@ -204,5 +214,7 @@ func rowToModel(r *statsRow) *model.Stats {
 		TotalSupply:              toBigIntPtr(r.TotalSupply),
 		TeamWalletsSupply:        toBigIntPtr(r.TeamWalletsSupply),
 		LastBlockNumber:          r.LastBlockNumber,
+		DailyPoaiTokenBurn:       toBigIntPtr(r.DailyPoaiTokenBurn),
+		TotalPoaiTokenBurn:       toBigIntPtr(r.TotalPoaiTokenBurn),
 	}
 }
