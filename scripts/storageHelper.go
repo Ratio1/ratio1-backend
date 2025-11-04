@@ -103,6 +103,8 @@ type statsRow struct {
 	TotalSupply              *string
 	TeamWalletsSupply        *string
 	LastBlockNumber          int64
+	DailyPoaiTokenBurn       *string
+	TotalPoaiTokenBurn       *string
 }
 
 func getStatsAfterBlockASC(blockNumber int64) ([]model.Stats, error) {
@@ -127,7 +129,9 @@ func getStatsAfterBlockASC(blockNumber int64) ([]model.Stats, error) {
 			total_minted::text               AS total_minted,
 			total_supply::text               AS total_supply,
 			team_wallets_supply::text        AS team_wallets_supply,
-			last_block_number
+			last_block_number,
+			daily_poai_token_burn::text      AS daily_poai_token_burn,
+			total_poai_token_burn::text      AS total_poai_token_burn
 		`).
 		Where("last_block_number >= ?", blockNumber).
 		Order("creation_timestamp ASC").
@@ -169,7 +173,9 @@ func getLatestStats() (*model.Stats, error) {
 			total_minted::text               AS total_minted,
 			total_supply::text               AS total_supply,
 			team_wallets_supply::text        AS team_wallets_supply,
-			last_block_number
+			last_block_number,
+			daily_poai_token_burn::text      AS daily_poai_token_burn,
+			total_poai_token_burn::text      AS total_poai_token_burn
 		`).
 		Order("creation_timestamp DESC").
 		Limit(1).
@@ -284,6 +290,8 @@ func rowToModel(r *statsRow) *model.Stats {
 		TotalSupply:              toBigIntPtr(r.TotalSupply),
 		TeamWalletsSupply:        toBigIntPtr(r.TeamWalletsSupply),
 		LastBlockNumber:          r.LastBlockNumber,
+		DailyPoaiTokenBurn:       toBigIntPtr(r.DailyPoaiTokenBurn),
+		TotalPoaiTokenBurn:       toBigIntPtr(r.TotalPoaiTokenBurn),
 	}
 }
 
