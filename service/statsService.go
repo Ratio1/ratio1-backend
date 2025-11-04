@@ -259,7 +259,7 @@ func DailyGetStats() {
 		TotalSupply:              totalSupply,
 		TeamWalletsSupply:        teamWalletsSupply,
 		DailyPoaiTokenBurn:       poaiTokenBurn,
-		TotalPoaiTokenBurn:       big.NewInt(0).Add(oldStats.DailyPoaiTokenBurn, poaiTokenBurn),
+		TotalPoaiTokenBurn:       big.NewInt(0).Add(oldStats.TotalPoaiTokenBurn, poaiTokenBurn),
 		TotalTokenBurn:           big.NewInt(0).Add(oldStats.TotalTokenBurn, dailyTokenBurn),
 		TotalNdContractTokenBurn: big.NewInt(0).Add(oldStats.TotalNdContractTokenBurn, dailyNdContractTokenBurn),
 		TotalMinted:              big.NewInt(0).Add(oldStats.TotalMinted, dailyMinted),
