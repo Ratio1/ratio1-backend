@@ -307,7 +307,7 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 	c.Data(http.StatusOK, "application/msword", byteFile)
 }
 
-func (h *invoiceDraftHandler) downloadNodeOwnerDraftJSON(c *gin.Context) { //TODO
+func (h *invoiceDraftHandler) downloadNodeOwnerDraftJSON(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
