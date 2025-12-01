@@ -1,8 +1,6 @@
 module github.com/NaeuralEdgeProtocol/ratio1-backend
 
-go 1.21
-
-toolchain go1.22.4
+go 1.24.9
 
 require (
 	github.com/ElrondNetwork/elrond-go-core v1.1.14
