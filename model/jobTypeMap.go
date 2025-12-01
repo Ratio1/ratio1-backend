@@ -49,6 +49,10 @@ var jobTypeNames = map[JobType]string{
 	38: "G-ULTRA-ULTRA1",
 	39: "G-ULTRA-ULTRA2",
 	40: "G-ULTRA-N-ULTRA",
+
+	50: "SERVICE_ENTRY",
+	51: "SERVICE_MED1",
+	52: "SERVICE_HIGH1",
 }
 
 func (j *JobType) GetName() string {
