@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	burnReportBaseEndpoint        = "/burn-report"
-	getCspBurnReportEndpoint      = "/get-burn-report"
-	downloadCspBurnReportEndpoint = "/download-burn-report"
+	burnReportBaseEndpoint            = "/burn-report"
+	getCspBurnReportEndpoint          = "/get-burn-report"
+	downloadCspBurnReportEndpoint     = "/download-burn-report"
+	downloadCspBurnReportJSONEndpoint = "/download-burn-report-json"
 )
 
 type getBurnReportsResponse struct {
@@ -39,6 +40,7 @@ func NewBurnReportHandler(groupHandler *groupHandler) {
 	endpoints := []EndpointHandler{
 		{Method: http.MethodGet, Path: getCspBurnReportEndpoint, HandlerFunc: h.getBurnReport},
 		{Method: http.MethodGet, Path: downloadCspBurnReportEndpoint, HandlerFunc: h.downloadBurnReport},
+		{Method: http.MethodGet, Path: downloadCspBurnReportJSONEndpoint, HandlerFunc: h.downloadBurnReportJSON},
 	}
 
 	endpointGroupHandler := EndpointGroupHandler{
@@ -238,4 +240,85 @@ func (h *burnReportHandler) downloadBurnReport(c *gin.Context) {
 
 	c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
 	c.Data(http.StatusOK, "text/csv", byteFile)
+}
+
+func (h *burnReportHandler) downloadBurnReportJSON(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	startTimeStr := c.Query("startTime")
+	if startTimeStr == "" {
+		log.Error("startTime query param is missing")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "startTime query param is missing")
+		return
+	}
+
+	endTimeStr := c.Query("endTime")
+	if endTimeStr == "" {
+		log.Error("endTime query param is missing")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "endTime query param is missing")
+		return
+	}
+
+	layout := "02-01-2006"
+	startTime, err := time.Parse(layout, startTimeStr)
+	if err != nil {
+		log.Error("invalid startTime format: %v", err)
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "invalid startTime format, expected DD-MM-YYYY")
+		return
+	}
+
+	endTime, err := time.Parse(layout, endTimeStr)
+	if err != nil {
+		log.Error("invalid endTime format: %v", err)
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "invalid endTime format, expected DD-MM-YYYY")
+		return
+	}
+	endTime = endTime.Add(24*time.Hour - time.Nanosecond) // include all the endTime day
+
+	if config.Config.Api.DevTesting {
+		service.BuildMocks()
+		b := service.GetMockBurnEvents()
+		requestedBurnEvents := []model.BurnEvent{}
+		for _, be := range b {
+			if be.BurnTimestamp.After(startTime) && be.BurnTimestamp.Before(endTime) {
+				requestedBurnEvents = append(requestedBurnEvents, be)
+			}
+		}
+
+		byteFile, err := service.GenerateBurnReportCSV(requestedBurnEvents)
+		if err != nil {
+			log.Error("error while generating burn report: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
+		c.Data(http.StatusOK, "text/csv", byteFile)
+		return
+	}
+
+	burnEvents, err := storage.GetBurnEventsForUserInTimeRange(startTime, endTime, userAddress)
+	if err != nil {
+		log.Error("error while retrieving report: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if len(burnEvents) == 0 {
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "no burn event for that period")
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, burnEvents, nodeAddress, "")
 }
