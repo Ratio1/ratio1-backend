@@ -297,14 +297,7 @@ func (h *burnReportHandler) downloadBurnReportJSON(c *gin.Context) {
 			}
 		}
 
-		byteFile, err := service.GenerateBurnReportCSV(requestedBurnEvents)
-		if err != nil {
-			log.Error("error while generating burn report: " + err.Error())
-			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-			return
-		}
-		c.Header("Content-Disposition", "attachment; filename=burn_report.csv")
-		c.Data(http.StatusOK, "text/csv", byteFile)
+		model.JsonResponse(c, http.StatusOK, requestedBurnEvents, nodeAddress, "")
 		return
 	}
 
