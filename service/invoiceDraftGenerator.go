@@ -25,6 +25,12 @@ func FillInvoiceDraftTemplate(invoice model.InvoiceDraft, allocations []model.Al
 	return htmlBuf.Bytes(), nil
 }
 
+func FillInvoiceDraftTemplateJSON(invoice model.InvoiceDraft, allocations []model.Allocation) (*invoiceVM, error) {
+	vm := buildInvoiceView(invoice, allocations)
+	return &vm, nil
+
+}
+
 // ------------------ View model & helpers ------------------
 
 type allocationRow struct {
