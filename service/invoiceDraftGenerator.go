@@ -26,9 +26,8 @@ func FillInvoiceDraftTemplate(invoice model.InvoiceDraft, allocations []model.Al
 }
 
 func FillInvoiceDraftTemplateJSON(invoice model.InvoiceDraft, allocations []model.Allocation) (*invoiceVM, error) {
-	vm := buildInvoiceView(invoice, allocations)
+	vm := buildInvoiceViewJSON(invoice, allocations)
 	return &vm, nil
-
 }
 
 // ------------------ View model & helpers ------------------
@@ -55,8 +54,8 @@ type invoiceVM struct {
 	InvoiceSeries string
 	InvoiceNumber int
 
-	SellerLines  []string
-	BuyerLines   []string
+	SellerLines  any
+	BuyerLines   any
 	SellerWallet string
 	BuyerWallet  string
 
@@ -183,6 +182,111 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 	return vm
 }
 
+func buildInvoiceViewJSON(invoice model.InvoiceDraft, allocations []model.Allocation) invoiceVM {
+	// Seller/Buyer lines
+	from := &invoice.UserProfile
+	to := &invoice.CspProfile
+	fromLines := formatUserInfoJSON(from)
+	toLines := formatUserInfoJSON(to)
+
+	// Economic summary
+	extras, _ := invoice.GetExtraTaxes()
+	sumFixedLocalCurrency, sumExtraPerc := 0.0, 0.0
+	for _, e := range extras {
+		switch e.TaxType {
+		case model.Fixed:
+			sumFixedLocalCurrency += e.Value
+		case model.Percentage:
+			sumExtraPerc += e.Value
+		}
+	}
+
+	sumFixed := 0.0
+	if sumFixedLocalCurrency > 0 {
+		sumFixed = sumFixedLocalCurrency / invoice.LocalCurrencyExchangeRatio
+	}
+
+	den := 1.0 + (invoice.VatApplied / 100.0) + (sumExtraPerc / 100.0)
+	netBase := (invoice.TotalUsdcAmount - sumFixed) / den
+	if netBase < 0 {
+		netBase = 0
+	}
+	vatAmount := netBase * (invoice.VatApplied / 100.0)
+
+	var extraVM []extraLineVM
+	for _, e := range extras {
+		switch e.TaxType {
+		case model.Fixed:
+			extraVM = append(extraVM, extraLineVM{
+				Label:       e.Description,
+				AmountUSDC:  fmt.Sprintf("%.2f", e.Value/invoice.LocalCurrencyExchangeRatio),
+				AmountLocal: fmt.Sprintf("%.2f", e.Value),
+			})
+		case model.Percentage:
+			extraVM = append(extraVM, extraLineVM{
+				Label:       fmt.Sprintf("%s (%.2f%%)", e.Description, e.Value),
+				AmountUSDC:  fmt.Sprintf("%.2f", netBase*(e.Value/100.0)),
+				AmountLocal: fmt.Sprintf("%.2f", netBase*(e.Value/100.0)*invoice.LocalCurrencyExchangeRatio),
+			})
+		}
+	}
+
+	// Alloc rows
+	/*Order allocations based on creation timestamp*/
+	sort.Slice(allocations, func(i, j int) bool {
+		return allocations[i].AllocationCreation.Before(allocations[j].AllocationCreation)
+	})
+
+	var allocRows []allocationRow
+	for _, a := range allocations {
+		allocRows = append(allocRows, allocationRow{
+			AllocationCreation: a.AllocationCreation.Format("2006-01-02"),
+			JobID:              a.JobId,
+			JobName:            a.JobName,
+			JobType:            a.JobType.GetName(),
+			ProjectName:        a.ProjectName,
+			NodeAddress:        a.NodeAddress,
+			UsdcPaid:           GetAmountAsFloatString(a.GetUsdcAmountPayed(), model.UsdcDecimals),
+		})
+	}
+
+	title := "Invoice Draft"
+	if !invoice.UserProfile.IsCompany {
+		title = "Consumption Report"
+	}
+	//draft fields filling
+	vm := invoiceVM{
+		//header
+		Title:         title,
+		Date:          invoice.CreationTimestamp.Format("2006-01-02"),
+		InvoiceSeries: invoice.InvoiceSeries,
+		InvoiceNumber: invoice.InvoiceNumber,
+		SellerLines:   fromLines,
+		BuyerLines:    toLines,
+		SellerWallet:  from.BlockchainAddress,
+		BuyerWallet:   to.BlockchainAddress,
+
+		//economic summary
+		TotalUSDC:      fmt.Sprintf("%.2f", invoice.TotalUsdcAmount),
+		NetBase:        fmt.Sprintf("%.2f", netBase),
+		NetBaseLocal:   fmt.Sprintf("%.2f", netBase*invoice.LocalCurrencyExchangeRatio),
+		VatPerc:        fmt.Sprintf("%.2f", invoice.VatApplied),
+		VatAmount:      fmt.Sprintf("%.2f", vatAmount),
+		ExtraLines:     extraVM,
+		JobCount:       len(allocations),
+		Notes:          safe(invoice.ExtraText),
+		LocalCurrency:  invoice.LocalCurrency,
+		TotalLocal:     fmt.Sprintf("%.2f", invoice.TotalUsdcAmount*invoice.LocalCurrencyExchangeRatio),
+		VatAmountLocal: fmt.Sprintf("%.2f", vatAmount*invoice.LocalCurrencyExchangeRatio),
+
+		Status: "Draft (non-fiscal document)",
+
+		//allocation report
+		Allocations: allocRows,
+	}
+	return vm
+}
+
 // ---- Helpers ----
 
 func formatUserInfo(u *model.UserInfo) []string {
@@ -213,6 +317,29 @@ func formatUserInfo(u *model.UserInfo) []string {
 		lines = append(lines, "Email: "+u.Email)
 	}
 	return lines
+}
+
+func formatUserInfoJSON(u *model.UserInfo) map[string]string {
+	if u == nil {
+		return nil
+	}
+	values := make(map[string]string)
+	if u.IsCompany {
+		values["name"] = nonEmptyOr("-", safe(u.CompanyName))
+	} else {
+		fullName := fmt.Sprintf("%s %s", nonEmptyOr("", safe(u.Name)), nonEmptyOr("", safe(u.Surname)))
+		if fullName == " " {
+			fullName = "-"
+		}
+		values["name"] = fullName
+	}
+	values["address"] = u.Address
+	values["city"] = u.City
+	values["state"] = u.State
+	values["country"] = u.Country
+	values["identification_code"] = u.IdentificationCode
+	values["email"] = u.Email
+	return values
 }
 
 func safe(s *string) string {
