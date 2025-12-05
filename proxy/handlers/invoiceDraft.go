@@ -17,15 +17,17 @@ import (
 const (
 	invoiceDraftBaseEndpoint = "/invoice-draft"
 	/* Node owner endpoints */
-	getNodeOwnerDraftListEndpoint  = "/get-drafts"
-	downloadNodeOwnerDraftEndpoint = "/download-draft"
-	createPreferenceEndpoint       = "/create-preferences"
-	changePreferencesEndpoint      = "/change-preferences"
-	getPreferencesEndpoint         = "/get-preferences"
+	getNodeOwnerDraftListEndpoint      = "/get-drafts"
+	downloadNodeOwnerDraftEndpoint     = "/download-draft"
+	downloadNodeOwnerDraftJSONEndpoint = "/download-draft-json"
+	createPreferenceEndpoint           = "/create-preferences"
+	changePreferencesEndpoint          = "/change-preferences"
+	getPreferencesEndpoint             = "/get-preferences"
 
 	/* CSP endpoints */
-	getCspDraftListEndpoint  = "/get-csp-drafts"
-	downloadCspDraftEndpoint = "/download-csp-draft"
+	getCspDraftListEndpoint      = "/get-csp-drafts"
+	downloadCspDraftEndpoint     = "/download-csp-draft"
+	downloadCspDraftJSONEndpoint = "/download-csp-draft-json"
 )
 
 type getInvoiceDraftsResponse struct {
@@ -50,7 +52,9 @@ func NewInvoiceDraftHandler(groupHandler *groupHandler) {
 		{Method: http.MethodGet, Path: getCspDraftListEndpoint, HandlerFunc: h.getCspDraftList},
 		{Method: http.MethodGet, Path: getPreferencesEndpoint, HandlerFunc: h.getPreferences},
 		{Method: http.MethodGet, Path: downloadNodeOwnerDraftEndpoint, HandlerFunc: h.downloadNodeOwnerDraft},
+		{Method: http.MethodGet, Path: downloadNodeOwnerDraftJSONEndpoint, HandlerFunc: h.downloadNodeOwnerDraftJSON},
 		{Method: http.MethodGet, Path: downloadCspDraftEndpoint, HandlerFunc: h.downloadCspDraft},
+		{Method: http.MethodGet, Path: downloadCspDraftJSONEndpoint, HandlerFunc: h.downloadCspDraftJSON},
 
 		{Method: http.MethodPost, Path: changePreferencesEndpoint, HandlerFunc: h.changePreferences},
 		{Method: http.MethodPost, Path: createPreferenceEndpoint, HandlerFunc: h.createPreferences},
@@ -303,6 +307,77 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 	c.Data(http.StatusOK, "application/msword", byteFile)
 }
 
+func (h *invoiceDraftHandler) downloadNodeOwnerDraftJSON(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	draftId, ok := c.GetQuery("draftId")
+	if !ok || draftId == "" {
+		log.Error("draft id not received")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "draft id not received")
+		return
+	}
+
+	if config.Config.Api.DevTesting {
+		service.BuildMocks()
+		i, a := service.GetMockOperatorData()
+		var invoice model.InvoiceDraft
+		found := false
+		for _, v := range i {
+			if v.DraftId.String() == draftId {
+				found = true
+				invoice = v
+			}
+		}
+		if !found {
+			log.Error("draft id not found in storage")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "draft id not found in storage")
+			return
+		}
+		invoiceStruct, err := service.FillInvoiceDraftTemplateJSON(invoice, a)
+		if err != nil {
+			log.Error("error while generating invoice doc: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		model.JsonResponse(c, http.StatusOK, invoiceStruct, nodeAddress, "")
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	drafts, err := storage.GetDraftByReportId(draftId, userAddress)
+	if err != nil {
+		log.Error("error while retrieving report: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	allocations, err := storage.GetAllocationsByDraftId(draftId)
+	if err != nil {
+		log.Error("error while retrieving allocations: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	invoiceStruct, err := service.FillInvoiceDraftTemplateJSON(*drafts, allocations)
+	if err != nil {
+		log.Error("error while generating invoice doc: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+	model.JsonResponse(c, http.StatusOK, invoiceStruct, nodeAddress, "")
+}
+
 func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
@@ -377,6 +452,79 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 
 	c.Header("Content-Disposition", "attachment; filename=invoice_draft.doc")
 	c.Data(http.StatusOK, "application/msword", byteFile)
+}
+
+func (h *invoiceDraftHandler) downloadCspDraftJSON(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	draftId, ok := c.GetQuery("draftId")
+	if !ok || draftId == "" {
+		log.Error("draft id not received")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "draft id not received")
+		return
+	}
+
+	if config.Config.Api.DevTesting {
+		service.BuildMocks()
+		i, a := service.GetMockCspData()
+
+		var invoice model.InvoiceDraft
+		found := false
+		for _, v := range i {
+			if v.DraftId.String() == draftId {
+				found = true
+				invoice = v
+			}
+		}
+		if !found {
+			log.Error("draft id not found in storage")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "draft id not found in storage")
+			return
+		}
+
+		invoiceStruct, err := service.FillInvoiceDraftTemplateJSON(invoice, a)
+		if err != nil {
+			log.Error("error while generating invoice doc: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		model.JsonResponse(c, http.StatusOK, invoiceStruct, nodeAddress, "")
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	drafts, err := storage.GetCspDraftByReportId(draftId, userAddress)
+	if err != nil {
+		log.Error("error while retrieving report: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	allocations, err := storage.GetAllocationsByDraftId(draftId)
+	if err != nil {
+		log.Error("error while retrieving allocations: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	invoiceStruct, err := service.FillInvoiceDraftTemplateJSON(*drafts, allocations)
+	if err != nil {
+		log.Error("error while generating invoice doc: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+	model.JsonResponse(c, http.StatusOK, invoiceStruct, nodeAddress, "")
 }
 
 func (h *invoiceDraftHandler) getPreferences(c *gin.Context) {

@@ -211,6 +211,8 @@ func updateStats(stats *model.Stats) error {
 		"total_supply":                 toNumericExpr(stats.TotalSupply),
 		"team_wallets_supply":          toNumericExpr(stats.TeamWalletsSupply),
 		"last_block_number":            stats.LastBlockNumber, // bigint
+		"daily_poai_token_burn":        toNumericExpr(stats.DailyPoaiTokenBurn),
+		"total_poai_token_burn":        toNumericExpr(stats.TotalPoaiTokenBurn),
 	}
 
 	res := db.Where("creation_timestamp = ?", stats.CreationTimestamp).Table("stats").Updates(row)
