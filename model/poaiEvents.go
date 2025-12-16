@@ -117,7 +117,7 @@ func (p *Preference) SetExtraTaxes(taxes []ExtraTax) error {
 	if err != nil {
 		return err
 	}
-	str := string(data) // sarà sempre "[]" per empty, non "{}"
+	str := string(data)
 	p.ExtraTaxes = &str
 	return nil
 }
