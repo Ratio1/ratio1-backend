@@ -72,6 +72,11 @@ type JwtConfig struct {
 	Secret            string
 	ConfirmSecret     string
 	ConfirmExpiryMins int
+	CookieDomain      string
+	CookieSecure      bool
+	CookieSameSite    string
+	AccessCookieName  string
+	RefreshCookieName string
 }
 
 type MailConfig struct {
@@ -188,6 +193,39 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	cfg.Jwt.ConfirmSecret = os.Getenv("JWT_CONFIRM_SECRET")
 	if cfg.Jwt.ConfirmSecret == "" {
 		return nil, errors.New("JWT_CONFIRM_SECRET is not set")
+	}
+	cookieDomain := os.Getenv("JWT_COOKIE_DOMAIN")
+	if cookieDomain != "" {
+		cfg.Jwt.CookieDomain = cookieDomain
+	}
+	cookieSecure := os.Getenv("JWT_COOKIE_SECURE")
+	if cookieSecure != "" {
+		secure, err := strconv.ParseBool(cookieSecure)
+		if err != nil {
+			return nil, errors.New("JWT_COOKIE_SECURE return error: " + err.Error())
+		}
+		cfg.Jwt.CookieSecure = secure
+	}
+	cookieSameSite := os.Getenv("JWT_COOKIE_SAMESITE")
+	if cookieSameSite != "" {
+		cfg.Jwt.CookieSameSite = cookieSameSite
+	}
+	accessCookieName := os.Getenv("JWT_ACCESS_COOKIE_NAME")
+	if accessCookieName != "" {
+		cfg.Jwt.AccessCookieName = accessCookieName
+	}
+	refreshCookieName := os.Getenv("JWT_REFRESH_COOKIE_NAME")
+	if refreshCookieName != "" {
+		cfg.Jwt.RefreshCookieName = refreshCookieName
+	}
+	if cfg.Jwt.AccessCookieName == "" {
+		cfg.Jwt.AccessCookieName = "accessToken"
+	}
+	if cfg.Jwt.RefreshCookieName == "" {
+		cfg.Jwt.RefreshCookieName = "refreshToken"
+	}
+	if cfg.Jwt.CookieSameSite == "" {
+		cfg.Jwt.CookieSameSite = "Lax"
 	}
 
 	/*	MAIL ENV VARIABLES	*/
