@@ -14,6 +14,20 @@ const PoaiManagerNextJobIdAbi = `[{"inputs":[],"name":"nextJobId","outputs":[{"i
 
 const PoaiManagerGetAllCspsWithOwnerAbi = `[{"inputs":[],"name":"getAllCspsWithOwner","outputs":[{"components":[{"internalType":"address","name":"cspAddress","type":"address"},{"internalType":"address","name":"cspOwner","type":"address"}],"internalType":"struct CspWithOwner[]","name":"","type":"tuple[]"}],"stateMutability":"view","type":"function"}]`
 
+const PoaiManagerGetActiveJobsCount = `[{
+      "inputs": [],
+      "name": "getActiveJobsCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "totalActiveJobs",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }]`
+
 // Allocation event related
 const AllocationEventSignature = "RewardsAllocatedV3(uint256,address,uint256)"
 
