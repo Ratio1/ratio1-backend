@@ -15,6 +15,11 @@ func GenerateBurnReportCSV(burnEvents []model.BurnEvent) ([]byte, error) {
 	writer := csv.NewWriter(&csvData)
 	writer.Comma = ';'
 
+	//separator line
+	if err := writer.Write([]string{"sep=;"}); err != nil {
+		return nil, err
+	}
+
 	// Write CSV header
 	header := []string{"USDC swapped", "", "R1 burned", "", "Local Currrency", "", "Burn Timestamp(UTC)", "Transaction Hash"}
 	if err := writer.Write(header); err != nil {
