@@ -330,7 +330,7 @@ func getDailyUsdcLocked() (*big.Int, error) {
 func getDailyActiveJobs() (int, error) {
 	tokenAddress := common.HexToAddress(config.Config.PoaiManagerAddress)
 
-	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerNextJobIdAbi))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.PoaiManagerGetActiveJobsCount))
 	if err != nil {
 		return 0, errors.New("error while parsing abi: " + err.Error())
 	}
@@ -341,7 +341,7 @@ func getDailyActiveJobs() (int, error) {
 	}
 	defer client.Close()
 
-	jobIdPack, err := parsedABI.Pack("nextJobId")
+	jobIdPack, err := parsedABI.Pack("getActiveJobsCount")
 	if err != nil {
 		return 0, errors.New("error packing jobId: " + err.Error())
 	}
@@ -357,7 +357,7 @@ func getDailyActiveJobs() (int, error) {
 	}
 
 	var activeJobsAsBigInt *big.Int
-	err = parsedABI.UnpackIntoInterface(&activeJobsAsBigInt, "nextJobId", result)
+	err = parsedABI.UnpackIntoInterface(&activeJobsAsBigInt, "getActiveJobsCount", result)
 	if err != nil {
 		return 0, errors.New("error unpacking jobId: " + err.Error())
 	}
