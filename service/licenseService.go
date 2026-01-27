@@ -182,7 +182,7 @@ func NewMultiLinkLicenseTxTemplate(walletAddress string, nodeAddreses []string) 
 		if err != nil {
 			return "", errors.New("error while encoding user address: " + err.Error())
 		}
-		resultBytes = append(resultBytes, nodeAddressBytes...)
+		resultBytes = append(resultBytes, padTo32Bytes(nodeAddressBytes)...)
 	}
 
 	resultBytes = append(walletAddressBytes, resultBytes...)
