@@ -150,6 +150,62 @@ func NewLinkLicenseTxTemplate(walletAddress, nodeAddres string) (string, error) 
 	return hex.EncodeToString(sig), nil
 }
 
+func NewMultiLinkLicenseTxTemplate(walletAddress string, nodeAddreses []string) (string, error) {
+	privKey, err := GetBackendPrivKey()
+	if err != nil {
+		return "", errors.New("error while retrieving private key: " + err.Error())
+	}
+
+	var resultBytes []byte
+	addressBytes := walletAddress
+	if len(walletAddress) == 42 && walletAddress[0] == '0' && walletAddress[1] == 'x' {
+		addressBytes = walletAddress[2:] //remove "0x" if present
+	}
+	if len(addressBytes) != 40 {
+		return "", errors.New("user address is not correct")
+	}
+
+	walletAddressBytes, err := hex.DecodeString(string(addressBytes))
+	if err != nil {
+		return "", errors.New("error while encoding user address: " + err.Error())
+	}
+
+	for _, nodeAddres := range nodeAddreses {
+		addressBytes = nodeAddres
+		if len(nodeAddres) == 42 && nodeAddres[0] == '0' && nodeAddres[1] == 'x' {
+			addressBytes = nodeAddres[2:] //remove "0x" if present
+		}
+		if len(addressBytes) != 40 {
+			return "", errors.New("node address is not correct")
+		}
+		nodeAddressBytes, err := hex.DecodeString(string(addressBytes))
+		if err != nil {
+			return "", errors.New("error while encoding user address: " + err.Error())
+		}
+		resultBytes = append(resultBytes, nodeAddressBytes...)
+	}
+
+	resultBytes = append(walletAddressBytes, resultBytes...)
+
+	hash := crypto.Keccak256Hash(resultBytes)
+	ethSigner := crypto.Keccak256Hash([]byte("\x19Ethereum Signed Message:\n32"), hash.Bytes())
+	sig, err := crypto.Sign(ethSigner.Bytes(), privKey)
+	if err != nil {
+		return "", errors.New("error while signing payload: " + err.Error())
+	}
+	/*
+		In Solidity the 64th digit of a sign is the recovery digit
+		it's required to be 27 or 28
+
+		The crypto.sign function from eth library in go set 0 or 1, the std value from ECDSA
+	*/
+	if sig[64] < 27 {
+		sig[64] += 27
+	}
+
+	return hex.EncodeToString(sig), nil
+}
+
 func padTo32Bytes(b []byte) []byte {
 	if len(b) < 32 {
 		// Pad the byte slice to the left with zeros
