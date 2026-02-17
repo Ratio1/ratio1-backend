@@ -80,7 +80,7 @@ func (h *launchpadHandler) linkNode(c *gin.Context) {
 	}
 
 	if !config.Config.Api.DevTesting {
-		acc, err := service.GetOrCreateAccount(userAddress)
+		acc, err := service.GetAccount(userAddress)
 		if err != nil {
 			log.Error("error while retrieving account information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -169,7 +169,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		acc.Email = new(string)
 		client.Country = "ITA"
 	} else {
-		acc, err = service.GetOrCreateAccount(address)
+		acc, err = service.GetAccount(address)
 		if err != nil {
 			log.Error("error while retrieving account information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -336,7 +336,7 @@ func (h *launchpadHandler) multiLinkNode(c *gin.Context) {
 	}
 
 	if !config.Config.Api.DevTesting {
-		acc, err := service.GetOrCreateAccount(userAddress)
+		acc, err := service.GetAccount(userAddress)
 		if err != nil {
 			log.Error("error while retrieving account information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
