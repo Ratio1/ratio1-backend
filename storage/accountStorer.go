@@ -60,19 +60,17 @@ func CreateAccount(account *model.Account) error {
 	return nil
 }
 
-func UpdateAccount(account *model.Account) error {
-	db, err := GetDB()
+func UpdateAccount(tx *gorm.DB, account *model.Account) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txUpdate := db.Save(&account)
+	txUpdate := exec.Save(account)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
