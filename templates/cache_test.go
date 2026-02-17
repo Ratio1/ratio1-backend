@@ -30,4 +30,8 @@ func TestTemplateGetters(t *testing.T) {
 	c, err = GetKycConfirmedEmailTemplate()
 	require.Nil(t, err)
 	require.Equal(t, c.Name(), emailKycConfirmedFile)
+
+	c, err = GetJobsEndingEmailTemplate()
+	require.Nil(t, err)
+	require.Equal(t, c.Name(), emailJobsEndingFile)
 }

@@ -272,6 +272,8 @@ func DailyGetStats() {
 		fmt.Println("error storing daily stats: " + err.Error())
 		return
 	}
+
+	manageEndingJobsAndSendEmails()
 }
 
 func getChainLastBlockNumber() (int64, error) {
