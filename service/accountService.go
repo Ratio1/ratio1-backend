@@ -124,7 +124,7 @@ func ConfirmEmail(token string) (*model.Account, error) {
 		return nil, errors.New("error while updating account on storage: " + err.Error())
 	}
 
-	err = storage.CreateOrUpdateKyc(&kyc)
+	err = storage.CreateOrUpdateKyc(nil, &kyc)
 	if err != nil {
 		return nil, errors.New("error while updating kyc on storage: " + err.Error())
 	}
@@ -146,7 +146,7 @@ func SubscribeEmail(kyc *model.Kyc) error {
 	var rUpd = true
 	kyc.ReceiveUpdates = &rUpd
 
-	err := storage.CreateOrUpdateKyc(kyc)
+	err := storage.CreateOrUpdateKyc(nil, kyc)
 	if err != nil {
 		return errors.New("error while update kyc in storage: " + err.Error())
 	}
@@ -164,7 +164,7 @@ func UnsubscribeEmail(kyc *model.Kyc) error {
 	var rUpd = false
 	kyc.ReceiveUpdates = &rUpd
 
-	err := storage.CreateOrUpdateKyc(kyc)
+	err := storage.CreateOrUpdateKyc(nil, kyc)
 	if err != nil {
 		return errors.New("error while update kyc in storage: " + err.Error())
 	}
