@@ -16,6 +16,14 @@ import (
 
 var ErrorAccountNotFound = errors.New("account not found")
 
+func GetAccount(address string) (*model.Account, error) {
+	account, err := getAcocunt(address)
+	if err != nil {
+		return nil, errors.New("error while retrieving account from storage: " + err.Error())
+	}
+	return account, nil
+}
+
 func GetOrCreateAccount(address string) (*model.Account, error) {
 	account, err := getAcocunt(address)
 	if err != nil {
@@ -58,22 +66,21 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 		return nil, errors.New("account already has another email")
 	}
 
-	account.PendingEmail = email
-	account.PendingReceiveUpdates = receiveUpdates
-
-	err = storage.UpdateAccount(nil, account)
-	if err != nil {
-		return nil, errors.New("error while updating account on storage: " + err.Error())
-	}
-
-	err = increaseEmailCount(address)
-	if err != nil {
+	if err := increaseEmailCount(address); err != nil {
 		return nil, err
 	}
 
 	err = SendConfirmEmail(address, email)
 	if err != nil {
 		return nil, errors.New("error while sending confirmation email: " + err.Error())
+	}
+
+	account.PendingEmail = email
+	account.PendingReceiveUpdates = receiveUpdates
+
+	err = storage.UpdateAccount(nil, account)
+	if err != nil {
+		return nil, errors.New("error while updating account on storage: " + err.Error())
 	}
 
 	return account, nil

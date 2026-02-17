@@ -339,10 +339,14 @@ func (h *accountHandler) subscribe(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(address)
+	account, err := service.GetAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	} else if account == nil {
+		log.Error(service.ErrorAccountNotFound.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 
@@ -407,10 +411,14 @@ func (h *accountHandler) unsubscribe(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(address)
+	account, err := service.GetAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	} else if account == nil {
+		log.Error(service.ErrorAccountNotFound.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 
@@ -497,10 +505,14 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(blockAccount.Address)
+	account, err := service.GetAccount(blockAccount.Address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	} else if account == nil {
+		log.Error(service.ErrorAccountNotFound.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 
@@ -524,6 +536,13 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 	accountDto, err := service.NewAccountDto(account, kyc)
 	if err != nil {
 		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	err = storage.UpdateAccount(nil, account)
+	if err != nil {
+		log.Error("error while updating account: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
@@ -553,10 +572,14 @@ func (h *accountHandler) addSellerCode(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(address)
+	account, err := service.GetAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	} else if account == nil {
+		log.Error(service.ErrorAccountNotFound.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 
@@ -640,10 +663,14 @@ func (h *accountHandler) getKycinfo(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(address)
+	account, err := service.GetAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	} else if account == nil {
+		log.Error(service.ErrorAccountNotFound.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 
@@ -717,7 +744,7 @@ func (h *accountHandler) isKyb(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(address)
+	account, err := service.GetAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
