@@ -7,19 +7,17 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateBurnEvent(burnEvent *model.BurnEvent) error {
-	db, err := GetDB()
+func CreateBurnEvent(tx *gorm.DB, burnEvent *model.BurnEvent) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&burnEvent)
+	txCreate := exec.Create(burnEvent)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 

@@ -9,8 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateStats(stats *model.Stats) error {
-	db, err := GetDB()
+func CreateStats(tx *gorm.DB, stats *model.Stats) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func CreateStats(stats *model.Stats) error {
 		"total_poai_token_burn":        toNumericExpr(stats.TotalPoaiTokenBurn),
 	}
 
-	res := db.Table("stats").Create(row)
+	res := exec.Table("stats").Create(row)
 	if res.Error != nil {
 		return res.Error
 	}
