@@ -25,38 +25,34 @@ func GetLatestAllocationBlock() (int64, error) {
 	return allocation.BlockNumber, nil
 }
 
-func CreateAllocation(alloc *model.Allocation) error {
-	db, err := GetDB()
+func CreateAllocation(tx *gorm.DB, alloc *model.Allocation) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&alloc)
+	txCreate := exec.Create(alloc)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-func UpdateAllocation(alloc *model.Allocation) error {
-	db, err := GetDB()
+func UpdateAllocation(tx *gorm.DB, alloc *model.Allocation) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txUpdate := db.Save(&alloc)
+	txUpdate := exec.Save(alloc)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 

@@ -1,59 +1,72 @@
 package storage
 
 import (
+	"errors"
+
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
-func GetPreferenceByAddress(userAddress string) (*model.Preference, error) {
-	db, err := GetDB()
+func GetPreferenceByAddress(tx *gorm.DB, userAddress string) (*model.Preference, error) {
+	return getPreferenceByAddress(tx, userAddress, false)
+}
+
+func GetPreferenceByAddressForUpdate(tx *gorm.DB, userAddress string) (*model.Preference, error) {
+	return getPreferenceByAddress(tx, userAddress, true)
+}
+
+func getPreferenceByAddress(tx *gorm.DB, userAddress string, forUpdate bool) (*model.Preference, error) {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return nil, err
 	}
 
+	query := exec.Where("user_address = ?", userAddress)
+	if forUpdate {
+		query = query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+
 	var pref model.Preference
-	txRead := db.Where("user_address =  ? ", userAddress).Find(&pref)
+	txRead := query.Take(&pref)
 	if txRead.Error != nil {
+		if errors.Is(txRead.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, txRead.Error
-	} else if txRead.RowsAffected == 0 {
-		return nil, nil
 	}
 
 	return &pref, nil
 }
 
-func CreatePreference(pref *model.Preference) error {
-	db, err := GetDB()
+func CreatePreference(tx *gorm.DB, pref *model.Preference) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&pref)
+	txCreate := exec.Create(pref)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-func UpdatePreference(pref *model.Preference) error {
-	db, err := GetDB()
+func UpdatePreference(tx *gorm.DB, pref *model.Preference) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txUpdate := db.Save(&pref)
+	txUpdate := exec.Save(pref)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 

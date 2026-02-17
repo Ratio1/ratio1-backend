@@ -157,7 +157,7 @@ func DailyGetStats() {
 	/* get preferences for eache csp owner*/
 	cspPreferences := make(map[string]*model.Preference) // map[cspOwnerAddress]Preference
 	for _, v := range cspAddresses {
-		preference, err := storage.GetPreferenceByAddress(v)
+		preference, err := storage.GetPreferenceByAddress(nil, v)
 		if err != nil || preference == nil {
 			preference = &model.Preference{
 				LocalCurrency: "USD",
@@ -580,7 +580,7 @@ func getBlockTimestamp(blockNumber int64) (time.Time, error) {
 
 func generateAllocations(allocEevents []model.Allocation) error {
 	for _, event := range allocEevents {
-		err := storage.CreateAllocation(&event)
+		err := storage.CreateAllocation(nil, &event)
 		if err != nil {
 			return errors.New("error while saving allocation: " + err.Error())
 		}
