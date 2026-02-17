@@ -190,8 +190,11 @@ func SendCspDraftEmail(email string) error {
 	return callSendEmail(email, subjectNewInvoiceDraft, body.String())
 }
 
-func SendBuyLicenseEmail(email, url, invoiceNumber string) error {
+func SendBuyLicenseEmail(email, url, invoiceNumber string, warning *string) error {
 	text := "A new invoice has been submitted. Invoice Number: " + invoiceNumber + " , link: " + url
+	if warning != nil && *warning != "" {
+		text += "\n\nWARNING: " + *warning
+	}
 	return callSendTextEmail(email, subjectNewBuyLicenseInvoice, text)
 }
 
