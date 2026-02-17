@@ -497,12 +497,6 @@ func (h *accountHandler) addSellerCode(c *gin.Context) {
 	}
 
 	account.UsedSellerCode = &referralCode
-	err = storage.UpdateAccount(account)
-	if err != nil {
-		log.Error("error while updating account: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
-	}
 
 	var kyc *model.Kyc
 	if account.Email != nil {
@@ -517,6 +511,13 @@ func (h *accountHandler) addSellerCode(c *gin.Context) {
 	accountDto, err := service.NewAccountDto(account, kyc)
 	if err != nil {
 		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	err = storage.UpdateAccount(nil, account)
+	if err != nil {
+		log.Error("error while updating account: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
