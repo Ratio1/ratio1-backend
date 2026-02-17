@@ -156,7 +156,7 @@ func (h *sumsubHandler) initSession(c *gin.Context) {
 		return
 	}
 
-	err = storage.CreateOrUpdateKyc(kyc)
+	err = storage.CreateOrUpdateKyc(nil, kyc)
 	if err != nil {
 		log.Error("error while saving kyc information in storage: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
