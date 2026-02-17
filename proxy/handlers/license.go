@@ -272,13 +272,6 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	client.Status = &status
 	client.UserEmail = acc.Email
 
-	err = storage.CreateInvoice(client)
-	if err != nil {
-		log.Error("error while creating invoice in storage: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
-	}
-
 	var amount int
 	if kyc.ApplicantType == model.BusinessCustomer {
 		amount = config.Config.BuyLimitUSD.Company
@@ -294,6 +287,13 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	if err != nil {
 		log.Error("error while trying to sign message: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	err = storage.CreateInvoice(client)
+	if err != nil {
+		log.Error("error while creating invoice in storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
 

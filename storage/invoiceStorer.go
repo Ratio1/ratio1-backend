@@ -47,13 +47,11 @@ func CreateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	txCreate := db.Create(&invoice)
+	txCreate := db.Create(invoice)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
@@ -66,13 +64,11 @@ func UpdateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	txUpdate := db.Save(&invoice)
+	txUpdate := db.Save(invoice)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
