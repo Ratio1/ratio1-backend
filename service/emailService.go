@@ -219,7 +219,7 @@ func SendJobsEndingEmail(email string, jobs []EndingJob) error {
 		}
 		rows = append(rows, endingJobTemplateRow{
 			JobID:              jobID,
-			JobName:            "TODO Temporary Job Name",
+			JobName:            job.JobName,
 			NotifyBeforeEpochs: job.NotifyBeforeEpochs,
 		})
 	}

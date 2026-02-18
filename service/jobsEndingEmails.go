@@ -32,6 +32,7 @@ type EndingJob struct {
 	EscrowAddress            common.Address
 	EscrowOwner              common.Address
 	NotifyBeforeEpochs       int64
+	JobName                  string
 }
 
 type endingJobOnChain struct {
@@ -51,7 +52,7 @@ type endingJobOnChain struct {
 	EscrowOwner              common.Address   `abi:"escrowOwner"`
 }
 
-func manageEndingJobsAndSendEmails() error {
+func manageEndingJobsAndSendEmails(jobNamesForId map[string]*JobDetailsResult) error {
 	jobs, err := getEndingJobsWithPeriod()
 	if err != nil {
 		return err
@@ -74,6 +75,13 @@ func manageEndingJobsAndSendEmails() error {
 			}
 			return compareBigInt(left.JobID, right.JobID) < 0
 		})
+	}
+
+	for ownerAddress := range usersWithJobs {
+		for i := range usersWithJobs[ownerAddress] {
+			details := jobNamesForId[usersWithJobs[ownerAddress][i].JobID.String()]
+			usersWithJobs[ownerAddress][i].JobName = details.JobName
+		}
 	}
 
 	sendEmailForEndingJobs(usersWithJobs)

@@ -121,17 +121,17 @@ func DailyGetStats() {
 	}
 
 	/* get all jobs details */
-	allJobsId := make(map[string]*Response)
+	allJobsDetails := make(map[string]*JobDetailsResult)
 	for _, a := range allocEvents {
-		allJobsId[a.JobId] = nil
+		allJobsDetails[a.JobId] = nil
 	}
 
-	for k := range allJobsId {
+	for k := range allJobsDetails {
 		res, err := GetJobDetails(k, config.Config.DeeployApi)
 		if err != nil {
 			continue
 		}
-		allJobsId[k] = res
+		allJobsDetails[k] = res
 	}
 
 	/* in each allocation, add timestamp and job details */
@@ -139,10 +139,10 @@ func DailyGetStats() {
 		if v := blocks[a.BlockNumber]; v != nil {
 			a.AllocationCreation = *v
 		}
-		if v := allJobsId[a.JobId]; v != nil {
-			a.JobName = v.Result.JobName
-			a.JobType = model.JobType(v.Result.JobType)
-			a.ProjectName = v.Result.ProjectName
+		if v := allJobsDetails[a.JobId]; v != nil {
+			a.JobName = v.JobName
+			a.JobType = model.JobType(v.JobType)
+			a.ProjectName = v.ProjectName
 		}
 		allocEvents[i] = a
 	}
@@ -273,7 +273,7 @@ func DailyGetStats() {
 		return
 	}
 
-	manageEndingJobsAndSendEmails()
+	manageEndingJobsAndSendEmails(allJobsDetails)
 }
 
 func getChainLastBlockNumber() (int64, error) {

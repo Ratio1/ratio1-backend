@@ -12,16 +12,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-type Response struct {
-	Result Result `json:"result"`
+type JobDetailsResponse struct {
+	Result JobDetailsResult `json:"result"`
 }
-type Result struct {
+type JobDetailsResult struct {
 	JobName     string `json:"job_name"`
 	JobType     int    `json:"job_type"`
 	ProjectName string `json:"project_name"`
 }
 
-func GetJobDetails(jobId, api string) (*Response, error) {
+func GetJobDetails(jobId, api string) (*JobDetailsResult, error) {
 	nonce := "0x" + strconv.FormatInt(time.Now().UTC().UnixMilli(), 16)
 	jobIdAsInt, err := strconv.Atoi(jobId)
 	if err != nil {
@@ -33,13 +33,13 @@ func GetJobDetails(jobId, api string) (*Response, error) {
 		return nil, errors.New("error while creating request: " + err.Error())
 	}
 
-	var resp Response
+	var resp JobDetailsResponse
 	err = process.HttpPost(api, request, &resp)
 	if err != nil {
 		return nil, errors.New("error while retriveing job details: " + err.Error())
 	}
 
-	return &resp, nil
+	return &resp.Result, nil
 }
 
 func createRequest(jobId int, nonce string) (any, error) {
