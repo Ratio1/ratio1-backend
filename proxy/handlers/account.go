@@ -419,25 +419,35 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 	account.IsBlacklisted = true
 	account.BlacklistedReason = &blockAccount.Reasons
 
-	err = service.SendBlacklistedEmail(*account.Email)
-	if err != nil {
-		log.Error("error while sending blacklisted email: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
-	}
+	var accountDto *model.AccountDto
+	if account.Email != nil {
+		err = service.SendBlacklistedEmail(*account.Email)
+		if err != nil {
+			log.Error("error while sending blacklisted email: " + err.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			return
+		}
 
-	kyc, _, err := storage.GetKycByEmail(*account.Email)
-	if err != nil {
-		log.Error("error while retrieving kyc information from storage: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
-	}
+		kyc, _, err := storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
 
-	accountDto, err := service.NewAccountDto(account, kyc)
-	if err != nil {
-		log.Error("error while creating account dto: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
+		accountDto, err = service.NewAccountDto(account, kyc)
+		if err != nil {
+			log.Error("error while creating account dto: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+	} else {
+		accountDto, err = service.NewAccountDto(account, nil)
+		if err != nil {
+			log.Error("error while creating account dto: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
 	}
 
 	err = storage.UpdateAccount(nil, account)
