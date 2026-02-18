@@ -17,7 +17,7 @@ func GetLatestInvoiceBlock() (*int64, bool, error) {
 		if txRead.Error == gorm.ErrRecordNotFound {
 			return nil, false, nil
 		}
-		return nil, false, err
+		return nil, false, txRead.Error
 	}
 
 	return invoice.BlockNumber, true, nil
