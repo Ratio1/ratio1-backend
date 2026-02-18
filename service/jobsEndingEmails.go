@@ -85,7 +85,7 @@ func getEndingJobsWithPeriod() ([]EndingJob, error) {
 	periods := []int64{1, 3, 5}
 	contractAddress := common.HexToAddress(config.Config.ReaderAddress)
 
-	parsedABI, err := abi.JSON(strings.NewReader("[" + ratio1abi.GetJobsByLastExecutionEpochDeltaAbi + "]"))
+	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.GetJobsByLastExecutionEpochDeltaAbi))
 	if err != nil {
 		return nil, errors.New("error while parsing reader abi: " + err.Error())
 	}

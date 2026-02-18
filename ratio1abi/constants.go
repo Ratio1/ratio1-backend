@@ -176,7 +176,7 @@ const PoaiManagerTotalBalanceAbi = `[{
 ]`
 
 // reader cpntract ABI
-const GetJobsByLastExecutionEpochDeltaAbi = `{
+const GetJobsByLastExecutionEpochDeltaAbi = `[{
     "inputs": [
       {
         "internalType": "uint256",
@@ -266,4 +266,4 @@ const GetJobsByLastExecutionEpochDeltaAbi = `{
     ],
     "stateMutability": "view",
     "type": "function"
-  }`
+  }]`
