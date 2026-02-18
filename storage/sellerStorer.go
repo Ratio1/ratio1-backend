@@ -122,6 +122,8 @@ func GetSellerByCode(sellerCode string) (*model.Seller, error) {
 	txRead := db.Find(&sel, "seller_code = ?", sellerCode)
 	if txRead.Error != nil {
 		return nil, txRead.Error
+	} else if txRead.RowsAffected == 0 {
+		return nil, nil
 	}
 	return &sel, nil
 }
