@@ -185,34 +185,38 @@
                             font-weight: 300;
                             letter-spacing: -1.5px;
                           ">
-                                                Jobs ending soon</span>
+                                                Deeploy jobs ending soon</span>
                                         </font>
                                         <div style="height: 25px; line-height: 25px; font-size: 23px">
                                             &nbsp;
                                         </div>
                                         <font class="mob_title2" face="'Source Sans Pro', sans-serif" color="#5e5e5e"
                                             style="
-                          font-size: 36px;
-                          line-height: 45px;
+                          font-size: 24px;
+                          line-height: 34px;
                           font-weight: 300;
-                          letter-spacing: -1px;
+                          letter-spacing: -0.4px;
                         ">
                                             <span class="mob_title2" style="
                             font-family: 'Source Sans Pro', Arial, Tahoma,
                               Geneva, sans-serif;
                             color: #5e5e5e;
-                            font-size: 30px;
-                            line-height: 45px;
+                            font-size: 24px;
+                            line-height: 34px;
                             font-weight: 300;
-                            letter-spacing: -1px;
+                            letter-spacing: -0.4px;
                           ">
-                                                Review the jobs approaching end period
+                                                You have {{ .JobsCount }} {{ if eq .JobsCount 1 }}job{{ else }}jobs{{ end }} that {{ if eq .JobsCount 1 }}is{{ else }}are{{ end }} about to expire.
+                                                Extend {{ if eq .JobsCount 1 }}it{{ else }}them{{ end }} now from
+                                                <a href="https://deeploy.ratio1.ai" target="_blank"
+                                                    style="color: #0b0b47; text-decoration: underline;">deeploy.ratio1.ai</a>
+                                                to avoid interruptions.
                                             </span>
                                         </font>
-                                        <div style="height: 38px; line-height: 38px; font-size: 36px">
+                                        <div style="height: 16px; line-height: 16px; font-size: 14px">
                                             &nbsp;
                                         </div>
-                                        <div class="top_pad2" style="height: 78px; line-height: 78px; font-size: 76px">
+                                        <div class="top_pad2" style="height: 20px; line-height: 20px; font-size: 18px">
                                             &nbsp;
                                         </div>
                                     </td>
@@ -246,7 +250,7 @@
                               font-size: 15px;
                               line-height: 20px;
                               border-bottom: 1px solid #e8e8e8;
-                            ">Escrow Address</th>
+                            ">Job Name</th>
                                                 <th align="left" valign="middle" style="
                               padding: 10px;
                               font-family: 'Source Sans Pro', Arial, Tahoma, Geneva, sans-serif;
@@ -274,8 +278,7 @@
                               font-size: 14px;
                               line-height: 20px;
                               border-bottom: 1px solid #e8e8e8;
-                              word-break: break-all;
-                            ">{{ .EscrowAddress }}</td>
+                            ">{{ .JobName }}</td>
                                                 <td align="left" valign="top" style="
                               padding: 10px;
                               font-family: 'Source Sans Pro', Arial, Tahoma, Geneva, sans-serif;

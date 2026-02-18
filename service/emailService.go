@@ -207,7 +207,7 @@ func SendJobsEndingEmail(email string, jobs []EndingJob) error {
 
 	type endingJobTemplateRow struct {
 		JobID              string
-		EscrowAddress      string
+		JobName            string
 		NotifyBeforeEpochs int64
 	}
 
@@ -219,16 +219,18 @@ func SendJobsEndingEmail(email string, jobs []EndingJob) error {
 		}
 		rows = append(rows, endingJobTemplateRow{
 			JobID:              jobID,
-			EscrowAddress:      job.EscrowAddress.String(),
+			JobName:            "TODO Temporary Job Name",
 			NotifyBeforeEpochs: job.NotifyBeforeEpochs,
 		})
 	}
 
 	var body bytes.Buffer
 	err = tmpl.Execute(&body, struct {
-		Jobs []endingJobTemplateRow
+		Jobs      []endingJobTemplateRow
+		JobsCount int
 	}{
-		Jobs: rows,
+		Jobs:      rows,
+		JobsCount: len(rows),
 	})
 	if err != nil {
 		return errors.New("error while executing email template: " + err.Error())
