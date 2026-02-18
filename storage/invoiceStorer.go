@@ -82,7 +82,8 @@ func GetUserInvoices(address string) (*[]model.InvoiceClient, error) {
 	}
 
 	var invoices []model.InvoiceClient
-	txRead := db.Find(&invoices, "address = ? && status =  paid", address)
+	paidVar := "paid"
+	txRead := db.Find(&invoices, "address = ? AND status = ?", address, paidVar)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
