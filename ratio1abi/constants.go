@@ -175,7 +175,7 @@ const PoaiManagerTotalBalanceAbi = `[{
     }
 ]`
 
-// reader cpntract ABI
+// reader contract ABI
 const GetJobsByLastExecutionEpochDeltaAbi = `[{
     "inputs": [
       {
