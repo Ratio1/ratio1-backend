@@ -149,9 +149,27 @@ func confirmPrimaryEmail(account *model.Account, email string) (*model.Account, 
 	}
 
 	if *kyc.ReceiveUpdates {
-		_ = AddSubscriber(*account.Email) // ignore error
+		err = AddSubscriber(*account.Email)
+		if err != nil {
+			notifyError(
+				"Failed to subscribe user to marketing list after email confirmation",
+				err,
+				ErrorEmailField{Name: "Process", Value: "ConfirmEmail"},
+				ErrorEmailField{Name: "AccountAddress", Value: account.Address},
+				ErrorEmailField{Name: "Email", Value: *account.Email},
+			)
+		}
 	} else {
-		_ = RemoveSubscriber(*account.Email) // ignore error
+		err = RemoveSubscriber(*account.Email)
+		if err != nil {
+			notifyError(
+				"Failed to unsubscribe user from marketing list after email confirmation",
+				err,
+				ErrorEmailField{Name: "Process", Value: "ConfirmEmail"},
+				ErrorEmailField{Name: "AccountAddress", Value: account.Address},
+				ErrorEmailField{Name: "Email", Value: *account.Email},
+			)
+		}
 	}
 
 	return account, nil
@@ -170,7 +188,15 @@ func SubscribeEmail(kyc *model.Kyc) error {
 		return errors.New("error while update kyc in storage: " + err.Error())
 	}
 
-	_ = AddSubscriber(kyc.Email) // ignore error
+	err = AddSubscriber(kyc.Email)
+	if err != nil {
+		notifyError(
+			"Failed to subscribe user to marketing list",
+			err,
+			ErrorEmailField{Name: "Process", Value: "SubscribeEmail"},
+			ErrorEmailField{Name: "Email", Value: kyc.Email},
+		)
+	}
 
 	return nil
 }
@@ -188,7 +214,15 @@ func UnsubscribeEmail(kyc *model.Kyc) error {
 		return errors.New("error while update kyc in storage: " + err.Error())
 	}
 
-	_ = RemoveSubscriber(kyc.Email) // ignore error
+	err = RemoveSubscriber(kyc.Email)
+	if err != nil {
+		notifyError(
+			"Failed to unsubscribe user from marketing list",
+			err,
+			ErrorEmailField{Name: "Process", Value: "UnsubscribeEmail"},
+			ErrorEmailField{Name: "Email", Value: kyc.Email},
+		)
+	}
 
 	return nil
 }
