@@ -118,5 +118,12 @@ func waitForGracefulShutdown(server *http.Server) {
 	if err := server.Shutdown(ctx); err != nil {
 		panic(err)
 	}
-	_ = server.Close()
+	if err := server.Close(); err != nil {
+		_ = service.SendErrorEmail(
+			"Failed to close HTTP server after graceful shutdown",
+			err,
+			service.ErrorEmailField{Name: "Process", Value: "waitForGracefulShutdown"},
+		)
+		panic(err)
+	}
 }

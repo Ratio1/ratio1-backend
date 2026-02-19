@@ -53,6 +53,14 @@ type endingJobOnChain struct {
 }
 
 func manageEndingJobsAndSendEmails(jobNamesForId map[string]*JobDetailsResult) error {
+	reportError := func(message string, err error, fields ...ErrorEmailField) {
+		allFields := []ErrorEmailField{
+			{Name: "Process", Value: "manageEndingJobsAndSendEmails"},
+		}
+		allFields = append(allFields, fields...)
+		notifyError(message, err, allFields...)
+	}
+
 	jobs, err := getEndingJobsWithPeriod()
 	if err != nil {
 		return err
@@ -77,11 +85,25 @@ func manageEndingJobsAndSendEmails(jobNamesForId map[string]*JobDetailsResult) e
 		})
 	}
 
+	missingDetails := make([]string, 0)
 	for ownerAddress := range usersWithJobs {
 		for i := range usersWithJobs[ownerAddress] {
-			details := jobNamesForId[usersWithJobs[ownerAddress][i].JobID.String()]
+			jobID := usersWithJobs[ownerAddress][i].JobID.String()
+			details := jobNamesForId[jobID]
+			if details == nil {
+				missingDetails = append(missingDetails, jobID)
+				continue
+			}
 			usersWithJobs[ownerAddress][i].JobName = details.JobName
 		}
+	}
+	if len(missingDetails) > 0 {
+		reportError(
+			"Missing job details while preparing ending jobs email",
+			errors.New("job details not found for one or more jobs"),
+			ErrorEmailField{Name: "MissingJobDetailsCount", Value: intField(len(missingDetails))},
+			ErrorEmailField{Name: "MissingJobIDs", Value: strings.Join(missingDetails, ",")},
+		)
 	}
 
 	sendEmailForEndingJobs(usersWithJobs)
@@ -156,7 +178,14 @@ func getEndingJobsWithPeriod() ([]EndingJob, error) {
 }
 
 func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
-	// TODO if data is missing we skip and continue (no hard failure). to be done differently
+	reportError := func(message string, err error, fields ...ErrorEmailField) {
+		allFields := []ErrorEmailField{
+			{Name: "Process", Value: "sendEmailForEndingJobs"},
+		}
+		allFields = append(allFields, fields...)
+		notifyError(message, err, allFields...)
+	}
+
 	for ownerAddress, jobs := range usersWithJobs {
 		if len(jobs) == 0 {
 			continue
@@ -165,20 +194,45 @@ func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
 		account, found, err := storage.GetAccountByAddress(ownerAddress)
 		if err != nil {
 			log.Error("error while retrieving account for address %s: %v", ownerAddress, err)
+			reportError(
+				"Failed to retrieve account for ending jobs owner",
+				err,
+				ErrorEmailField{Name: "OwnerAddress", Value: ownerAddress},
+				ErrorEmailField{Name: "JobsCount", Value: intField(len(jobs))},
+			)
 			continue
 		}
 		if !found || account == nil || account.Email == nil {
+			reportError(
+				"Cannot send ending jobs email because account email is missing",
+				errors.New("account not found or email is nil"),
+				ErrorEmailField{Name: "OwnerAddress", Value: ownerAddress},
+				ErrorEmailField{Name: "JobsCount", Value: intField(len(jobs))},
+			)
 			continue
 		}
 
 		email := strings.TrimSpace(*account.Email)
 		if email == "" {
+			reportError(
+				"Cannot send ending jobs email because account email is empty",
+				errors.New("account email is empty"),
+				ErrorEmailField{Name: "OwnerAddress", Value: ownerAddress},
+				ErrorEmailField{Name: "JobsCount", Value: intField(len(jobs))},
+			)
 			continue
 		}
 
 		err = SendJobsEndingEmail(email, jobs)
 		if err != nil {
 			log.Error("error while sending ending jobs email to %s: %v", email, err)
+			reportError(
+				"Failed to send ending jobs email",
+				err,
+				ErrorEmailField{Name: "OwnerAddress", Value: ownerAddress},
+				ErrorEmailField{Name: "RecipientEmail", Value: email},
+				ErrorEmailField{Name: "JobsCount", Value: intField(len(jobs))},
+			)
 			continue
 		}
 	}

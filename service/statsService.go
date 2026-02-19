@@ -22,9 +22,17 @@ import (
 )
 
 func DailyGetStats() {
+	reportError := func(message string, err error, fields ...ErrorEmailField) {
+		allFields := []ErrorEmailField{
+			{Name: "Process", Value: "DailyGetStats"},
+		}
+		allFields = append(allFields, fields...)
+		notifyError(message, err, allFields...)
+	}
+
 	oldStats, err := storage.GetLatestStats()
 	if err != nil {
-		fmt.Println("error getting latest stats: " + err.Error())
+		reportError("Failed to load latest stats from storage", err)
 		return
 	} else if oldStats == nil {
 		oldStats = &model.Stats{
@@ -43,21 +51,21 @@ func DailyGetStats() {
 
 	cspAddresses, err := getAllCSPAddress() // map[cspAddress]ownerAddress
 	if err != nil {
-		fmt.Println("Error while retrieving csp addresses: " + err.Error())
+		reportError("Failed to retrieve CSP addresses", err)
 		return
 	}
 
 	from := oldStats.LastBlockNumber
 	to, err := getChainLastBlockNumber()
 	if err != nil {
-		fmt.Println("error getting last block number: " + err.Error())
+		reportError("Failed to retrieve latest chain block number", err)
 		return
 	}
 
 	/*Fetch all allocation events*/
 	allocEvents, err := fetchAllocationEvents(cspAddresses, from, to)
 	if err != nil {
-		fmt.Println("Error fetching events: " + err.Error())
+		reportError("Failed to fetch allocation events", err, ErrorEmailField{Name: "FromBlock", Value: int64Field(from)}, ErrorEmailField{Name: "ToBlock", Value: int64Field(to)})
 		return
 	}
 
@@ -80,7 +88,7 @@ func DailyGetStats() {
 
 	nodeToOwner, err = getNodeOwners(uniqueNodes)
 	if err != nil {
-		fmt.Println("Error fetching node owners: " + err.Error())
+		reportError("Failed to fetch node owners", err, ErrorEmailField{Name: "NodeCount", Value: intField(len(uniqueNodes))})
 		return
 	}
 
@@ -93,7 +101,7 @@ func DailyGetStats() {
 	/*Fetch all burned events */
 	burnEvents, err := fetchBurnEvents(cspAddresses, from, to)
 	if err != nil {
-		fmt.Println("Error fetching events: " + err.Error())
+		reportError("Failed to fetch burn events", err, ErrorEmailField{Name: "FromBlock", Value: int64Field(from)}, ErrorEmailField{Name: "ToBlock", Value: int64Field(to)})
 		return
 	} //if allocation has happened, burn has happened too, so no need to check len(burnEvents)==0
 
@@ -113,7 +121,7 @@ func DailyGetStats() {
 	for k := range blocks {
 		v, err := getBlockTimestamp(k)
 		if err != nil {
-			fmt.Println("cannot fetch correct timestamp")
+			reportError("Failed to fetch block timestamp", err, ErrorEmailField{Name: "BlockNumber", Value: int64Field(k)})
 			return
 		}
 		blocks[k] = &v
@@ -126,12 +134,22 @@ func DailyGetStats() {
 		allJobsDetails[a.JobId] = nil
 	}
 
+	failedJobDetails := make([]string, 0)
 	for k := range allJobsDetails {
 		res, err := GetJobDetails(k, config.Config.DeeployApi)
 		if err != nil {
+			failedJobDetails = append(failedJobDetails, k)
 			continue
 		}
 		allJobsDetails[k] = res
+	}
+	if len(failedJobDetails) > 0 {
+		reportError(
+			"Failed to retrieve details for one or more jobs",
+			errors.New("job details retrieval failed"),
+			ErrorEmailField{Name: "FailedJobsCount", Value: intField(len(failedJobDetails))},
+			ErrorEmailField{Name: "FailedJobIDs", Value: strings.Join(failedJobDetails, ",")},
+		)
 	}
 
 	/* in each allocation, add timestamp and job details */
@@ -150,7 +168,7 @@ func DailyGetStats() {
 	/* get all currency*/
 	currencyMap, err := GetFreeCurrencyValues() //map[USD,EUR...]ratio always based 1 usd -> value
 	if err != nil {
-		fmt.Println("could not fetch currency map: ", err.Error())
+		reportError("Failed to fetch currency conversion map", err)
 		return
 	}
 
@@ -183,14 +201,14 @@ func DailyGetStats() {
 	/* store all allocation events */
 	err = generateAllocations(allocEvents)
 	if err != nil {
-		fmt.Println("Error generating allocations: " + err.Error())
+		reportError("Failed to persist allocation events", err, ErrorEmailField{Name: "AllocationEventsCount", Value: intField(len(allocEvents))})
 		return
 	}
 
 	/* store all burn events */
 	err = generateBurns(burnEvents)
 	if err != nil {
-		fmt.Println("Error generating burns: " + err.Error())
+		reportError("Failed to persist burn events", err, ErrorEmailField{Name: "BurnEventsCount", Value: intField(len(burnEvents))})
 		return
 	}
 
@@ -202,7 +220,7 @@ func DailyGetStats() {
 
 	dailyMinted, err := getPeriodMintedAmount(from, to)
 	if err != nil {
-		fmt.Println("error getting daily minted: " + err.Error())
+		reportError("Failed to compute daily minted amount", err, ErrorEmailField{Name: "FromBlock", Value: int64Field(from)}, ErrorEmailField{Name: "ToBlock", Value: int64Field(to)})
 		return
 	}
 
@@ -210,13 +228,13 @@ func DailyGetStats() {
 
 	dailyTokenBurn, err := getPeriodBurnedAmount(from, to)
 	if err != nil {
-		fmt.Println("error getting daily token burn: " + err.Error())
+		reportError("Failed to compute daily token burn", err, ErrorEmailField{Name: "FromBlock", Value: int64Field(from)}, ErrorEmailField{Name: "ToBlock", Value: int64Field(to)})
 		return
 	}
 
 	dailyNdContractTokenBurn, err := getPeriodNdContractBurnedAmount(from, to)
 	if err != nil {
-		fmt.Println("error getting daily nd contract token burn: " + err.Error())
+		reportError("Failed to compute daily ND contract token burn", err, ErrorEmailField{Name: "FromBlock", Value: int64Field(from)}, ErrorEmailField{Name: "ToBlock", Value: int64Field(to)})
 		return
 	}
 
@@ -224,13 +242,13 @@ func DailyGetStats() {
 
 	totalSupply, err := getTotalSupply()
 	if err != nil {
-		fmt.Println("error getting total supply: " + err.Error())
+		reportError("Failed to compute total token supply", err)
 		return
 	}
 
 	teamWalletsSupply, err := getTeamWalletsSupply()
 	if err != nil {
-		fmt.Println("error getting team wallets supply: " + err.Error())
+		reportError("Failed to compute team wallet supply", err)
 		return
 	}
 
@@ -238,13 +256,13 @@ func DailyGetStats() {
 
 	dailyUsdcLocked, err := getDailyUsdcLocked()
 	if err != nil {
-		fmt.Println("error getting daily USDC locked: " + err.Error())
+		reportError("Failed to compute daily locked USDC amount", err)
 		return
 	}
 
 	dailyActiveJobs, err := getDailyActiveJobs()
 	if err != nil {
-		fmt.Println("error getting daily active jobs: " + err.Error())
+		reportError("Failed to compute daily active jobs", err)
 		return
 	}
 
@@ -269,11 +287,14 @@ func DailyGetStats() {
 
 	err = storage.CreateStats(&stats)
 	if err != nil {
-		fmt.Println("error storing daily stats: " + err.Error())
+		reportError("Failed to store daily stats", err, ErrorEmailField{Name: "LastBlockNumber", Value: int64Field(to)})
 		return
 	}
 
-	manageEndingJobsAndSendEmails(allJobsDetails)
+	err = manageEndingJobsAndSendEmails(allJobsDetails)
+	if err != nil {
+		reportError("Failed to process ending jobs email notifications", err)
+	}
 }
 
 func getChainLastBlockNumber() (int64, error) {
@@ -446,14 +467,30 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 	}
 
 	var events []model.Allocation
+	decodeErrors := 0
+	var firstDecodeError error
 	for _, vLog := range logs {
 		event, err := decodeAllocLogs(vLog)
 		if err != nil {
 			fmt.Println("error while decoding logs: " + err.Error())
+			decodeErrors++
+			if firstDecodeError == nil {
+				firstDecodeError = err
+			}
 			continue
 		}
 		event.CspOwner = cspOwners[event.CspAddress]
 		events = append(events, *event)
+	}
+	if decodeErrors > 0 {
+		notifyError(
+			"Failed to decode one or more allocation logs",
+			firstDecodeError,
+			ErrorEmailField{Name: "Process", Value: "fetchAllocationEvents"},
+			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
+			ErrorEmailField{Name: "FromBlock", Value: int64Field(from)},
+			ErrorEmailField{Name: "ToBlock", Value: int64Field(to)},
+		)
 	}
 
 	return events, nil
@@ -524,14 +561,30 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 	}
 
 	var events []model.BurnEvent
+	decodeErrors := 0
+	var firstDecodeError error
 	for _, vLog := range logs {
 		event, err := decodeBurnLogs(vLog)
 		if err != nil {
 			fmt.Println("error while decoding logs: " + err.Error())
+			decodeErrors++
+			if firstDecodeError == nil {
+				firstDecodeError = err
+			}
 			continue
 		}
 		event.CspOwner = cspOwners[event.CspAddress]
 		events = append(events, *event)
+	}
+	if decodeErrors > 0 {
+		notifyError(
+			"Failed to decode one or more burn logs",
+			firstDecodeError,
+			ErrorEmailField{Name: "Process", Value: "fetchBurnEvents"},
+			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
+			ErrorEmailField{Name: "FromBlock", Value: int64Field(from)},
+			ErrorEmailField{Name: "ToBlock", Value: int64Field(to)},
+		)
 	}
 
 	return events, nil
