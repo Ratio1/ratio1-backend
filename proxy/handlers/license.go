@@ -19,6 +19,7 @@ const (
 	launchpadBaseEndpoint = "/license"
 	mintTokensEndpoint    = "/buy"
 	linkNodeEndpoint      = "/link"
+	multiLinkNodeEndpoint = "/multiLink"
 )
 
 type BuyLicenseResponse struct {
@@ -26,6 +27,10 @@ type BuyLicenseResponse struct {
 	USDLimitAmount int    `json:"usdLimitAmount"`
 	VatPercentage  int64  `json:"vatPercentage"`
 	Uuid           string `json:"uuid"`
+}
+
+type MultiLinkNodeRequest struct {
+	NodeAddresses []string `json:"nodeAddresses"`
 }
 
 type LinkNodeResponse struct {
@@ -40,6 +45,7 @@ func NewLaunchpadHandler(groupHandler *groupHandler) {
 	endpoints := []EndpointHandler{
 		{Method: http.MethodPost, Path: mintTokensEndpoint, HandlerFunc: h.buyLicense},
 		{Method: http.MethodGet, Path: linkNodeEndpoint, HandlerFunc: h.linkNode},
+		{Method: http.MethodPost, Path: multiLinkNodeEndpoint, HandlerFunc: h.multiLinkNode},
 	}
 
 	endpointGroupHandler := EndpointGroupHandler{
@@ -296,6 +302,101 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		USDLimitAmount: amount,
 		VatPercentage:  vatPercentage,
 		Uuid:           *client.Uuid,
+	}
+
+	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
+}
+
+func (h *launchpadHandler) multiLinkNode(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	userAddress, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+	var req MultiLinkNodeRequest
+	err = c.Bind(&req)
+	if err != nil {
+		log.Error("error while binding request: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	if len(req.NodeAddresses) == 0 {
+		log.Error("node addresses not received")
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "node addresses not received")
+		return
+	}
+
+	if !config.Config.Api.DevTesting {
+		acc, err := service.GetOrCreateAccount(userAddress)
+		if err != nil {
+			log.Error("error while retrieving account information: " + err.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			return
+		} else if acc == nil {
+			log.Error("error while retrieving account information: account does not exist")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
+			return
+		}
+		if acc.Email == nil || *acc.Email == "" {
+			log.Error("email not found")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, errors.New("email not found").Error())
+			return
+		}
+
+		if acc.IsBlacklisted {
+			if acc.BlacklistedReason != nil {
+				log.Error("account: " + userAddress + " is blacklisted with reason: " + *acc.BlacklistedReason)
+				model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted with reason:"+*acc.BlacklistedReason)
+				return
+			} else {
+				log.Error("account: " + userAddress + " is blacklisted!")
+				model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "account is blacklisted")
+				return
+			}
+		}
+
+		kyc, found, err := storage.GetKycByEmail(*acc.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		} else if !found {
+			log.Error("kyc not found in storage")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+			return
+		}
+
+		if !kyc.IsActive || kyc.KycStatus != model.StatusApproved || kyc.HasBeenDeleted {
+			log.Error(service.ErrorKycNotCompleted.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorKycNotCompleted.Error())
+			return
+		}
+
+		if kyc.ApplicantType == "" {
+			log.Error("empty applicant type found")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "empty applicant type found")
+			return
+		}
+	}
+
+	signature, err := service.NewMultiLinkLicenseTxTemplate(userAddress, req.NodeAddresses)
+	if err != nil {
+		log.Error("error while trying to sign message: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	response := LinkNodeResponse{
+		Signature: signature,
 	}
 
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")

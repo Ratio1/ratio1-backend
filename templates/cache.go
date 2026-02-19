@@ -14,6 +14,7 @@ var (
 	rejectedStepEmailTemplate     *template.Template
 	kycFinalRejectedEmailTemplate *template.Template
 	accountResettedEmailTemplate  *template.Template
+	jobsEndingEmailTemplate       *template.Template
 
 	invoiceDraftTemplate  *template.Template
 	operatorDraftTemplate *template.Template
@@ -46,6 +47,10 @@ func LoadAndCacheTemplates() {
 		if err != nil {
 			panic(err)
 		}
+		jobsEnding, err := LoadJobsEndingEmailTemplate()
+		if err != nil {
+			panic(err)
+		}
 
 		invoiceDraftFile, err := LoadInvoiceDraftTemplate()
 		if err != nil {
@@ -68,6 +73,7 @@ func LoadAndCacheTemplates() {
 		rejectedStepEmailTemplate = stepReject
 		kycFinalRejectedEmailTemplate = finalReject
 		accountResettedEmailTemplate = accountResetted
+		jobsEndingEmailTemplate = jobsEnding
 
 		invoiceDraftTemplate = invoiceDraftFile
 		operatorDraftTemplate = operatorDraftFile
@@ -97,6 +103,10 @@ func GetKycConfirmedEmailTemplate() (*template.Template, error) {
 
 func GetAccountResettedEmailTemplate() (*template.Template, error) {
 	return getOrSetTemplate(LoadAccountResettedEmailTemplate, accountResettedEmailTemplate)
+}
+
+func GetJobsEndingEmailTemplate() (*template.Template, error) {
+	return getOrSetTemplate(LoadJobsEndingEmailTemplate, jobsEndingEmailTemplate)
 }
 
 func GetInvoiceDraftTemplate() (*template.Template, error) {

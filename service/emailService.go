@@ -25,6 +25,7 @@ const (
 	subjectAddressBlacklisted    = "Address is blacklisted"
 	subjectNewBuyLicenseInvoice  = "A new buy license invoice has been sent"
 	subjectNewInvoiceDraft       = "New draft invoices have been issued"
+	subjectJobsEndingSoon        = "Ratio1 - Jobs ending soon"
 )
 
 var (
@@ -192,6 +193,50 @@ func SendCspDraftEmail(email string) error {
 func SendBuyLicenseEmail(email, url, invoiceNumber string) error {
 	text := "A new invoice has been submitted. Invoice Number: " + invoiceNumber + " , link: " + url
 	return callSendTextEmail(email, subjectNewBuyLicenseInvoice, text)
+}
+
+func SendJobsEndingEmail(email string, jobs []EndingJob) error {
+	if len(jobs) == 0 {
+		return nil
+	}
+
+	tmpl, err := templates.GetJobsEndingEmailTemplate()
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	type endingJobTemplateRow struct {
+		JobID              string
+		JobName            string
+		NotifyBeforeEpochs int64
+	}
+
+	rows := make([]endingJobTemplateRow, 0, len(jobs))
+	for _, job := range jobs {
+		jobID := "0"
+		if job.JobID != nil {
+			jobID = job.JobID.String()
+		}
+		rows = append(rows, endingJobTemplateRow{
+			JobID:              jobID,
+			JobName:            job.JobName,
+			NotifyBeforeEpochs: job.NotifyBeforeEpochs,
+		})
+	}
+
+	var body bytes.Buffer
+	err = tmpl.Execute(&body, struct {
+		Jobs      []endingJobTemplateRow
+		JobsCount int
+	}{
+		Jobs:      rows,
+		JobsCount: len(rows),
+	})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectJobsEndingSoon, body.String())
 }
 
 func callSendTextEmail(email, subject, text string) error {
