@@ -66,6 +66,14 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 		return nil, errors.New("account already has another email")
 	}
 
+	account.PendingEmail = email
+	account.PendingReceiveUpdates = receiveUpdates
+
+	err = storage.UpdateAccount(nil, account)
+	if err != nil {
+		return nil, errors.New("error while updating account on storage: " + err.Error())
+	}
+
 	if err := increaseEmailCount(address); err != nil {
 		return nil, err
 	}
@@ -73,14 +81,6 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 	err = SendConfirmEmail(address, email)
 	if err != nil {
 		return nil, errors.New("error while sending confirmation email: " + err.Error())
-	}
-
-	account.PendingEmail = email
-	account.PendingReceiveUpdates = receiveUpdates
-
-	err = storage.UpdateAccount(nil, account)
-	if err != nil {
-		return nil, errors.New("error while updating account on storage: " + err.Error())
 	}
 
 	return account, nil

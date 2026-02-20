@@ -421,13 +421,6 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 
 	var accountDto *model.AccountDto
 	if account.Email != nil {
-		err = service.SendBlacklistedEmail(*account.Email)
-		if err != nil {
-			log.Error("error while sending blacklisted email: " + err.Error())
-			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-			return
-		}
-
 		kyc, _, err := storage.GetKycByEmail(*account.Email)
 		if err != nil {
 			log.Error("error while retrieving kyc information from storage: " + err.Error())
@@ -455,6 +448,15 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		log.Error("error while updating account: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
+	}
+
+	if account.Email != nil {
+		err = service.SendBlacklistedEmail(*account.Email)
+		if err != nil {
+			log.Error("error while sending blacklisted email: " + err.Error())
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+			return
+		}
 	}
 
 	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
