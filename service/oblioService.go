@@ -107,16 +107,23 @@ func ElaborateInvoices() {
 			)
 		}
 
-		err = SendBuyLicenseEmail(config.Config.InvoiceMessageEmail, url, invoiceNumber)
-		if err != nil {
-			reportError(
-				"Failed to send internal buy license invoice email",
-				err,
-				ErrorEmailField{Name: "InvoiceID", Value: event.InvoiceID},
-				ErrorEmailField{Name: "InvoiceNumber", Value: invoiceNumber},
-				ErrorEmailField{Name: "InvoiceURL", Value: url},
-			)
-		}
+		recipient := config.Config.InvoiceEmail
+		urlCopy := url
+		invoiceNumberCopy := invoiceNumber
+		EnqueueEmailTask(EmailTask{
+			Name: "send_buy_license_email",
+			Execute: func() error {
+				return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
+			},
+		})
+
+		recipient = config.Config.ErrorEmail
+		EnqueueEmailTask(EmailTask{
+			Name: "send_buy_license_email",
+			Execute: func() error {
+				return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
+			},
+		})
 	}
 }
 
