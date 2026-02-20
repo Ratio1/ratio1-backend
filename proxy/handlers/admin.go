@@ -1,12 +1,9 @@
 package handlers
 
 import (
-	"errors"
 	"io"
 	"net/http"
 	"slices"
-	"strings"
-	"sync"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -103,32 +100,18 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 		return
 	}
 
-	errCh := make(chan error, (len(emails)/500)+1)
-	var wg sync.WaitGroup
 	for i := 0; i < len(emails); i += 500 {
 		end := i + 500
 		end = min(end, len(emails))
-		wg.Add(1)
-		go func(_email []string) {
-			defer wg.Done()
-			if err := service.SendNewsEmail(_email, subject, htmlContent); err != nil {
-				errCh <- errors.New("error while sending email to user: " + strings.Join(_email, " | ") + " with error: " + err.Error())
-				return
-			}
-		}(emails[i:end])
-
+		emailBatch := append([]string(nil), emails[i:end]...)
+		service.EnqueueEmailTask(service.EmailTask{
+			Name: "send_newsletter_batch_email",
+			Execute: func() error {
+				return service.SendNewsEmail(emailBatch, subject, htmlContent)
+			},
+		})
 	}
-	wg.Wait()
-	close(errCh)
 
-	if len(errCh) > 0 {
-		var errorMsgs []string
-		for err := range errCh {
-			errorMsgs = append(errorMsgs, err.Error())
-		}
-		model.JsonResponse(c, http.StatusInternalServerError, emails, nodeAddress, strings.Join(errorMsgs, " | "))
-		return
-	}
 	model.JsonResponse(c, http.StatusOK, emails, nodeAddress, "")
 
 }

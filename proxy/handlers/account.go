@@ -407,12 +407,13 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 	account.IsBlacklisted = true
 	account.BlacklistedReason = &blockAccount.Reasons
 
-	err = service.SendBlacklistedEmail(*account.Email)
-	if err != nil {
-		log.Error("error while sending blacklisted email: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
-	}
+	recipient := *account.Email
+	service.EnqueueEmailTask(service.EmailTask{
+		Name: "send_blacklisted_email",
+		Execute: func() error {
+			return service.SendBlacklistedEmail(recipient)
+		},
+	})
 
 	kyc, _, err := storage.GetKycByEmail(*account.Email)
 	if err != nil {

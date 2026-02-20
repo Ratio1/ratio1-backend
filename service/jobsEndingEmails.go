@@ -223,18 +223,14 @@ func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
 			continue
 		}
 
-		err = SendJobsEndingEmail(email, jobs)
-		if err != nil {
-			log.Error("error while sending ending jobs email to %s: %v", email, err)
-			reportError(
-				"Failed to send ending jobs email",
-				err,
-				ErrorEmailField{Name: "OwnerAddress", Value: ownerAddress},
-				ErrorEmailField{Name: "RecipientEmail", Value: email},
-				ErrorEmailField{Name: "JobsCount", Value: intField(len(jobs))},
-			)
-			continue
-		}
+		recipient := email
+		queuedJobs := append([]EndingJob(nil), jobs...)
+		EnqueueEmailTask(EmailTask{
+			Name: "send_jobs_ending_email",
+			Execute: func() error {
+				return SendJobsEndingEmail(recipient, queuedJobs)
+			},
+		})
 	}
 }
 
