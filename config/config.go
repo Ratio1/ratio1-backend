@@ -42,7 +42,8 @@ type GeneralConfig struct {
 	EmailTemplatesPath             string
 	BuyLimitUSD                    BuyLimitUSDConfig
 	ViesApi                        ViesConfig
-	InvoiceMessageEmail            string
+	InvoiceEmail                   string
+	ErrorEmail                     string
 	Ratio1redirectUrl              Ratio1redirectUrl
 	FreeCurrencyApiKey             string
 	R1fsClient                     *r1fs.Client
@@ -265,7 +266,14 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		return nil, errors.New("EMAIL_TEMPLATES_PATH is not set")
 	}
 
-	cfg.InvoiceMessageEmail = "corina.erhan@ratio1.ai"
+	cfg.InvoiceEmail = os.Getenv("INVOICE_EMAIL")
+	if cfg.InvoiceEmail == "" {
+		return nil, errors.New("INVOICE_EMAIL is not set")
+	}
+	cfg.ErrorEmail = os.Getenv("ERROR_EMAIL")
+	if cfg.ErrorEmail == "" {
+		return nil, errors.New("ERROR_EMAIL is not set")
+	}
 
 	r1fsClient, err := r1fs.NewFromEnv()
 	if err != nil {

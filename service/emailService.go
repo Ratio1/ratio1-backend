@@ -28,7 +28,6 @@ const (
 	subjectNewInvoiceDraft       = "New draft invoices have been issued"
 	subjectJobsEndingSoon        = "Ratio1 - Jobs ending soon"
 	subjectBackendErrorAlert     = "Ratio1 - Backend Error Alert"
-	errorAlertRecipientTodo      = "TODO_ERROR_ALERT_RECIPIENT_EMAIL"
 )
 
 var (
@@ -69,7 +68,10 @@ func SendNewsEmail(email []string, subject, htmlBody string) error {
 }
 
 func SendErrorEmail(message string, originalErr error, fields ...ErrorEmailField) error {
-	recipient := errorAlertRecipientTodo
+	recipient := config.Config.ErrorEmail
+	if recipient == "" {
+		return errors.New("error message email recipient not configured")
+	}
 
 	trimmedMessage := strings.TrimSpace(message)
 	if trimmedMessage == "" {
