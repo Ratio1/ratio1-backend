@@ -64,6 +64,7 @@ func startApi(ctx *cli.Context) error {
 
 	storage.Connect()
 	templates.LoadAndCacheTemplates()
+	service.StartEmailDispatcher()
 
 	if !config.Config.Api.DevTesting {
 		buyLicenseInvoiceNodeTiming, found := config.Config.GetBuyLicenseInvoiceCronJobTiming(nodeAddress)

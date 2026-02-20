@@ -164,17 +164,23 @@ func MonthlyPoaiInvoiceReport() {
 
 	//send unique email for csp and node owner ( even if they have more than 1 invoice)
 	for k := range allNodeOwner {
-		err = SendNodeOwnerDraftEmail(k)
-		if err != nil {
-			reportError("Failed to send node owner invoice draft email", err, ErrorEmailField{Name: "RecipientEmail", Value: k})
-		}
+		recipient := k
+		EnqueueEmailTask(EmailTask{
+			Name: "send_node_owner_draft_email",
+			Execute: func() error {
+				return SendNodeOwnerDraftEmail(recipient)
+			},
+		})
 	}
 
 	for k := range allCSP {
-		err = SendCspDraftEmail(k)
-		if err != nil {
-			reportError("Failed to send CSP invoice draft email", err, ErrorEmailField{Name: "RecipientEmail", Value: k})
-		}
+		recipient := k
+		EnqueueEmailTask(EmailTask{
+			Name: "send_csp_draft_email",
+			Execute: func() error {
+				return SendCspDraftEmail(recipient)
+			},
+		})
 	}
 }
 
