@@ -73,12 +73,15 @@ func ElaborateInvoices() {
 		invoice.NumLicenses = &event.NumLicenses
 		invoice.UnitUsdPrice = &event.UnitUsdPrice
 
+		var warningMessage *string
 		err = storage.UpdateInvoice(invoice)
 		if err != nil {
 			fmt.Println("Error updating invoices in storage: " + err.Error())
+			msg := "invoice generated on Oblio but failed to persist on DB. Please reconcile manually. error: " + err.Error()
+			warningMessage = &msg
 		}
 
-		SendBuyLicenseEmail(config.Config.InvoiceMessageEmail, url, invoiceNumber)
+		SendBuyLicenseEmail(config.Config.InvoiceMessageEmail, url, invoiceNumber, warningMessage)
 	}
 }
 

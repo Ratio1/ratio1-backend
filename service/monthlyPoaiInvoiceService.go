@@ -9,6 +9,7 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 func MonthlyPoaiInvoiceReport() {
@@ -42,84 +43,12 @@ func MonthlyPoaiInvoiceReport() {
 	var drafts []model.InvoiceDraft
 	for k, allocations := range reports {
 		userAddress, cspOwner := splitKey(k)
-		invoice := model.InvoiceDraft{
-			DraftId:           uuid.New(),
-			UserAddress:       userAddress,
-			CspOwner:          cspOwner,
-			CreationTimestamp: time.Now(),
-			UserProfile:       allocations[0].UserProfile,
-			CspProfile:        allocations[0].CspProfile,
-		}
-
-		preference, err := storage.GetPreferenceByAddress(userAddress)
-		if err != nil {
-			fmt.Println("error while retrieving user preference: " + err.Error())
-			continue
-		} else if preference != nil {
-			if invoice.CspProfile.Country == invoice.UserProfile.Country {
-				invoice.VatApplied = preference.CountryVat
-			} else if isUeCountry(invoice.UserProfile.Country) {
-				if isUeCountry(invoice.CspProfile.Country) {
-					invoice.VatApplied = preference.UeVat
-				} else {
-					invoice.VatApplied = preference.ExtraUeVat
-				}
-			} else {
-				invoice.VatApplied = preference.ExtraUeVat
-			}
-			invoice.InvoiceNumber = preference.NextNumber
-			invoice.InvoiceSeries = preference.InvoiceSeries
-			invoice.ExtraTaxes = preference.ExtraTaxes
-			invoice.ExtraText = preference.ExtraText
-			invoice.LocalCurrency = preference.LocalCurrency
-		} else {
-			preference = &model.Preference{
-				UserAddress:   userAddress,
-				NextNumber:    1,
-				InvoiceSeries: "NODE",
-				CountryVat:    0,
-				UeVat:         0,
-				ExtraUeVat:    0,
-				LocalCurrency: "USD",
-			}
-			invoice.VatApplied = preference.ExtraUeVat
-			invoice.InvoiceNumber = preference.NextNumber
-			invoice.InvoiceSeries = preference.InvoiceSeries
-		}
-
-		totalUsdcAmount := big.NewInt(0)
-		for _, alloc := range allocations {
-			totalUsdcAmount.Add(totalUsdcAmount, alloc.GetUsdcAmountPayed())
-			alloc.DraftId = &invoice.DraftId
-			err = storage.UpdateAllocation(&alloc) //TODO create more stable system with rollback for all invoices
-			if err != nil {
-				fmt.Println("error while updating allocation: " + err.Error())
-				return
-			}
-		}
-		invoice.TotalUsdcAmount += GetAmountAsFloat(totalUsdcAmount, model.UsdcDecimals)
-
-		if userAddress != cspOwner {
-			preference.NextNumber += 1
-			err = storage.UpdatePreference(preference)
-			if err != nil {
-				fmt.Println("error while updating preference: " + err.Error())
-				return
-			}
-		} else {
-			invoice.InvoiceNumber = 0
-			invoice.InvoiceSeries = ""
-		}
-
-		if v, ok := currencyMap[invoice.LocalCurrency]; ok {
-			invoice.LocalCurrencyExchangeRatio = v
-		}
-		err = storage.CreateInvoiceDraft(&invoice)
+		invoice, err := createMonthlyPoaiDraft(userAddress, cspOwner, allocations, currencyMap)
 		if err != nil {
 			fmt.Println("error while saving invoice: " + err.Error())
 			continue
 		}
-		drafts = append(drafts, invoice)
+		drafts = append(drafts, *invoice)
 	}
 
 	allCSP := make(map[string]bool) //map[email]true to have unique emails
@@ -148,4 +77,105 @@ func formKey(address1, address2 string) string {
 func splitKey(key string) (string, string) {
 	parts := strings.Split(key, "-")
 	return parts[0], parts[1]
+}
+
+func createMonthlyPoaiDraft(userAddress, cspOwner string, allocations []model.Allocation, currencyMap map[string]float64) (*model.InvoiceDraft, error) {
+	if len(allocations) == 0 {
+		return nil, fmt.Errorf("no allocations found for pair %s-%s", userAddress, cspOwner)
+	}
+
+	invoice := model.InvoiceDraft{
+		DraftId:           uuid.New(),
+		UserAddress:       userAddress,
+		CspOwner:          cspOwner,
+		CreationTimestamp: time.Now(),
+		UserProfile:       allocations[0].UserProfile,
+		CspProfile:        allocations[0].CspProfile,
+	}
+
+	err := storage.WithTransaction(func(tx *gorm.DB) error {
+		preference, preferenceExists, err := loadDraftPreference(tx, userAddress, &invoice)
+		if err != nil {
+			return err
+		}
+
+		totalUsdcAmount := big.NewInt(0)
+		for _, alloc := range allocations {
+			totalUsdcAmount.Add(totalUsdcAmount, alloc.GetUsdcAmountPayed())
+			alloc.DraftId = &invoice.DraftId
+			if err := storage.UpdateAllocation(tx, &alloc); err != nil {
+				return fmt.Errorf("error while updating allocation: %w", err)
+			}
+		}
+		invoice.TotalUsdcAmount += GetAmountAsFloat(totalUsdcAmount, model.UsdcDecimals)
+
+		if userAddress != cspOwner {
+			preference.NextNumber += 1
+			if preferenceExists {
+				if err := storage.UpdatePreference(tx, preference); err != nil {
+					return fmt.Errorf("error while updating preference: %w", err)
+				}
+			} else if err := storage.CreatePreference(tx, preference); err != nil {
+				return fmt.Errorf("error while creating preference: %w", err)
+			}
+		} else {
+			invoice.InvoiceNumber = 0
+			invoice.InvoiceSeries = ""
+		}
+
+		if v, ok := currencyMap[invoice.LocalCurrency]; ok {
+			invoice.LocalCurrencyExchangeRatio = v
+		}
+		if err := storage.CreateInvoiceDraft(tx, &invoice); err != nil {
+			return fmt.Errorf("error while saving invoice: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &invoice, nil
+}
+
+func loadDraftPreference(tx *gorm.DB, userAddress string, invoice *model.InvoiceDraft) (*model.Preference, bool, error) {
+	preference, err := storage.GetPreferenceByAddressForUpdate(tx, userAddress)
+	if err != nil {
+		return nil, false, fmt.Errorf("error while retrieving user preference: %w", err)
+	}
+	preferenceExists := preference != nil
+	if !preferenceExists {
+		preference = &model.Preference{
+			UserAddress:   userAddress,
+			NextNumber:    1,
+			InvoiceSeries: "NODE",
+			CountryVat:    0,
+			UeVat:         0,
+			ExtraUeVat:    0,
+			LocalCurrency: "USD",
+		}
+	}
+	applyDraftPreference(invoice, preference)
+
+	return preference, preferenceExists, nil
+}
+
+func applyDraftPreference(invoice *model.InvoiceDraft, preference *model.Preference) {
+	if invoice.CspProfile.Country == invoice.UserProfile.Country {
+		invoice.VatApplied = preference.CountryVat
+	} else if isUeCountry(invoice.UserProfile.Country) {
+		if isUeCountry(invoice.CspProfile.Country) {
+			invoice.VatApplied = preference.UeVat
+		} else {
+			invoice.VatApplied = preference.ExtraUeVat
+		}
+	} else {
+		invoice.VatApplied = preference.ExtraUeVat
+	}
+	invoice.InvoiceNumber = preference.NextNumber
+	invoice.InvoiceSeries = preference.InvoiceSeries
+	invoice.ExtraTaxes = preference.ExtraTaxes
+	invoice.ExtraText = preference.ExtraText
+	invoice.LocalCurrency = preference.LocalCurrency
 }

@@ -17,7 +17,7 @@ func GetLatestInvoiceBlock() (*int64, bool, error) {
 		if txRead.Error == gorm.ErrRecordNotFound {
 			return nil, false, nil
 		}
-		return nil, false, err
+		return nil, false, txRead.Error
 	}
 
 	return invoice.BlockNumber, true, nil
@@ -47,13 +47,11 @@ func CreateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	txCreate := db.Create(&invoice)
+	txCreate := db.Create(invoice)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
@@ -66,13 +64,11 @@ func UpdateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	txUpdate := db.Save(&invoice)
+	txUpdate := db.Save(invoice)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
@@ -86,7 +82,8 @@ func GetUserInvoices(address string) (*[]model.InvoiceClient, error) {
 	}
 
 	var invoices []model.InvoiceClient
-	txRead := db.Find(&invoices, "address = ? && status =  paid", address)
+	paidVar := "paid"
+	txRead := db.Find(&invoices, "address = ? AND status = ?", address, paidVar)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}

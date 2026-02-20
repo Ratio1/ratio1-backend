@@ -11,9 +11,18 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var ErrorAccountNotFound = errors.New("account not found")
+
+func GetAccount(address string) (*model.Account, error) {
+	account, err := getAcocunt(address)
+	if err != nil {
+		return nil, errors.New("error while retrieving account from storage: " + err.Error())
+	}
+	return account, nil
+}
 
 func GetOrCreateAccount(address string) (*model.Account, error) {
 	account, err := getAcocunt(address)
@@ -60,13 +69,12 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 	account.PendingEmail = email
 	account.PendingReceiveUpdates = receiveUpdates
 
-	err = storage.UpdateAccount(account)
+	err = storage.UpdateAccount(nil, account)
 	if err != nil {
 		return nil, errors.New("error while updating account on storage: " + err.Error())
 	}
 
-	err = increaseEmailCount(address)
-	if err != nil {
+	if err := increaseEmailCount(address); err != nil {
 		return nil, err
 	}
 
@@ -119,14 +127,17 @@ func ConfirmEmail(token string) (*model.Account, error) {
 	}
 	account.PendingReceiveUpdates = false
 
-	err = storage.UpdateAccount(account)
+	err = storage.WithTransaction(func(tx *gorm.DB) error {
+		if err := storage.UpdateAccount(tx, account); err != nil {
+			return errors.New("error while updating account on storage: " + err.Error())
+		}
+		if err := storage.CreateOrUpdateKyc(tx, &kyc); err != nil {
+			return errors.New("error while updating kyc on storage: " + err.Error())
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, errors.New("error while updating account on storage: " + err.Error())
-	}
-
-	err = storage.CreateOrUpdateKyc(&kyc)
-	if err != nil {
-		return nil, errors.New("error while updating kyc on storage: " + err.Error())
+		return nil, err
 	}
 
 	if *kyc.ReceiveUpdates {
@@ -146,7 +157,7 @@ func SubscribeEmail(kyc *model.Kyc) error {
 	var rUpd = true
 	kyc.ReceiveUpdates = &rUpd
 
-	err := storage.CreateOrUpdateKyc(kyc)
+	err := storage.CreateOrUpdateKyc(nil, kyc)
 	if err != nil {
 		return errors.New("error while update kyc in storage: " + err.Error())
 	}
@@ -164,7 +175,7 @@ func UnsubscribeEmail(kyc *model.Kyc) error {
 	var rUpd = false
 	kyc.ReceiveUpdates = &rUpd
 
-	err := storage.CreateOrUpdateKyc(kyc)
+	err := storage.CreateOrUpdateKyc(nil, kyc)
 	if err != nil {
 		return errors.New("error while update kyc in storage: " + err.Error())
 	}

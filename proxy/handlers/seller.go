@@ -93,10 +93,14 @@ func (h *sellerHandler) newSeller(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(address)
+	account, err := service.GetAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "error while retrieving account information: "+err.Error())
+		return
+	} else if account == nil {
+		log.Error(service.ErrorAccountNotFound.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 
@@ -187,6 +191,12 @@ func (h *sellerHandler) getClients(c *gin.Context) {
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving users: "+err.Error())
 		return
 	}
+
+	if users == nil || len(*users) == 0 {
+		model.JsonResponse(c, http.StatusOK, nil, nodeAddress, "")
+		return
+	}
+
 	var response []sellerClientsResponse
 	for _, u := range *users {
 
@@ -195,6 +205,10 @@ func (h *sellerHandler) getClients(c *gin.Context) {
 			log.Error("error while retrieving invoices: " + err.Error())
 			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "error while retrieving invoices: "+err.Error())
 			return
+		}
+
+		if invoices == nil || len(*invoices) == 0 {
+			continue
 		}
 
 		licensesNumber := 0

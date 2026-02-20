@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"gorm.io/gorm"
 )
 
 func DailyGetStats() {
@@ -157,7 +158,7 @@ func DailyGetStats() {
 	/* get preferences for eache csp owner*/
 	cspPreferences := make(map[string]*model.Preference) // map[cspOwnerAddress]Preference
 	for _, v := range cspAddresses {
-		preference, err := storage.GetPreferenceByAddress(v)
+		preference, err := storage.GetPreferenceByAddress(nil, v)
 		if err != nil || preference == nil {
 			preference = &model.Preference{
 				LocalCurrency: "USD",
@@ -178,20 +179,6 @@ func DailyGetStats() {
 			}
 		}
 		burnEvents[i] = b
-	}
-
-	/* store all allocation events */
-	err = generateAllocations(allocEvents)
-	if err != nil {
-		fmt.Println("Error generating allocations: " + err.Error())
-		return
-	}
-
-	/* store all burn events */
-	err = generateBurns(burnEvents)
-	if err != nil {
-		fmt.Println("Error generating burns: " + err.Error())
-		return
 	}
 
 	/* calculate daily stats */
@@ -267,9 +254,20 @@ func DailyGetStats() {
 		LastBlockNumber:          to,
 	}
 
-	err = storage.CreateStats(&stats)
+	err = storage.WithTransaction(func(tx *gorm.DB) error {
+		if err := generateAllocations(tx, allocEvents); err != nil {
+			return err
+		}
+		if err := generateBurns(tx, burnEvents); err != nil {
+			return err
+		}
+		if err := storage.CreateStats(tx, &stats); err != nil {
+			return errors.New("error storing daily stats: " + err.Error())
+		}
+		return nil
+	})
 	if err != nil {
-		fmt.Println("error storing daily stats: " + err.Error())
+		fmt.Println("error persisting daily stats batch: " + err.Error())
 		return
 	}
 
@@ -578,18 +576,18 @@ func getBlockTimestamp(blockNumber int64) (time.Time, error) {
 	return time.Unix(int64(header.Time), 0).UTC(), nil
 }
 
-func generateAllocations(allocEevents []model.Allocation) error {
+func generateAllocations(tx *gorm.DB, allocEevents []model.Allocation) error {
 	for _, event := range allocEevents {
-		err := storage.CreateAllocation(&event)
+		err := storage.CreateAllocation(tx, &event)
 		if err != nil {
 			return errors.New("error while saving allocation: " + err.Error())
 		}
 	}
 	return nil
 }
-func generateBurns(burnEvents []model.BurnEvent) error {
+func generateBurns(tx *gorm.DB, burnEvents []model.BurnEvent) error {
 	for _, event := range burnEvents {
-		err := storage.CreateBurnEvent(&event)
+		err := storage.CreateBurnEvent(tx, &event)
 		if err != nil {
 			return errors.New("error while saving Burn events: " + err.Error())
 		}

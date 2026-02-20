@@ -80,7 +80,7 @@ func (h *launchpadHandler) linkNode(c *gin.Context) {
 	}
 
 	if !config.Config.Api.DevTesting {
-		acc, err := service.GetOrCreateAccount(userAddress)
+		acc, err := service.GetAccount(userAddress)
 		if err != nil {
 			log.Error("error while retrieving account information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -169,7 +169,7 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 		acc.Email = new(string)
 		client.Country = "ITA"
 	} else {
-		acc, err = service.GetOrCreateAccount(address)
+		acc, err = service.GetAccount(address)
 		if err != nil {
 			log.Error("error while retrieving account information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -272,13 +272,6 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	client.Status = &status
 	client.UserEmail = acc.Email
 
-	err = storage.CreateInvoice(client)
-	if err != nil {
-		log.Error("error while creating invoice in storage: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
-	}
-
 	var amount int
 	if kyc.ApplicantType == model.BusinessCustomer {
 		amount = config.Config.BuyLimitUSD.Company
@@ -294,6 +287,13 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	if err != nil {
 		log.Error("error while trying to sign message: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	err = storage.CreateInvoice(client)
+	if err != nil {
+		log.Error("error while creating invoice in storage: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
 
@@ -336,7 +336,7 @@ func (h *launchpadHandler) multiLinkNode(c *gin.Context) {
 	}
 
 	if !config.Config.Api.DevTesting {
-		acc, err := service.GetOrCreateAccount(userAddress)
+		acc, err := service.GetAccount(userAddress)
 		if err != nil {
 			log.Error("error while retrieving account information: " + err.Error())
 			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
