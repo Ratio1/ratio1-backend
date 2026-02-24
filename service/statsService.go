@@ -22,13 +22,7 @@ import (
 )
 
 func DailyGetStats() {
-	reportError := func(message string, err error, fields ...ErrorEmailField) {
-		allFields := []ErrorEmailField{
-			{Name: "Process", Value: "DailyGetStats"},
-		}
-		allFields = append(allFields, fields...)
-		notifyError(message, err, allFields...)
-	}
+	reportError := newReportError("DailyGetStats")
 
 	oldStats, err := storage.GetLatestStats()
 	if err != nil {

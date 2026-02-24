@@ -20,6 +20,16 @@ func notifyError(message string, err error, fields ...ErrorEmailField) {
 	})
 }
 
+func newReportError(processName string) func(message string, err error, fields ...ErrorEmailField) {
+	return func(message string, err error, fields ...ErrorEmailField) {
+		allFields := []ErrorEmailField{
+			{Name: "Process", Value: processName},
+		}
+		allFields = append(allFields, fields...)
+		notifyError(message, err, allFields...)
+	}
+}
+
 func intField(v int) string {
 	return fmt.Sprintf("%d", v)
 }
