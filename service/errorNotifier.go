@@ -17,7 +17,7 @@ func notifyError(message string, err error, fields ...ErrorEmailField) {
 		Execute: func() error {
 			return SendErrorEmail(message, err, fieldsCopy...)
 		},
-	})
+	}, true /* saveTask */)
 }
 
 func newReportError(processName string) func(message string, err error, fields ...ErrorEmailField) {

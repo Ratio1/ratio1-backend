@@ -24,7 +24,7 @@ func TestStopEmailDispatcherDrainsPendingTasks(t *testing.T) {
 				executed.Add(1)
 				return nil
 			},
-		})
+		}, false)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -56,7 +56,7 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 			<-blockTask
 			return nil
 		},
-	})
+	}, false)
 
 	select {
 	case <-firstStarted:
@@ -80,7 +80,7 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 			secondExecuted.Store(true)
 			return nil
 		},
-	})
+	}, false)
 
 	close(blockTask)
 

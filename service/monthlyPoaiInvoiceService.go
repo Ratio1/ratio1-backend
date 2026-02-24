@@ -164,7 +164,7 @@ func MonthlyPoaiInvoiceReport() {
 			Execute: func() error {
 				return SendNodeOwnerDraftEmail(recipient)
 			},
-		})
+		}, false)
 	}
 
 	for k := range allCSP {
@@ -174,7 +174,7 @@ func MonthlyPoaiInvoiceReport() {
 			Execute: func() error {
 				return SendCspDraftEmail(recipient)
 			},
-		})
+		}, false)
 	}
 }
 

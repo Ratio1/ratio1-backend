@@ -413,7 +413,7 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		Execute: func() error {
 			return service.SendBlacklistedEmail(recipient)
 		},
-	})
+	}, false /* saveTask */)
 
 	kyc, _, err := storage.GetKycByEmail(*account.Email)
 	if err != nil {

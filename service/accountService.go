@@ -75,7 +75,7 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 		Execute: func() error {
 			return SendConfirmEmail(address, email)
 		},
-	})
+	}, false)
 
 	return account, nil
 }
