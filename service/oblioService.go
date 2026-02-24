@@ -107,23 +107,33 @@ func ElaborateInvoices() {
 			)
 		}
 
-		recipient := config.Config.InvoiceEmail
-		urlCopy := url
-		invoiceNumberCopy := invoiceNumber
-		EnqueueEmailTask(EmailTask{
-			Name: "send_buy_license_email",
-			Execute: func() error {
-				return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
-			},
-		})
+		for _, recipient := range config.Config.InvoiceEmail {
+			recipient = strings.TrimSpace(recipient)
+			if recipient == "" {
+				continue
+			}
+			urlCopy := url
+			invoiceNumberCopy := invoiceNumber
+			EnqueueEmailTask(EmailTask{
+				Name: "send_buy_license_email",
+				Execute: func() error {
+					return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
+				},
+			})
+		}
 
-		recipient = config.Config.ErrorEmail
-		EnqueueEmailTask(EmailTask{
-			Name: "send_buy_license_email",
-			Execute: func() error {
-				return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
-			},
-		})
+		for _, recipient := range config.Config.ErrorEmail {
+			recipient = strings.TrimSpace(recipient)
+			if recipient == "" {
+				continue
+			}
+			EnqueueEmailTask(EmailTask{
+				Name: "send_buy_license_error_email",
+				Execute: func() error {
+					return SendBuyLicenseEmail(recipient, url, invoiceNumber)
+				},
+			})
+		}
 	}
 }
 
