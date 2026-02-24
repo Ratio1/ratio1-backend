@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"sync"
 )
@@ -16,15 +17,67 @@ type EmailTask struct {
 
 var (
 	emailDispatcherOnce sync.Once
-	emailTaskQueue      chan EmailTask
+	emailDispatcher     dispatcherState
 )
 
-func StartEmailDispatcher() {
+type dispatcherState struct {
+	mu       sync.Mutex
+	queue    chan EmailTask
+	done     chan struct{}
+	stopping bool
+}
+
+func StartEmailDispatcher(ctx context.Context) {
 	// Startup is idempotent: only one queue + one worker goroutine are created.
 	emailDispatcherOnce.Do(func() {
-		emailTaskQueue = make(chan EmailTask, defaultEmailQueueSize)
-		go emailDispatcherLoop()
+		queue := make(chan EmailTask, defaultEmailQueueSize)
+		done := make(chan struct{})
+
+		emailDispatcher.mu.Lock()
+		emailDispatcher.queue = queue
+		emailDispatcher.done = done
+		emailDispatcher.stopping = false
+		emailDispatcher.mu.Unlock()
+
+		go emailDispatcherLoop(queue, done)
+
+		if ctx == nil {
+			return
+		}
+		stopSignal := ctx.Done()
+		if stopSignal == nil {
+			return
+		}
+		go func() {
+			<-stopSignal
+			stopEmailDispatcher()
+		}()
 	})
+}
+
+// StopEmailDispatcher prevents new enqueues, closes the queue, and waits for the worker to stop.
+func StopEmailDispatcher(ctx context.Context) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	stopEmailDispatcher()
+	waitForDispatcherDone(ctx)
+}
+
+func stopEmailDispatcher() {
+	emailDispatcher.mu.Lock()
+	defer emailDispatcher.mu.Unlock()
+
+	if emailDispatcher.queue == nil {
+		return
+	}
+	if emailDispatcher.stopping {
+		return
+	}
+	emailDispatcher.stopping = true
+	close(emailDispatcher.queue)
+	emailDispatcher.queue = nil
 }
 
 func EnqueueEmailTask(task EmailTask) {
@@ -32,23 +85,59 @@ func EnqueueEmailTask(task EmailTask) {
 		log.Error("email task has nil executor: %s", task.Name)
 		return
 	}
+
+	emailDispatcher.mu.Lock()
+	queue := emailDispatcher.queue
+	stopping := emailDispatcher.stopping
 	// Dispatcher startup is explicit in bootstrap (cmd/main.go).
 	// Fail fast if someone enqueues before initialization.
-	if emailTaskQueue == nil {
+	if queue == nil {
+		emailDispatcher.mu.Unlock()
+		if stopping {
+			log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
+			return
+		}
 		panic("email dispatcher not started")
 	}
+	if stopping {
+		emailDispatcher.mu.Unlock()
+		log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
+		return
+	}
+	emailDispatcher.mu.Unlock()
 
 	// Sending to the channel queues the task for the background worker.
 	// When the buffer is full, this blocks until the worker consumes tasks.
-	emailTaskQueue <- task
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Warn("email dispatcher queue closed while enqueueing task (%s): %v", task.Name, rec)
+		}
+	}()
+	queue <- task
 }
 
-func emailDispatcherLoop() {
+func emailDispatcherLoop(queue <-chan EmailTask, done chan struct{}) {
+	defer close(done)
 	// The loop waits for incoming tasks and runs until the queue channel is closed.
-	for task := range emailTaskQueue {
+	for task := range queue {
 		if err := runEmailTask(task); err != nil {
 			log.Error("email task failed (%s): %v", task.Name, err)
 		}
+	}
+}
+
+func waitForDispatcherDone(ctx context.Context) {
+	emailDispatcher.mu.Lock()
+	done := emailDispatcher.done
+	emailDispatcher.mu.Unlock()
+
+	if done == nil {
+		return
+	}
+	select {
+	case <-done:
+	case <-ctx.Done():
+		log.Warn("email dispatcher worker did not stop before shutdown deadline")
 	}
 }
 

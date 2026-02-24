@@ -41,6 +41,9 @@ func main() {
 }
 
 func startApi(ctx *cli.Context) error {
+	dispatcherCtx, stopDispatcher := context.WithCancel(context.Background())
+	defer stopDispatcher()
+
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		err = errors.New("error while retrieving node address: " + err.Error())
@@ -64,7 +67,7 @@ func startApi(ctx *cli.Context) error {
 
 	storage.Connect()
 	templates.LoadAndCacheTemplates()
-	service.StartEmailDispatcher()
+	service.StartEmailDispatcher(dispatcherCtx)
 
 	if !config.Config.Api.DevTesting {
 		buyLicenseInvoiceNodeTiming, found := config.Config.GetBuyLicenseInvoiceCronJobTiming(nodeAddress)
@@ -104,21 +107,28 @@ func startApi(ctx *cli.Context) error {
 	}
 	server := api.Run()
 
-	waitForGracefulShutdown(server)
+	waitForGracefulShutdown(server, stopDispatcher)
 
 	return nil
 }
 
-func waitForGracefulShutdown(server *http.Server) {
+func waitForGracefulShutdown(server *http.Server, stopDispatcher context.CancelFunc) {
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, os.Kill)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(context.Background(), backgroundContextTimeout)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
+	serverCtx, serverCancel := context.WithTimeout(context.Background(), backgroundContextTimeout)
+	defer serverCancel()
+	if err := server.Shutdown(serverCtx); err != nil {
 		panic(err)
 	}
+
+	stopDispatcher()
+
+	dispatcherCtx, dispatcherCancel := context.WithTimeout(context.Background(), backgroundContextTimeout)
+	defer dispatcherCancel()
+	service.StopEmailDispatcher(dispatcherCtx)
+
 	if err := server.Close(); err != nil {
 		_ = service.SendErrorEmail(
 			"Failed to close HTTP server after graceful shutdown",
