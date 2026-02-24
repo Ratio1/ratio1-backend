@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-const defaultEmailQueueSize = 256
+const defaultEmailQueueSize = 10000
 
 // EmailTask is a single mail operation scheduled by API/cron flows.
 // The dispatcher executes Execute() and logs failures using Name as identifier.
@@ -113,6 +113,8 @@ func EnqueueEmailTask(task EmailTask) {
 			log.Warn("email dispatcher queue closed while enqueueing task (%s): %v", task.Name, rec)
 		}
 	}()
+	//todo use a different system switch->case with timeout to avoid blocking indefinitely when the queue is full?
+	//also implement a caching system with cstore to store failed tasks and retry later?
 	queue <- task
 }
 
