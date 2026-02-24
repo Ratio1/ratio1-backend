@@ -170,9 +170,9 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 	}
 	if decodeErrors > 0 {
 		notifyError(
-			"Failed to decode one or more Oblio logs",
+			"Failed to decode one or more Blockchain logs",
 			firstDecodeError,
-			ErrorEmailField{Name: "Process", Value: "fetchEvents"},
+			ErrorEmailField{Name: "ElaborateInvoices Process", Value: "fetchEvents"},
 			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
 		)
 	}
