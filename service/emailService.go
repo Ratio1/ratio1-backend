@@ -68,11 +68,6 @@ func SendNewsEmail(email []string, subject, htmlBody string) error {
 }
 
 func SendErrorEmail(message string, originalErr error, fields ...ErrorEmailField) error {
-	recipient := config.Config.ErrorEmail
-	if recipient == "" {
-		return errors.New("error message email recipient not configured")
-	}
-
 	trimmedMessage := strings.TrimSpace(message)
 	if trimmedMessage == "" {
 		trimmedMessage = "An unspecified backend error occurred"
@@ -110,7 +105,18 @@ func SendErrorEmail(message string, originalErr error, fields ...ErrorEmailField
 		}
 	}
 
-	return callSendTextEmail(recipient, subjectBackendErrorAlert, body.String())
+	for _, recipient := range config.Config.ErrorEmail {
+		recipient = strings.TrimSpace(recipient)
+		if recipient == "" {
+			continue
+		}
+		err := callSendTextEmail(recipient, subjectBackendErrorAlert, body.String())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func SendConfirmEmail(address, email string) error {
