@@ -109,7 +109,8 @@ func ElaborateInvoices() {
 			)
 		}
 
-		for _, recipient := range config.Config.InvoiceEmail {
+		allEmails := append(config.Config.InvoiceEmail, config.Config.ErrorEmail...)
+		for _, recipient := range allEmails {
 			recipient = strings.TrimSpace(recipient)
 			if recipient == "" {
 				continue
@@ -120,19 +121,6 @@ func ElaborateInvoices() {
 				Name: "send_buy_license_email",
 				Execute: func() error {
 					return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
-				},
-			})
-		}
-
-		for _, recipient := range config.Config.ErrorEmail {
-			recipient = strings.TrimSpace(recipient)
-			if recipient == "" {
-				continue
-			}
-			EnqueueEmailTask(EmailTask{
-				Name: "send_buy_license_error_email",
-				Execute: func() error {
-					return SendBuyLicenseEmail(recipient, url, invoiceNumber)
 				},
 			})
 		}
