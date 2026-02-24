@@ -141,13 +141,13 @@ func DailyGetStats() {
 		return
 	}
 
-	failedJobDetails := make([]string, 0)
+	failedJobDetailsId := make([]string, 0)
 	for k := range allJobsDetails {
 		prevAlloc, ok := prevAllocations[k]
 		if !ok {
 			res, err := GetJobDetails(k, config.Config.DeeployApi)
 			if err != nil {
-				failedJobDetails = append(failedJobDetails, k)
+				failedJobDetailsId = append(failedJobDetailsId, k)
 				continue
 			}
 			allJobsDetails[k] = res
@@ -160,12 +160,12 @@ func DailyGetStats() {
 			allJobsDetails[k] = &res
 		}
 	}
-	if len(failedJobDetails) > 0 {
+	if len(failedJobDetailsId) > 0 {
 		reportError(
 			"Failed to retrieve details for one or more jobs",
 			errors.New("job details retrieval failed"),
-			ErrorEmailField{Name: "FailedJobsCount", Value: intField(len(failedJobDetails))},
-			ErrorEmailField{Name: "FailedJobIDs", Value: strings.Join(failedJobDetails, ",")},
+			ErrorEmailField{Name: "FailedJobsCount", Value: intField(len(failedJobDetailsId))},
+			ErrorEmailField{Name: "FailedJobIDs", Value: strings.Join(failedJobDetailsId, ",")},
 		)
 	}
 

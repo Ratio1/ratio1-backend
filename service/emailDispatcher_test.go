@@ -12,7 +12,7 @@ func TestStopEmailDispatcherDrainsPendingTasks(t *testing.T) {
 	resetEmailDispatcherForTest()
 	t.Cleanup(cleanupEmailDispatcherForTest)
 
-	StartEmailDispatcher(nil)
+	StartEmailDispatcher(context.TODO())
 
 	const tasksCount = 5
 	var executed atomic.Int32
@@ -40,7 +40,7 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 	resetEmailDispatcherForTest()
 	t.Cleanup(cleanupEmailDispatcherForTest)
 
-	StartEmailDispatcher(nil)
+	StartEmailDispatcher(context.TODO())
 
 	blockTask := make(chan struct{})
 	firstStarted := make(chan struct{})
