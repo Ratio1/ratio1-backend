@@ -53,13 +53,7 @@ type endingJobOnChain struct {
 }
 
 func manageEndingJobsAndSendEmails(jobNamesForId map[string]*JobDetailsResult) error {
-	reportError := func(message string, err error, fields ...ErrorEmailField) {
-		allFields := []ErrorEmailField{
-			{Name: "Process", Value: "manageEndingJobsAndSendEmails"},
-		}
-		allFields = append(allFields, fields...)
-		notifyError(message, err, allFields...)
-	}
+	reportError := newReportError("manageEndingJobsAndSendEmails")
 
 	jobs, err := getEndingJobsWithPeriod()
 	if err != nil {
@@ -180,13 +174,7 @@ func getEndingJobsWithPeriod() ([]EndingJob, error) {
 }
 
 func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
-	reportError := func(message string, err error, fields ...ErrorEmailField) {
-		allFields := []ErrorEmailField{
-			{Name: "Process", Value: "sendEmailForEndingJobs"},
-		}
-		allFields = append(allFields, fields...)
-		notifyError(message, err, allFields...)
-	}
+	reportError := newReportError("sendEmailForEndingJobs")
 
 	for ownerAddress, jobs := range usersWithJobs {
 		if len(jobs) == 0 {

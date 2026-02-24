@@ -23,13 +23,7 @@ import (
 )
 
 func ElaborateInvoices() {
-	reportError := func(message string, err error, fields ...ErrorEmailField) {
-		allFields := []ErrorEmailField{
-			{Name: "Process", Value: "ElaborateInvoices"},
-		}
-		allFields = append(allFields, fields...)
-		notifyError(message, err, allFields...)
-	}
+	reportError := newReportError("ElaborateInvoices")
 
 	latestSeenBlock, _, err := storage.GetLatestInvoiceBlock()
 	if err != nil {

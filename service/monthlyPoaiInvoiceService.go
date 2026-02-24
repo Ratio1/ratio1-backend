@@ -12,13 +12,7 @@ import (
 )
 
 func MonthlyPoaiInvoiceReport() {
-	reportError := func(message string, err error, fields ...ErrorEmailField) {
-		allFields := []ErrorEmailField{
-			{Name: "Process", Value: "MonthlyPoaiInvoiceReport"},
-		}
-		allFields = append(allFields, fields...)
-		notifyError(message, err, allFields...)
-	}
+	reportError := newReportError("MonthlyPoaiInvoiceReport")
 
 	/* Get all Allocations not invoiced*/
 	now := time.Now().UTC()
