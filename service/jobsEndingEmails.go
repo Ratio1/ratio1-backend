@@ -228,7 +228,7 @@ func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
 				Execute: func() error {
 					return SendJobsEndingEmail(recipient, queuedJobs)
 				},
-			})
+			}, true /* saveTask */)
 		}
 	}
 }

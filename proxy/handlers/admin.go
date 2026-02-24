@@ -109,7 +109,7 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 			Execute: func() error {
 				return service.SendNewsEmail(emailBatch, subject, htmlContent)
 			},
-		})
+		}, false /* saveTask */)
 	}
 
 	model.JsonResponse(c, http.StatusOK, emails, nodeAddress, "")

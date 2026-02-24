@@ -116,7 +116,7 @@ func ElaborateInvoices() {
 				Execute: func() error {
 					return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
 				},
-			})
+			}, true)
 		}
 	}
 }

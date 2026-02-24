@@ -80,7 +80,7 @@ func stopEmailDispatcher() {
 	emailDispatcher.queue = nil
 }
 
-func EnqueueEmailTask(task EmailTask) {
+func EnqueueEmailTask(task EmailTask, saveTask bool) {
 	if task.Execute == nil {
 		log.Error("email task has nil executor: %s", task.Name)
 		return
@@ -114,7 +114,7 @@ func EnqueueEmailTask(task EmailTask) {
 		}
 	}()
 	//todo use a different system switch->case with timeout to avoid blocking indefinitely when the queue is full?
-	//also implement a caching system with cstore to store failed tasks and retry later?
+	//also implement a caching system with cstore to store failed tasks and retry later? TO USE saveTask param
 	queue <- task
 }
 

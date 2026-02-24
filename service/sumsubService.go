@@ -47,7 +47,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 		EnqueueEmailTask(EmailTask{
 			Name:    taskName,
 			Execute: execute,
-		})
+		}, true /* saveTask */)
 	}
 
 	if kyc.LastUpdated.After(parsedTime) { //Could be null
