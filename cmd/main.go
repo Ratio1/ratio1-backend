@@ -99,6 +99,16 @@ func startApi(ctx *cli.Context) error {
 			}
 			c.Start()
 		}
+
+		emailRetryNodeTiming, found := config.Config.GetEmailRetryCronJobTiming(nodeAddress)
+		if found {
+			c := cron.New()
+			_, err = c.AddFunc(emailRetryNodeTiming, service.RetryErroredEmailTasks)
+			if err != nil {
+				return errors.New("error while starting email retry cronjob: " + err.Error())
+			}
+			c.Start()
+		}
 	}
 
 	api, err := proxy.NewWebServer()
