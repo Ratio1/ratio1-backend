@@ -104,12 +104,7 @@ func (h *adminHandler) sendNewsLetterEmail(c *gin.Context) {
 		end := i + 500
 		end = min(end, len(emails))
 		emailBatch := append([]string(nil), emails[i:end]...)
-		service.EnqueueEmailTask(service.EmailTask{
-			Name: "send_newsletter_batch_email",
-			Execute: func() error {
-				return service.SendNewsEmail(emailBatch, subject, htmlContent)
-			},
-		}, false /* saveTask */)
+		service.EnqueueEmailTask(service.NewSendNewsletterBatchEmailTask(emailBatch, subject, htmlContent), false)
 	}
 
 	model.JsonResponse(c, http.StatusOK, emails, nodeAddress, "")

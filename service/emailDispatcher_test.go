@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -12,18 +13,20 @@ func TestStopEmailDispatcherDrainsPendingTasks(t *testing.T) {
 	resetEmailDispatcherForTest()
 	t.Cleanup(cleanupEmailDispatcherForTest)
 
+	const handlerName = "test_drain_pending_tasks"
+	var executed atomic.Int32
+	registerEmailTaskHandler(handlerName, func(task EmailTask) error {
+		time.Sleep(10 * time.Millisecond)
+		executed.Add(1)
+		return nil
+	})
+
 	StartEmailDispatcher(context.TODO())
 
 	const tasksCount = 5
-	var executed atomic.Int32
 	for i := 0; i < tasksCount; i++ {
 		EnqueueEmailTask(EmailTask{
-			Name: "drain_pending_task",
-			Execute: func() error {
-				time.Sleep(10 * time.Millisecond)
-				executed.Add(1)
-				return nil
-			},
+			Name: handlerName,
 		}, false)
 	}
 
@@ -40,22 +43,29 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 	resetEmailDispatcherForTest()
 	t.Cleanup(cleanupEmailDispatcherForTest)
 
-	StartEmailDispatcher(context.TODO())
-
+	const firstHandlerName = "test_first_blocking_task"
+	const secondHandlerName = "test_second_task_should_be_dropped"
 	blockTask := make(chan struct{})
 	firstStarted := make(chan struct{})
 
 	var firstExecuted atomic.Bool
 	var secondExecuted atomic.Bool
 
+	registerEmailTaskHandler(firstHandlerName, func(task EmailTask) error {
+		firstExecuted.Store(true)
+		close(firstStarted)
+		<-blockTask
+		return nil
+	})
+	registerEmailTaskHandler(secondHandlerName, func(task EmailTask) error {
+		secondExecuted.Store(true)
+		return nil
+	})
+
+	StartEmailDispatcher(context.TODO())
+
 	EnqueueEmailTask(EmailTask{
-		Name: "first_blocking_task",
-		Execute: func() error {
-			firstExecuted.Store(true)
-			close(firstStarted)
-			<-blockTask
-			return nil
-		},
+		Name: firstHandlerName,
 	}, false)
 
 	select {
@@ -75,11 +85,7 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 	waitForDispatcherStopping(t)
 
 	EnqueueEmailTask(EmailTask{
-		Name: "second_task_should_be_dropped",
-		Execute: func() error {
-			secondExecuted.Store(true)
-			return nil
-		},
+		Name: secondHandlerName,
 	}, false)
 
 	close(blockTask)
@@ -99,6 +105,40 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 	}
 	if secondExecuted.Load() {
 		t.Fatal("expected second task to be dropped while dispatcher is stopping")
+	}
+}
+
+func TestMarkTaskFailureClosesAfterRetryLimit(t *testing.T) {
+	task := EmailTask{Name: "test_handler"}
+	now := time.Now().UTC()
+
+	for i := 0; i < defaultEmailTaskRetryLimit; i++ {
+		task = markTaskFailure(task, errors.New("boom"), now.Add(time.Duration(i+1)*time.Second))
+	}
+
+	if task.Status != emailTaskStatusFinalFailed {
+		t.Fatalf("expected task status %q, got %q", emailTaskStatusFinalFailed, task.Status)
+	}
+	if task.ClosedReason == "" {
+		t.Fatal("expected closed reason to be set")
+	}
+}
+
+func TestMarkTaskFailureIgnoresFailuresOutsideWindow(t *testing.T) {
+	now := time.Now().UTC()
+	oldFailure := now.Add(-defaultEmailTaskRetryWindow - time.Minute)
+	task := EmailTask{
+		Name:           "test_handler",
+		FailureHistory: []time.Time{oldFailure},
+	}
+
+	task = markTaskFailure(task, errors.New("boom"), now)
+
+	if task.Status != emailTaskStatusFailed {
+		t.Fatalf("expected task status %q, got %q", emailTaskStatusFailed, task.Status)
+	}
+	if len(task.FailureHistory) != 1 {
+		t.Fatalf("expected only one in-window failure, got %d", len(task.FailureHistory))
 	}
 }
 
@@ -133,4 +173,6 @@ func resetEmailDispatcherForTest() {
 	emailDispatcher.queue = nil
 	emailDispatcher.stopping = false
 	emailDispatcher.done = nil
+	emailDispatcher.nodeAddr = ""
+	resetEmailTaskHandlersForTest()
 }

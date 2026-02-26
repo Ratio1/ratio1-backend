@@ -70,12 +70,7 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 		return nil, err
 	}
 
-	EnqueueEmailTask(EmailTask{
-		Name: "send_confirm_email",
-		Execute: func() error {
-			return SendConfirmEmail(address, email)
-		},
-	}, false)
+	EnqueueEmailTask(NewSendConfirmEmailTask(address, email), false)
 
 	return account, nil
 }

@@ -211,14 +211,8 @@ func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
 			continue
 		}
 
-		recipient := email
 		queuedJobs := append([]EndingJob(nil), jobs...)
-		EnqueueEmailTask(EmailTask{
-			Name: "send_jobs_ending_email",
-			Execute: func() error {
-				return SendJobsEndingEmail(recipient, queuedJobs)
-			},
-		}, true /* saveTask */)
+		EnqueueEmailTask(NewSendJobsEndingEmailTask(email, queuedJobs), true)
 	}
 }
 

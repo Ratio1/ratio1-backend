@@ -109,12 +109,7 @@ func ElaborateInvoices() {
 			}
 			urlCopy := url
 			invoiceNumberCopy := invoiceNumber
-			EnqueueEmailTask(EmailTask{
-				Name: "send_buy_license_email",
-				Execute: func() error {
-					return SendBuyLicenseEmail(recipient, urlCopy, invoiceNumberCopy)
-				},
-			}, true)
+			EnqueueEmailTask(NewSendBuyLicenseEmailTask(recipient, urlCopy, invoiceNumberCopy), true)
 		}
 	}
 }

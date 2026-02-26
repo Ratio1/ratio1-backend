@@ -43,11 +43,8 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 		return errors.New("error while parsing time: " + err.Error())
 	}
 
-	queueEmail := func(taskName string, execute func() error) {
-		EnqueueEmailTask(EmailTask{
-			Name:    taskName,
-			Execute: execute,
-		}, true /* saveTask */)
+	queueEmail := func(task EmailTask) {
+		EnqueueEmailTask(task, true)
 	}
 
 	if kyc.LastUpdated.After(parsedTime) { //Could be null
@@ -66,15 +63,11 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 			if event.ReviewResult.ReviewRejectType == "FINAL" {
 				status = model.StatusFinalRejected
 				email := kyc.Email
-				queueEmail("send_kyc_final_rejected_email", func() error {
-					return SendKycFinalRejectedEmail(email)
-				})
+				queueEmail(NewSendKycFinalRejectedEmailTask(email))
 			} else {
 				status = model.StatusRejected
 				email := kyc.Email
-				queueEmail("send_kyc_step_rejected_email", func() error {
-					return SendStepRejectedEmail(email)
-				})
+				queueEmail(NewSendKycStepRejectedEmailTask(email))
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
 			status = model.StatusApproved
@@ -83,9 +76,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 				return errors.New("error while getting user info: " + err.Error())
 			}
 			email := kyc.Email
-			queueEmail("send_kyc_confirmed_email", func() error {
-				return SendKycConfirmedEmail(email)
-			})
+			queueEmail(NewSendKycConfirmedEmailTask(email))
 			userInfo.BlockchainAddress = userAddress
 			userInfo.Email = kyc.Email
 			err = storage.CreateUserInfo(userInfo)
@@ -108,9 +99,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 		kyc.KycStatus = event.ReviewStatus
 		kyc.HasBeenDeleted = false
 		email := kyc.Email
-		queueEmail("send_account_resetted_email", func() error {
-			return SendAccountResettedEmail(email)
-		})
+		queueEmail(NewSendAccountResettedEmailTask(email))
 
 	default:
 		status := event.ReviewStatus
@@ -118,22 +107,16 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 			if event.ReviewResult.ReviewRejectType == "FINAL" {
 				status = model.StatusFinalRejected
 				email := kyc.Email
-				queueEmail("send_kyc_final_rejected_email", func() error {
-					return SendKycFinalRejectedEmail(email)
-				})
+				queueEmail(NewSendKycFinalRejectedEmailTask(email))
 			} else {
 				status = model.StatusRejected
 				email := kyc.Email
-				queueEmail("send_kyc_step_rejected_email", func() error {
-					return SendStepRejectedEmail(email)
-				})
+				queueEmail(NewSendKycStepRejectedEmailTask(email))
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" && event.Type == model.ApplicantOnHold {
 			status = model.StatusApproved
 			email := kyc.Email
-			queueEmail("send_kyc_confirmed_email", func() error {
-				return SendKycConfirmedEmail(email)
-			})
+			queueEmail(NewSendKycConfirmedEmailTask(email))
 		}
 		kyc.KycStatus = status
 	}

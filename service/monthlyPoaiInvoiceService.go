@@ -158,23 +158,11 @@ func MonthlyPoaiInvoiceReport() {
 
 	//send unique email for csp and node owner ( even if they have more than 1 invoice)
 	for k := range allNodeOwner {
-		recipient := k
-		EnqueueEmailTask(EmailTask{
-			Name: "send_node_owner_draft_email",
-			Execute: func() error {
-				return SendNodeOwnerDraftEmail(recipient)
-			},
-		}, false)
+		EnqueueEmailTask(NewSendNodeOwnerDraftEmailTask(k), false)
 	}
 
 	for k := range allCSP {
-		recipient := k
-		EnqueueEmailTask(EmailTask{
-			Name: "send_csp_draft_email",
-			Execute: func() error {
-				return SendCspDraftEmail(recipient)
-			},
-		}, false)
+		EnqueueEmailTask(NewSendCspDraftEmailTask(k), false)
 	}
 }
 

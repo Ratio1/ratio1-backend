@@ -12,12 +12,7 @@ func notifyError(message string, err error, fields ...ErrorEmailField) {
 	}
 	// Copy variadic fields to decouple queued task execution from caller-side slice reuse.
 	fieldsCopy := append([]ErrorEmailField(nil), fields...)
-	EnqueueEmailTask(EmailTask{
-		Name: "send_error_email",
-		Execute: func() error {
-			return SendErrorEmail(message, err, fieldsCopy...)
-		},
-	}, true /* saveTask */)
+	EnqueueEmailTask(NewSendErrorEmailTask(message, err, fieldsCopy), true)
 }
 
 func newReportError(processName string) func(message string, err error, fields ...ErrorEmailField) {
