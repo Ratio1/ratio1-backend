@@ -41,7 +41,7 @@ func main() {
 }
 
 func startApi(ctx *cli.Context) error {
-	dispatcherCtx, stopDispatcher := context.WithCancel(context.Background())
+	dispatcherRunCtx, stopDispatcher := context.WithCancel(context.Background())
 	defer stopDispatcher()
 
 	nodeAddress, err := service.GetAddress()
@@ -67,7 +67,7 @@ func startApi(ctx *cli.Context) error {
 
 	storage.Connect()
 	templates.LoadAndCacheTemplates()
-	service.StartEmailDispatcher(dispatcherCtx)
+	service.StartEmailDispatcher(dispatcherRunCtx)
 
 	if !config.Config.Api.DevTesting {
 		buyLicenseInvoiceNodeTiming, found := config.Config.GetBuyLicenseInvoiceCronJobTiming(nodeAddress)
@@ -135,9 +135,9 @@ func waitForGracefulShutdown(server *http.Server, stopDispatcher context.CancelF
 
 	stopDispatcher()
 
-	dispatcherCtx, dispatcherCancel := context.WithTimeout(context.Background(), backgroundContextTimeout)
+	dispatcherShutdownCtx, dispatcherCancel := context.WithTimeout(context.Background(), backgroundContextTimeout)
 	defer dispatcherCancel()
-	service.StopEmailDispatcher(dispatcherCtx)
+	service.StopEmailDispatcher(dispatcherShutdownCtx)
 
 	if err := server.Close(); err != nil {
 		_ = service.SendErrorEmail(
