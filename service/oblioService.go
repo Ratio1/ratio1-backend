@@ -161,7 +161,7 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 		notifyError(
 			"Failed to decode one or more Blockchain logs",
 			firstDecodeError,
-			ErrorEmailField{Name: "ElaborateInvoices Process", Value: "fetchEvents"},
+			ErrorEmailField{Name: "ElaborateInvoicesProcess", Value: "fetchEvents"},
 			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
 		)
 	}
