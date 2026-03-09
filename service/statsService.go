@@ -480,7 +480,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 		notifyError(
 			"Failed to decode one or more allocation logs",
 			firstDecodeError,
-			ErrorEmailField{Name: "Process", Value: "fetchAllocationEvents"},
+			ErrorEmailField{Name: "SubProcess", Value: "fetchAllocationEvents"},
 			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
 			ErrorEmailField{Name: "FromBlock", Value: int64Field(from)},
 			ErrorEmailField{Name: "ToBlock", Value: int64Field(to)},
@@ -574,7 +574,7 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 		notifyError(
 			"Failed to decode one or more burn logs",
 			firstDecodeError,
-			ErrorEmailField{Name: "Process", Value: "fetchBurnEvents"},
+			ErrorEmailField{Name: "SubProcess", Value: "fetchBurnEvents"},
 			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
 			ErrorEmailField{Name: "FromBlock", Value: int64Field(from)},
 			ErrorEmailField{Name: "ToBlock", Value: int64Field(to)},
