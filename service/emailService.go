@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -26,6 +27,7 @@ const (
 	subjectNewBuyLicenseInvoice  = "A new buy license invoice has been sent"
 	subjectNewInvoiceDraft       = "New draft invoices have been issued"
 	subjectJobsEndingSoon        = "Ratio1 - Jobs ending soon"
+	subjectBackendErrorAlert     = "Ratio1 - Backend Error Alert"
 )
 
 var (
@@ -56,8 +58,68 @@ type EmailMessage struct {
 	MessageStream string `json:"MessageStream"`
 }
 
+type ErrorEmailField struct {
+	Name  string
+	Value string
+}
+
 func SendNewsEmail(email []string, subject, htmlBody string) error {
 	return callSendBatchEmail(email, subject, htmlBody)
+}
+
+func SendErrorEmail(message string, originalErr error, fields ...ErrorEmailField) error {
+	trimmedMessage := strings.TrimSpace(message)
+	if trimmedMessage == "" {
+		trimmedMessage = "An unspecified backend error occurred"
+	}
+
+	var body strings.Builder
+	body.WriteString("A backend process reported an error.\n\n")
+	body.WriteString("Timestamp (UTC): ")
+	body.WriteString(time.Now().UTC().Format(time.RFC3339))
+	body.WriteString("\n")
+	body.WriteString("Message: ")
+	body.WriteString(trimmedMessage)
+	body.WriteString("\n")
+
+	if originalErr != nil {
+		body.WriteString("Error: ")
+		body.WriteString(originalErr.Error())
+		body.WriteString("\n")
+	} else {
+		body.WriteString("Error: not provided\n")
+	}
+
+	if len(fields) > 0 {
+		body.WriteString("\nContext fields:\n")
+		for _, field := range fields {
+			name := strings.TrimSpace(field.Name)
+			if name == "" {
+				continue
+			}
+			body.WriteString("- ")
+			body.WriteString(name)
+			body.WriteString(": ")
+			body.WriteString(field.Value)
+			body.WriteString("\n")
+		}
+	}
+	var errors []error
+	for _, recipient := range config.Config.ErrorEmail {
+		recipient = strings.TrimSpace(recipient)
+		if recipient == "" {
+			continue
+		}
+		err := callSendTextEmail(recipient, subjectBackendErrorAlert, body.String())
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+	if len(errors) > 0 {
+		return fmt.Errorf("failed to send error email to some recipients: %v", errors)
+	}
+
+	return nil
 }
 
 func SendConfirmEmail(address, email string) error {

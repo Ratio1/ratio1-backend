@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -24,33 +23,45 @@ import (
 )
 
 func ElaborateInvoices() {
+	reportError := newReportError("ElaborateInvoices")
+
 	latestSeenBlock, _, err := storage.GetLatestInvoiceBlock()
 	if err != nil {
-		fmt.Println("Error receiving latest block from database: " + err.Error())
+		reportError("Failed to retrieve latest invoice block from storage", err)
 		return
 	}
 
 	events, err := fetchEvents(latestSeenBlock)
 	if err != nil {
-		fmt.Println("Error fetching events: " + err.Error())
+		reportError("Failed to fetch invoice events", err)
 		return
 	}
 
 	var auth model.AuthRequest
 	err = process.HttpPostWithUrlEncoded(config.Config.Oblio.AuthUrl, config.Config.Oblio.ClientSecret, &auth)
 	if err != nil {
-		fmt.Println("Error doing auth http request: " + err.Error())
+		reportError("Failed to authenticate with Oblio", err)
 		return
 	}
 
 	for _, event := range events {
 		invoice, found, err := storage.GetInvoiceByID(event.InvoiceID)
 		if err != nil {
-			fmt.Println("Error retrieving invoice infromation from storage: " + err.Error())
+			reportError(
+				"Failed to retrieve invoice from storage",
+				err,
+				ErrorEmailField{Name: "InvoiceID", Value: event.InvoiceID},
+				ErrorEmailField{Name: "TransactionHash", Value: event.TxHash},
+			)
 			continue
 		}
 		if !found {
-			fmt.Println("Invoice not found in storage: " + event.InvoiceID)
+			reportError(
+				"Invoice event received but invoice was not found in storage",
+				errors.New("invoice not found"),
+				ErrorEmailField{Name: "InvoiceID", Value: event.InvoiceID},
+				ErrorEmailField{Name: "TransactionHash", Value: event.TxHash},
+			)
 			continue
 		}
 		if *invoice.Status != model.InvoiceStatusPending {
@@ -60,7 +71,12 @@ func ElaborateInvoices() {
 
 		url, invoiceNumber, err := generateInvoice(*invoice, event, auth)
 		if err != nil {
-			fmt.Println("Error generating invoice: " + err.Error())
+			reportError(
+				"Failed to generate invoice on Oblio",
+				err,
+				ErrorEmailField{Name: "InvoiceID", Value: event.InvoiceID},
+				ErrorEmailField{Name: "TransactionHash", Value: event.TxHash},
+			)
 			continue
 		}
 
@@ -75,10 +91,28 @@ func ElaborateInvoices() {
 
 		err = storage.UpdateInvoice(invoice)
 		if err != nil {
-			fmt.Println("Error updating invoices in storage: " + err.Error())
+			reportError(
+				"Invoice generated on Oblio but failed to persist in storage",
+				err,
+				ErrorEmailField{Name: "InvoiceID", Value: event.InvoiceID},
+				ErrorEmailField{Name: "InvoiceNumber", Value: invoiceNumber},
+				ErrorEmailField{Name: "InvoiceURL", Value: url},
+				ErrorEmailField{Name: "TransactionHash", Value: event.TxHash},
+			)
 		}
 
-		SendBuyLicenseEmail(config.Config.InvoiceMessageEmail, url, invoiceNumber)
+		var allEmails []string
+		allEmails = append(allEmails, config.Config.ErrorEmail...)
+		allEmails = append(allEmails, config.Config.InvoiceEmail...)
+		for _, recipient := range allEmails {
+			recipient = strings.TrimSpace(recipient)
+			if recipient == "" {
+				continue
+			}
+			urlCopy := url
+			invoiceNumberCopy := invoiceNumber
+			EnqueueEmailTask(NewSendBuyLicenseEmailTask(recipient, urlCopy, invoiceNumberCopy), true)
+		}
 	}
 }
 
@@ -111,13 +145,27 @@ func fetchEvents(latestSeenBlock *int64) ([]model.Event, error) {
 	}
 
 	var events []model.Event
+	decodeErrors := 0
+	var firstDecodeError error
 	for _, vLog := range logs {
 		event, err := decodeLogs(vLog)
 		if err != nil {
 			fmt.Println("error while decoding logs: " + err.Error())
+			decodeErrors++
+			if firstDecodeError == nil {
+				firstDecodeError = err
+			}
 			continue
 		}
 		events = append(events, *event)
+	}
+	if decodeErrors > 0 {
+		notifyError(
+			"Failed to decode one or more Blockchain logs",
+			firstDecodeError,
+			ErrorEmailField{Name: "ElaborateInvoicesProcess", Value: "fetchEvents"},
+			ErrorEmailField{Name: "DecodeErrorsCount", Value: intField(decodeErrors)},
+		)
 	}
 
 	return events, nil
@@ -247,9 +295,6 @@ func generateInvoice(invoiceData model.InvoiceClient, invoiceRequest model.Event
 		invoice.Language = "RO"
 		invoice.SeriesName = model.InvoiceROUSeriesName
 	}
-
-	data, _ := json.Marshal(invoice)
-	fmt.Println(string(data))
 
 	var oblioResponse model.OblioInvoiceResponse
 	err = process.HttpPost(config.Config.Oblio.InvoiceUrl, invoice, &oblioResponse, headers...)
