@@ -47,7 +47,7 @@ func CreateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	txCreate := db.Create(&invoice)
+	txCreate := db.Create(invoice)
 	if txCreate.Error != nil {
 		txCreate.Rollback()
 		return txCreate.Error
@@ -66,7 +66,7 @@ func UpdateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	txUpdate := db.Save(&invoice)
+	txUpdate := db.Save(invoice)
 	if txUpdate.Error != nil {
 		txUpdate.Rollback()
 		return txUpdate.Error
