@@ -307,18 +307,16 @@
     <table class="alloc" cellspacing="0" cellpadding="0">
       <colgroup>
         <col class="w-25mm-creation">
-        <col class="w-20mm">
-        <col class="w-25mm">
-        <col class="w-35mm">
-        <col class="w-60mm">
-        <col class="w-20mm">
+        <col class="w-30mm">
+        <col class="w-30mm">
+        <col class="w-70mm">
+        <col class="w-30mm">
       </colgroup>
       <thead>
         <tr>
           <th>Date</th>
           <th>Type</th>
-          <th>Project</th>
-          <th>Job ID - Name</th>
+          <th>Job ID</th>
           <th>Node</th>
           <th>USDC Paid</th>
         </tr>
@@ -328,8 +326,7 @@
         <tr>
           <td>{{ .AllocationCreation }}</td>
           <td>{{ .JobType }}</td>
-          <td>{{ .ProjectName }}</td>
-          <td>{{ .JobID }} - {{ .JobName }}</td>
+          <td>{{ .JobID }}</td>
           <td>{{ .NodeAddress }}</td>
           <td class="w-20mm-r">{{ .UsdcPaid }}</td>
         </tr>
