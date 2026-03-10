@@ -27,10 +27,10 @@ type InvoiceClient struct {
 	InvoiceNumber      *string `gorm:"default:null"`
 	TxHash             *string `gorm:"default:null"`
 	BlockNumber        *int64  `gorm:"default:null"`
-	ReverseCharge      bool    `gorm:"default:false"`
-	IsUe               bool    `gorm:"default:true"`
-	NumLicenses        *int    `gorm:"default:null"`
-	UnitUsdPrice       *int    `gorm:"default:null"`
+	ReverseCharge      bool
+	IsUe               bool
+	NumLicenses        *int `gorm:"default:null"`
+	UnitUsdPrice       *int `gorm:"default:null"`
 }
 
 type AuthRequest struct {

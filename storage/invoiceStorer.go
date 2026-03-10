@@ -47,8 +47,7 @@ func CreateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	// Persist explicit zero-values (e.g. IsUe=false) instead of letting DB defaults override them.
-	txCreate := db.Select("*").Create(invoice)
+	txCreate := db.Create(invoice)
 	if txCreate.Error != nil {
 		txCreate.Rollback()
 		return txCreate.Error
@@ -67,8 +66,7 @@ func UpdateInvoice(invoice *model.InvoiceClient) error {
 		return err
 	}
 
-	// Keep update behavior consistent and include zero-values when saving.
-	txUpdate := db.Select("*").Save(invoice)
+	txUpdate := db.Save(invoice)
 	if txUpdate.Error != nil {
 		txUpdate.Rollback()
 		return txUpdate.Error
