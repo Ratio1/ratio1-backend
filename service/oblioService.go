@@ -101,7 +101,9 @@ func ElaborateInvoices() {
 			)
 		}
 
-		allEmails := append(config.Config.InvoiceEmail, config.Config.ErrorEmail...)
+		var allEmails []string
+		allEmails = append(allEmails, config.Config.ErrorEmail...)
+		allEmails = append(allEmails, config.Config.InvoiceEmail...)
 		for _, recipient := range allEmails {
 			recipient = strings.TrimSpace(recipient)
 			if recipient == "" {
