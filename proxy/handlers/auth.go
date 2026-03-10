@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -17,6 +20,7 @@ const (
 	baseAuthEndpoint    = "/auth"
 	accessAuthEndpoint  = "/access"
 	refreshAuthEndpoint = "/refresh"
+	logoutAuthEndpoint  = "/logout"
 	nodeDataEndpoint    = "/nodeData"
 )
 
@@ -30,9 +34,7 @@ type refreshTokenRequest struct {
 }
 
 type tokenPayload struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	Expiration   int64  `json:"expiration"`
+	Expiration int64 `json:"expiration"`
 }
 
 type authHandler struct{}
@@ -43,6 +45,7 @@ func NewAuthHandler(groupHandler *groupHandler) {
 	endpoints := []EndpointHandler{
 		{Method: http.MethodPost, Path: accessAuthEndpoint, HandlerFunc: h.createAccessToken},
 		{Method: http.MethodPost, Path: refreshAuthEndpoint, HandlerFunc: h.refreshAccessToken},
+		{Method: http.MethodPost, Path: logoutAuthEndpoint, HandlerFunc: h.logout},
 		{Method: http.MethodGet, Path: nodeDataEndpoint, HandlerFunc: h.getNodeData},
 	}
 
@@ -125,10 +128,9 @@ func (h *authHandler) createAccessToken(c *gin.Context) {
 		return
 	}
 
+	setAuthCookies(c, jwt, refresh)
 	model.JsonResponse(c, http.StatusOK, tokenPayload{
-		AccessToken:  jwt,
-		RefreshToken: refresh,
-		Expiration:   time.Now().Unix() + int64(config.Config.Jwt.ExpiryMins*60),
+		Expiration: time.Now().Unix() + int64(config.Config.Jwt.ExpiryMins*60),
 	}, nodeAddress, "")
 }
 
@@ -141,33 +143,67 @@ func (h *authHandler) refreshAccessToken(c *gin.Context) {
 	}
 
 	req := refreshTokenRequest{}
-	err = c.Bind(&req)
-	if err != nil {
+	err = c.ShouldBindJSON(&req)
+	if err != nil && !errors.Is(err, io.EOF) {
 		log.Error("error while binding request: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
 
-	bearer := c.Request.Header.Get("Authorization")
-	ok, token := middleware.ParseBearer(bearer)
-	if !ok {
-		log.Error("cannot parse bearer")
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "Can't parse bearer")
-		return
+	refreshToken := strings.TrimSpace(req.Token)
+	if refreshToken == "" {
+		cookieToken, ok := readAuthCookie(c, config.Config.Jwt.RefreshCookieName)
+		if !ok {
+			log.Error("missing refresh token")
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "Missing refresh token")
+			return
+		}
+		refreshToken = cookieToken
 	}
 
-	jwt, refresh, err := service.RefreshToken(token, req.Token)
+	bearer := c.Request.Header.Get("Authorization")
+	accessToken := ""
+	if bearer == "" {
+		cookieToken, ok := readAuthCookie(c, config.Config.Jwt.AccessCookieName)
+		if !ok {
+			log.Error("missing access token")
+			model.JsonResponse(c, http.StatusUnauthorized, nil, nodeAddress, "Missing access token")
+			return
+		}
+		accessToken = cookieToken
+	} else {
+		ok, token := middleware.ParseBearer(bearer)
+		if !ok {
+			log.Error("cannot parse bearer")
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "Can't parse bearer")
+			return
+		}
+		accessToken = token
+	}
+
+	jwt, refresh, err := service.RefreshToken(accessToken, refreshToken)
 	if err != nil {
 		log.Error("error while refreshing token: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
 	}
 
+	setAuthCookies(c, jwt, refresh)
 	model.JsonResponse(c, http.StatusOK, tokenPayload{
-		AccessToken:  jwt,
-		RefreshToken: refresh,
-		Expiration:   time.Now().Unix() + int64(config.Config.Jwt.ExpiryMins*60),
+		Expiration: time.Now().Unix() + int64(config.Config.Jwt.ExpiryMins*60),
 	}, nodeAddress, "")
+}
+
+func (h *authHandler) logout(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	clearAuthCookies(c)
+	model.JsonResponse(c, http.StatusOK, nil, nodeAddress, "")
 }
 
 func (h *authHandler) getNodeData(c *gin.Context) {
@@ -178,4 +214,63 @@ func (h *authHandler) getNodeData(c *gin.Context) {
 		return
 	}
 	model.JsonResponse(c, http.StatusOK, config.BackendVersion, nodeAddress, "")
+}
+
+func setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
+	maxAge := config.Config.Jwt.ExpiryMins * 60
+	setAuthCookie(c, config.Config.Jwt.AccessCookieName, accessToken, maxAge)
+	setAuthCookie(c, config.Config.Jwt.RefreshCookieName, refreshToken, maxAge)
+}
+
+func clearAuthCookies(c *gin.Context) {
+	setAuthCookie(c, config.Config.Jwt.AccessCookieName, "", -1)
+	setAuthCookie(c, config.Config.Jwt.RefreshCookieName, "", -1)
+}
+
+func readAuthCookie(c *gin.Context, name string) (string, bool) {
+	if name == "" {
+		return "", false
+	}
+	value, err := c.Cookie(name)
+	if err != nil || value == "" {
+		return "", false
+	}
+	return value, true
+}
+
+func setAuthCookie(c *gin.Context, name, value string, maxAge int) {
+	if name == "" {
+		return
+	}
+	cookie := &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     "/",
+		Domain:   config.Config.Jwt.CookieDomain,
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   config.Config.Jwt.CookieSecure,
+		SameSite: cookieSameSiteMode(),
+	}
+	if maxAge < 0 {
+		cookie.Expires = time.Unix(0, 0)
+	} else if maxAge > 0 {
+		cookie.Expires = time.Now().Add(time.Duration(maxAge) * time.Second)
+	}
+	http.SetCookie(c.Writer, cookie)
+}
+
+func cookieSameSiteMode() http.SameSite {
+	switch strings.ToLower(strings.TrimSpace(config.Config.Jwt.CookieSameSite)) {
+	case "none":
+		return http.SameSiteNoneMode
+	case "strict":
+		return http.SameSiteStrictMode
+	case "lax":
+		return http.SameSiteLaxMode
+	case "default":
+		return http.SameSiteDefaultMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }
