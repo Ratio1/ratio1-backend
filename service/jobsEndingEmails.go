@@ -62,7 +62,7 @@ func manageEndingJobsAndSendEmails(jobNamesForId map[string]*JobDetailsResult) e
 	// so compact the ending jobs per owner address
 	usersWithJobs := make(map[string][]EndingJob)
 	for _, job := range jobs {
-		ownerAddress := strings.ToLower(job.EscrowOwner.Hex())
+		ownerAddress := job.EscrowOwner.Hex()
 		usersWithJobs[ownerAddress] = append(usersWithJobs[ownerAddress], job)
 	}
 
