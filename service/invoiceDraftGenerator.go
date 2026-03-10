@@ -34,7 +34,6 @@ func FillInvoiceDraftTemplateJSON(invoice model.InvoiceDraft, allocations []mode
 
 type allocationRow struct {
 	JobID              string
-	JobName            string
 	JobType            string
 	AllocationCreation string
 	NodeAddress        string
@@ -136,7 +135,6 @@ func buildInvoiceView(invoice model.InvoiceDraft, allocations []model.Allocation
 		allocRows = append(allocRows, allocationRow{
 			AllocationCreation: a.AllocationCreation.Format("2006-01-02"),
 			JobID:              a.JobId,
-			JobName:            a.JobName,
 			JobType:            a.JobType.GetName(),
 			NodeAddress:        a.NodeAddress[:5] + "..." + a.NodeAddress[len(a.NodeAddress)-5:],
 			UsdcPaid:           GetAmountAsFloatString(a.GetUsdcAmountPayed(), model.UsdcDecimals),
@@ -240,7 +238,6 @@ func buildInvoiceViewJSON(invoice model.InvoiceDraft, allocations []model.Alloca
 		allocRows = append(allocRows, allocationRow{
 			AllocationCreation: a.AllocationCreation.Format("2006-01-02"),
 			JobID:              a.JobId,
-			JobName:            a.JobName,
 			JobType:            a.JobType.GetName(),
 			NodeAddress:        a.NodeAddress,
 			UsdcPaid:           GetAmountAsFloatString(a.GetUsdcAmountPayed(), model.UsdcDecimals),
