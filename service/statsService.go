@@ -21,6 +21,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+const rpcRequestTimeout = 2 * time.Minute
+
 func DailyGetStats() {
 	oldStats, err := storage.GetLatestStats()
 	if err != nil {
@@ -283,7 +285,9 @@ func getChainLastBlockNumber() (int64, error) {
 	}
 	defer client.Close()
 
-	header, err := client.HeaderByNumber(context.Background(), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	header, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return 0, errors.New("error while retrieving header from client: " + err.Error())
 	}
@@ -315,7 +319,9 @@ func getDailyUsdcLocked() (*big.Int, error) {
 		Data: balanceData,
 	}
 
-	result, err := client.CallContract(context.Background(), msg, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	result, err := client.CallContract(ctx, msg, nil)
 	if err != nil {
 		return big.NewInt(0), errors.New("error calling getTotalEscrowsBalance: " + err.Error())
 	}
@@ -353,7 +359,9 @@ func getDailyActiveJobs() (int, error) {
 		Data: jobIdPack,
 	}
 
-	result, err := client.CallContract(context.Background(), msg, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	result, err := client.CallContract(ctx, msg, nil)
 	if err != nil {
 		return 0, errors.New("error calling jobId: " + err.Error())
 	}
@@ -392,7 +400,9 @@ func getAllCSPAddress() (map[string]string, error) { // map[cspAddress]ownerAddr
 	}
 	defer client.Close()
 
-	result, err := client.CallContract(context.Background(), msg, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	result, err := client.CallContract(ctx, msg, nil)
 	if err != nil {
 		return nil, errors.New("error while calling contract")
 	}
@@ -440,7 +450,9 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 	}
 	defer client.Close()
 
-	logs, err := client.FilterLogs(context.Background(), query)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	logs, err := client.FilterLogs(ctx, query)
 	if err != nil {
 		return nil, errors.New("error while filtering logs: " + err.Error())
 	}
@@ -518,7 +530,9 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 	}
 	defer client.Close()
 
-	logs, err := client.FilterLogs(context.Background(), query)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	logs, err := client.FilterLogs(ctx, query)
 	if err != nil {
 		return nil, errors.New("error while filtering logs: " + err.Error())
 	}
@@ -570,7 +584,9 @@ func getBlockTimestamp(blockNumber int64) (time.Time, error) {
 	}
 	defer client.Close()
 
-	header, err := client.HeaderByNumber(context.Background(), big.NewInt(blockNumber))
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	header, err := client.HeaderByNumber(ctx, big.NewInt(blockNumber))
 	if err != nil {
 		return time.Time{}, errors.New("error while retrieving block: " + err.Error())
 	}
@@ -631,7 +647,9 @@ func getNodeOwners(nodes []string) (map[string]string, error) { // map[nodeAddre
 	}
 	defer client.Close()
 
-	result, err := client.CallContract(context.Background(), msg, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+	defer cancel()
+	result, err := client.CallContract(ctx, msg, nil)
 	if err != nil {
 		return nil, errors.New("error while calling contract")
 	}

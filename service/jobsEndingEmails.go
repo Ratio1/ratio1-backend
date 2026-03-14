@@ -116,7 +116,9 @@ func getEndingJobsWithPeriod() ([]EndingJob, error) {
 			Data: data,
 		}
 
-		result, err := client.CallContract(context.Background(), msg, nil)
+		ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
+		result, err := client.CallContract(ctx, msg, nil)
+		cancel()
 		if err != nil {
 			return nil, errors.New("error while calling getJobsByLastExecutionEpochDelta: " + err.Error())
 		}
