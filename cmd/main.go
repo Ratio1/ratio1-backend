@@ -78,7 +78,7 @@ func startApi(ctx *cli.Context) error {
 
 		dailyNodeTiming, found := config.Config.GetDailyCronJobTiming(nodeAddress)
 		if found {
-			c := cron.New()
+			c := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
 			_, err = c.AddFunc(dailyNodeTiming, service.DailyGetStats)
 			if err != nil {
 				return errors.New("error while starting daily cronjob: " + err.Error())
