@@ -7,13 +7,15 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/GoRoadster/go-log"
 )
 
 const (
-	contentTypeKey   = "Content-Type"
-	contentTypeValue = "application/json"
+	contentTypeKey     = "Content-Type"
+	contentTypeValue   = "application/json"
+	defaultHTTPTimeout = 60 * time.Second
 )
 
 type HttpHeaderPair struct {
@@ -22,7 +24,7 @@ type HttpHeaderPair struct {
 }
 
 func HttpGet(url string, castTarget interface{}, headers ...HttpHeaderPair) error {
-	client := &http.Client{}
+	client := &http.Client{Timeout: defaultHTTPTimeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -54,7 +56,7 @@ func HttpPost(url string, payload interface{}, response interface{}, headers ...
 	if err != nil {
 		return err
 	}
-	client := &http.Client{}
+	client := &http.Client{Timeout: defaultHTTPTimeout}
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonData))
 	if err != nil {
 		return err
@@ -91,7 +93,7 @@ func HttpPostWithUrlEncoded(url string, payload interface{}, response interface{
 		return errors.New("unsupported payload type")
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: defaultHTTPTimeout}
 	req, err := http.NewRequest(http.MethodPost, url, reqBody)
 	if err != nil {
 		return err
