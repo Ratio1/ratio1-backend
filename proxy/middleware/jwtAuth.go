@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/crypto"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/service"
@@ -47,17 +48,23 @@ func AddressFromBearer(c *gin.Context) (string, error) {
 func Authorization(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearer := c.Request.Header.Get(authHeaderKey)
+		token := ""
 		if bearer == "" {
-			returnUnauthorized(c, noBearerPresent)
-			c.Abort()
-			return
-		}
-
-		ok, token := ParseBearer(bearer)
-		if !ok {
-			returnUnauthorized(c, incorrectBearer)
-			c.Abort()
-			return
+			cookieToken, err := c.Cookie(config.Config.Jwt.AccessCookieName)
+			if err != nil || cookieToken == "" {
+				returnUnauthorized(c, noBearerPresent)
+				c.Abort()
+				return
+			}
+			token = cookieToken
+		} else {
+			ok, bearerToken := ParseBearer(bearer)
+			if !ok {
+				returnUnauthorized(c, incorrectBearer)
+				c.Abort()
+				return
+			}
+			token = bearerToken
 		}
 
 		claims, err := crypto.ValidateJwt(token, secret)
