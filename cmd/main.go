@@ -109,6 +109,16 @@ func startApi(ctx *cli.Context) error {
 			}
 			c.Start()
 		}
+
+		fetchOfflineNodesNodeTiming, found := config.Config.GetFetchOfflineNodesCronJobTiming(nodeAddress)
+		if found {
+			c := cron.New()
+			_, err = c.AddFunc(fetchOfflineNodesNodeTiming, service.FetchOfflineNodesAndSendEmail)
+			if err != nil {
+				return errors.New("error while starting fetch offline nodes cronjob: " + err.Error())
+			}
+			c.Start()
+		}
 	}
 
 	api, err := proxy.NewWebServer()

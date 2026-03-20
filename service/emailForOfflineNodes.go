@@ -56,7 +56,8 @@ var cstoreKeyForNotifiedNodes = "notified_offline_nodes" //the key in cstore whe
 .##.....##.##.....##.####.##....##....##.......########..#######...###..###.
 */
 
-func FetchOfflineNodesAndSendEmail(ctx context.Context) {
+func FetchOfflineNodesAndSendEmail() {
+	ctx := context.Background()
 	reportError := newReportError("FetchOfflineNodesAndSendEmail")
 	myAddress, err := GetAddress()
 	if err != nil {
