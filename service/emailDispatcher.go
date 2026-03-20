@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -13,39 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultEmailQueueSize = 10000
-const defaultEmailTaskRetryLimit = 3
-const defaultEmailTaskRetryWindow = 3 * time.Hour
-const defaultEmailTaskStuckThreshold = 3 * time.Hour
-const defaultEmailTaskRetryCooldown = 5 * time.Minute
-const defaultProceedingTasksHashKey = "ratio1_email_tasks_proceeding"
-const defaultFailedTasksHashKey = "ratio1_email_tasks_failed"
-const defaultFinalFailedTasksHashKey = "ratio1_email_tasks_final_failed"
+/*
+..######..########.########..##.....##..######..########
+.##....##....##....##.....##.##.....##.##....##....##...
+.##..........##....##.....##.##.....##.##..........##...
+..######.....##....########..##.....##.##..........##...
+.......##....##....##...##...##.....##.##..........##...
+.##....##....##....##....##..##.....##.##....##....##...
+..######.....##....##.....##..#######...######.....##...
+*/
 
-// EmailTask is a serializable email job executed via the handler registry.
-// Persisted tasks are written to cstore only for retry/recovery flows.
 type EmailTask struct {
 	ID             string      `json:"id"`
 	Name           string      `json:"name"`
 	Payload        any         `json:"payload,omitempty"`
 	NodeAddress    string      `json:"nodeAddress,omitempty"`
-	Status         string      `json:"status,omitempty"`
 	EnqueuedAt     time.Time   `json:"enqueuedAt,omitempty"`
-	StartedAt      time.Time   `json:"startedAt,omitempty"`
-	CompletedAt    time.Time   `json:"completedAt,omitempty"`
 	UpdatedAt      time.Time   `json:"updatedAt,omitempty"`
 	LastRetryAt    time.Time   `json:"lastRetryAt,omitempty"`
-	LastError      string      `json:"lastError,omitempty"`
-	ClosedReason   string      `json:"closedReason,omitempty"`
+	Errors         []string    `json:"lastError,omitempty"`
 	RetryCount     int         `json:"retryCount,omitempty"`
 	FailureHistory []time.Time `json:"failureHistory,omitempty"`
 	Persist        bool        `json:"persist,omitempty"`
 }
-
-var (
-	emailDispatcherOnce sync.Once
-	emailDispatcher     dispatcherState
-)
 
 type dispatcherState struct {
 	mu       sync.Mutex
@@ -53,7 +42,40 @@ type dispatcherState struct {
 	done     chan struct{}
 	stopping bool
 	nodeAddr string
+	ctx      context.Context
 }
+
+/*
+.##.....##....###....########...######.
+.##.....##...##.##...##.....##.##....##
+.##.....##..##...##..##.....##.##......
+.##.....##.##.....##.########...######.
+..##...##..#########.##...##.........##
+...##.##...##.....##.##....##..##....##
+....###....##.....##.##.....##..######.
+*/
+var (
+	emailDispatcherOnce sync.Once
+	emailDispatcher     dispatcherState
+)
+
+const defaultEmailQueueSize = 10000
+const defaultEmailTaskRetryLimit = 3
+const defaultEmailTaskStuckThreshold = 3 * time.Hour
+const defaultEmailTaskRetryCooldown = 5 * time.Minute
+const defaultProceedingTasksHashKey = "ratio1_email_tasks_proceeding"
+const defaultFailedTasksHashKey = "ratio1_email_tasks_failed"
+const defaultFinalFailedTasksHashKey = "ratio1_email_tasks_final_failed"
+
+/*
+.##.....##....###....####.##....##....########.##.....##.##....##..######...######.
+.###...###...##.##....##..###...##....##.......##.....##.###...##.##....##.##....##
+.####.####..##...##...##..####..##....##.......##.....##.####..##.##.......##......
+.##.###.##.##.....##..##..##.##.##....######...##.....##.##.##.##.##........######.
+.##.....##.#########..##..##..####....##.......##.....##.##..####.##.............##
+.##.....##.##.....##..##..##...###....##.......##.....##.##...###.##....##.##....##
+.##.....##.##.....##.####.##....##....##........#######..##....##..######...######.
+*/
 
 func StartEmailDispatcher(ctx context.Context) {
 	emailDispatcherOnce.Do(func() {
@@ -70,6 +92,7 @@ func StartEmailDispatcher(ctx context.Context) {
 		emailDispatcher.done = done
 		emailDispatcher.stopping = false
 		emailDispatcher.nodeAddr = nodeAddr
+		emailDispatcher.ctx = ctx
 		emailDispatcher.mu.Unlock()
 
 		go emailDispatcherLoop(queue, done)
@@ -97,23 +120,7 @@ func StopEmailDispatcher(ctx context.Context) {
 	waitForDispatcherDone(ctx)
 }
 
-func stopEmailDispatcher() {
-	emailDispatcher.mu.Lock()
-	defer emailDispatcher.mu.Unlock()
-
-	if emailDispatcher.queue == nil {
-		return
-	}
-	if emailDispatcher.stopping {
-		return
-	}
-
-	emailDispatcher.stopping = true
-	close(emailDispatcher.queue)
-	emailDispatcher.queue = nil
-}
-
-func EnqueueEmailTask(task EmailTask, saveTask bool) {
+func EnqueueEmailTask(task EmailTask, saveTask bool) { //TO Be called outside of the process
 	if strings.TrimSpace(task.Name) == "" {
 		log.Error("email task has empty handler name")
 		return
@@ -147,13 +154,20 @@ func EnqueueEmailTask(task EmailTask, saveTask bool) {
 	emailDispatcher.mu.Unlock()
 
 	now := time.Now().UTC()
+	task.ID = uuid.NewString()
 	task.Persist = saveTask
 	task.NodeAddress = nodeAddr
-	task.Status = emailTaskStatusQueued
 	task.EnqueuedAt = now
 	task.UpdatedAt = now
-	task.StartedAt = time.Time{}
-	task.CompletedAt = time.Time{}
+	task.RetryCount = defaultEmailTaskRetryLimit
+
+	//saving in proceeding before actually running the task ( so that if it fails while in queue it doesn't get lost)
+	if task.Persist {
+		err := saveOrUpdateInCstore(emailDispatcher.ctx, getProceedingTasksHashKey(), task.ID, task)
+		if err != nil {
+			log.Error("error on saving email in proceeding task: %s", task.Name)
+		}
+	}
 
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -167,6 +181,21 @@ func EnqueueEmailTask(task EmailTask, saveTask bool) {
 	}
 }
 
+func RetryErroredEmailTasks() {
+	retryStuckProceedingTasks()
+	retryFailedTasks()
+}
+
+/*
+.########..########...#######...######..########..######...######.....########.##.....##.##....##..######.
+.##.....##.##.....##.##.....##.##....##.##.......##....##.##....##....##.......##.....##.###...##.##....##
+.##.....##.##.....##.##.....##.##.......##.......##.......##..........##.......##.....##.####..##.##......
+.########..########..##.....##.##.......######....######...######.....######...##.....##.##.##.##.##......
+.##........##...##...##.....##.##.......##.............##.......##....##.......##.....##.##..####.##......
+.##........##....##..##.....##.##....##.##.......##....##.##....##....##.......##.....##.##...###.##....##
+.##........##.....##..#######...######..########..######...######.....##........#######..##....##..######.
+*/
+
 func emailDispatcherLoop(queue <-chan EmailTask, done chan struct{}) {
 	defer close(done)
 
@@ -177,54 +206,28 @@ func emailDispatcherLoop(queue <-chan EmailTask, done chan struct{}) {
 
 func processEmailTask(task EmailTask) {
 	now := time.Now().UTC()
-	task.NodeAddress = currentDispatcherNodeAddress()
-
-	if task.Persist {
-		task.Status = emailTaskStatusRunning
-		task.StartedAt = now
-		task.UpdatedAt = now
-		saveProceedingTask(task)
-	}
+	emailDispatcher.mu.Lock()
+	task.NodeAddress = emailDispatcher.nodeAddr
+	ctx := emailDispatcher.ctx
+	emailDispatcher.mu.Unlock()
 
 	if err := runEmailTask(task); err != nil {
-		log.Error("email task failed (%s): %v", task.Name, err)
 		if task.Persist {
-			failedTask := markTaskFailure(task, err, now)
-			clearProceedingTask(failedTask.ID)
-			if failedTask.Status == emailTaskStatusFinalFailed {
-				clearFailedTask(failedTask.ID)
-				saveFinalFailedTask(failedTask)
+			task.UpdatedAt = now
+			task.Errors = append(task.Errors, err.Error())
+			task.FailureHistory = append(task.FailureHistory, now)
+			saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil) //remove from proceeding
+			task.RetryCount = task.RetryCount - 1
+			if task.RetryCount == 0 {
+				saveOrUpdateInCstore(ctx, getFinalFailedTasksHashKey(), task.ID, task)
 			} else {
-				saveFailedTask(failedTask)
+				saveOrUpdateInCstore(ctx, getFailedTasksHashKey(), task.ID, task)
 			}
 		}
 		return
 	}
 
-	if task.Persist {
-		task.Status = emailTaskStatusSucceeded
-		task.CompletedAt = now
-		task.UpdatedAt = now
-		task.LastError = ""
-		task.ClosedReason = ""
-		clearProceedingTask(task.ID)
-		clearFailedTask(task.ID)
-	}
-}
-
-func waitForDispatcherDone(ctx context.Context) {
-	emailDispatcher.mu.Lock()
-	done := emailDispatcher.done
-	emailDispatcher.mu.Unlock()
-
-	if done == nil {
-		return
-	}
-	select {
-	case <-done:
-	case <-ctx.Done():
-		log.Warn("email dispatcher worker did not stop before shutdown deadline")
-	}
+	saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil) //remove from proceeding
 }
 
 func runEmailTask(task EmailTask) (err error) {
@@ -242,21 +245,42 @@ func runEmailTask(task EmailTask) (err error) {
 	return handler(task)
 }
 
-const (
-	emailTaskStatusQueued      = "queued"
-	emailTaskStatusRunning     = "running"
-	emailTaskStatusSucceeded   = "succeeded"
-	emailTaskStatusFailed      = "failed"
-	emailTaskStatusFinalFailed = "final_failed"
-)
+func stopEmailDispatcher() {
+	emailDispatcher.mu.Lock()
+	defer emailDispatcher.mu.Unlock()
 
-func RetryErroredEmailTasks() {
-	retryStuckProceedingTasks()
-	retryFailedTasks()
+	if emailDispatcher.queue == nil {
+		return
+	}
+	if emailDispatcher.stopping {
+		return
+	}
+
+	emailDispatcher.stopping = true
+	close(emailDispatcher.queue)
+	emailDispatcher.queue = nil
+}
+
+func waitForDispatcherDone(ctx context.Context) {
+	emailDispatcher.mu.Lock()
+	done := emailDispatcher.done
+	emailDispatcher.mu.Unlock()
+
+	if done == nil {
+		return
+	}
+	select {
+	case <-done:
+	case <-ctx.Done():
+		log.Warn("email dispatcher worker did not stop before shutdown deadline")
+	}
 }
 
 func retryStuckProceedingTasks() {
-	tasks, err := loadTasksFromHash(getProceedingTasksHashKey())
+	emailDispatcher.mu.Lock()
+	ctx := emailDispatcher.ctx
+	emailDispatcher.mu.Unlock()
+	tasks, err := fetchAllFromCstore(ctx, getProceedingTasksHashKey())
 	if err != nil {
 		log.Warn("cannot load proceeding email tasks from cstore: %v", err)
 		return
@@ -267,143 +291,105 @@ func retryStuckProceedingTasks() {
 		if !task.Persist {
 			continue
 		}
-		if task.Status != emailTaskStatusQueued && task.Status != emailTaskStatusRunning {
-			continue
-		}
 		if !isTaskStuck(task, now) {
 			continue
 		}
 
 		failureErr := fmt.Errorf("task stuck in proceeding for more than %s", defaultEmailTaskStuckThreshold)
-		failedTask := markTaskFailure(task, failureErr, now)
-		clearProceedingTask(failedTask.ID)
-
-		if failedTask.Status == emailTaskStatusFinalFailed {
-			clearFailedTask(failedTask.ID)
-			saveFinalFailedTask(failedTask)
-			continue
+		task.RetryCount -= 1
+		task.Errors = append(task.Errors, failureErr.Error())
+		task.FailureHistory = append(task.FailureHistory, now)
+		task.LastRetryAt = now
+		task.UpdatedAt = now
+		task.NodeAddress = emailDispatcher.nodeAddr
+		if task.RetryCount == 0 {
+			saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil)   //remove from proceeding
+			saveOrUpdateInCstore(ctx, getFinalFailedTasksHashKey(), task.ID, task) //add to final failed
+		} else {
+			saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, task) //update to prevent other nodes to fetch stuck task
+			enqueueStuckAndFailedTasks(task)
 		}
-
-		saveFailedTask(failedTask)
-		EnqueueEmailTask(failedTask, true)
 	}
 }
 
 func retryFailedTasks() {
-	tasks, err := loadTasksFromHash(getFailedTasksHashKey())
+	emailDispatcher.mu.Lock()
+	ctx := emailDispatcher.ctx
+	emailDispatcher.mu.Unlock()
+	tasks, err := fetchAllFromCstore(ctx, getFailedTasksHashKey())
 	if err != nil {
-		log.Warn("cannot load failed email tasks from cstore: %v", err)
+		log.Warn("cannot load proceeding email tasks from cstore: %v", err)
 		return
 	}
 
 	now := time.Now().UTC()
 	for _, task := range tasks {
-		if !task.Persist || task.Status != emailTaskStatusFailed {
+		if !task.Persist {
 			continue
 		}
 		if shouldSkipRetryDueToCooldown(task, now) {
 			continue
 		}
-
-		task.FailureHistory = trimFailureHistory(task.FailureHistory, now)
-		task.RetryCount = len(task.FailureHistory)
-		if task.RetryCount >= defaultEmailTaskRetryLimit {
-			task.Status = emailTaskStatusFinalFailed
-			task.ClosedReason = retryLimitExceededReason()
-			task.UpdatedAt = now
-			task.CompletedAt = now
-			clearProceedingTask(task.ID)
-			clearFailedTask(task.ID)
-			saveFinalFailedTask(task)
-			continue
-		}
-
-		EnqueueEmailTask(task, true)
+		task.LastRetryAt = now
+		task.UpdatedAt = now
+		task.NodeAddress = emailDispatcher.nodeAddr
+		saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, task) //add task to processing
+		saveOrUpdateInCstore(ctx, getFailedTasksHashKey(), task.ID, nil)      //remove from failed tasks
+		enqueueStuckAndFailedTasks(task)
 	}
 }
 
-func shouldSkipRetryDueToCooldown(task EmailTask, now time.Time) bool {
-	if task.LastRetryAt.IsZero() {
-		return false
-	}
-	return now.Sub(task.LastRetryAt) < defaultEmailTaskRetryCooldown
-}
-
-func isTaskStuck(task EmailTask, now time.Time) bool {
-	lastUpdate := task.UpdatedAt
-	if lastUpdate.IsZero() {
-		lastUpdate = task.EnqueuedAt
-	}
-	if lastUpdate.IsZero() {
-		return false
-	}
-	return now.Sub(lastUpdate) >= defaultEmailTaskStuckThreshold
-}
-
-func markTaskFailure(task EmailTask, runErr error, now time.Time) EmailTask {
-	task.LastError = runErr.Error()
-	task.UpdatedAt = now
-	task.CompletedAt = now
-	task.LastRetryAt = now
-	task.FailureHistory = append(trimFailureHistory(task.FailureHistory, now), now)
-	task.RetryCount = len(task.FailureHistory)
-
-	if task.RetryCount >= defaultEmailTaskRetryLimit {
-		task.Status = emailTaskStatusFinalFailed
-		task.ClosedReason = retryLimitExceededReason()
-		return task
-	}
-
-	task.Status = emailTaskStatusFailed
-	task.ClosedReason = ""
-	return task
-}
-
-func retryLimitExceededReason() string {
-	return fmt.Sprintf("retry limit reached: %d failures within %s", defaultEmailTaskRetryLimit, defaultEmailTaskRetryWindow)
-}
-
-func trimFailureHistory(history []time.Time, now time.Time) []time.Time {
-	if len(history) == 0 {
-		return nil
-	}
-
-	cutoff := now.Add(-defaultEmailTaskRetryWindow)
-	kept := make([]time.Time, 0, len(history))
-	for _, ts := range history {
-		if ts.IsZero() || ts.Before(cutoff) {
-			continue
-		}
-		kept = append(kept, ts)
-	}
-	return kept
-}
-
-func currentDispatcherNodeAddress() string {
+func enqueueStuckAndFailedTasks(task EmailTask) {
 	emailDispatcher.mu.Lock()
-	defer emailDispatcher.mu.Unlock()
+	queue := emailDispatcher.queue
+	stopping := emailDispatcher.stopping
 
-	return emailDispatcher.nodeAddr
-}
-
-func isEmailTaskPersistenceEnabled() bool {
-	return config.Config.CstoreClient != nil
-}
-
-func loadTasksFromHash(hashKey string) ([]EmailTask, error) {
-	if !isEmailTaskPersistenceEnabled() || strings.TrimSpace(hashKey) == "" {
-		return nil, nil
+	if queue == nil {
+		emailDispatcher.mu.Unlock()
+		if stopping {
+			log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
+			return
+		}
+		log.Error("email dispatcher not started, dropping task: %s", task.Name)
+		return
 	}
+	if stopping {
+		emailDispatcher.mu.Unlock()
+		log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
+		return
+	}
+	emailDispatcher.mu.Unlock()
 
-	client := config.Config.CstoreClient
-	items, err := client.HGetAll(context.Background(), hashKey)
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Warn("email dispatcher queue closed while enqueueing task (%s): %v", task.Name, rec)
+		}
+	}()
+	select {
+	case queue <- task:
+	default:
+		log.Warn("email dispatcher queue full, dropping task: %s", task.Name)
+	}
+}
+
+/*
+.##.....##.########.####.##........######.
+.##.....##....##.....##..##.......##....##
+.##.....##....##.....##..##.......##......
+.##.....##....##.....##..##........######.
+.##.....##....##.....##..##.............##
+.##.....##....##.....##..##.......##....##
+..#######.....##....####.########..######.
+*/
+
+func fetchAllFromCstore(ctx context.Context, hashKey string) ([]EmailTask, error) {
+	items, err := config.Config.CstoreClient.HGetAll(ctx, hashKey)
 	if err != nil {
 		return nil, err
 	}
 	if len(items) == 0 {
 		return nil, nil
 	}
-
 	tasks := make([]EmailTask, 0, len(items))
 	for _, item := range items {
 		var task EmailTask
@@ -416,49 +402,11 @@ func loadTasksFromHash(hashKey string) ([]EmailTask, error) {
 		}
 		tasks = append(tasks, task)
 	}
-
 	return tasks, nil
 }
 
-func saveProceedingTask(task EmailTask) {
-	saveEmailTaskInHash(getProceedingTasksHashKey(), task)
-}
-
-func clearProceedingTask(taskID string) {
-	clearEmailTaskInHash(getProceedingTasksHashKey(), taskID)
-}
-
-func saveFailedTask(task EmailTask) {
-	saveEmailTaskInHash(getFailedTasksHashKey(), task)
-}
-
-func clearFailedTask(taskID string) {
-	clearEmailTaskInHash(getFailedTasksHashKey(), taskID)
-}
-
-func saveFinalFailedTask(task EmailTask) {
-	task.Status = emailTaskStatusFinalFailed
-	saveEmailTaskInHash(getFinalFailedTasksHashKey(), task)
-}
-
-func saveEmailTaskInHash(hashKey string, task EmailTask) {
-	if !task.Persist || !isEmailTaskPersistenceEnabled() || strings.TrimSpace(hashKey) == "" || strings.TrimSpace(task.ID) == "" {
-		return
-	}
-
-	if err := config.Config.CstoreClient.HSet(context.Background(), hashKey, task.ID, task, nil); err != nil {
-		log.Warn("cannot persist email task state in cstore hash=%s id=%s: %v", hashKey, task.ID, err)
-	}
-}
-
-func clearEmailTaskInHash(hashKey, taskID string) {
-	if !isEmailTaskPersistenceEnabled() || strings.TrimSpace(hashKey) == "" || strings.TrimSpace(taskID) == "" {
-		return
-	}
-
-	if err := config.Config.CstoreClient.HSet(context.Background(), hashKey, taskID, nil, nil); err != nil {
-		log.Warn("cannot clear email task state in cstore hash=%s id=%s: %v", hashKey, taskID, err)
-	}
+func saveOrUpdateInCstore(ctx context.Context, hashKey, key string, value any) error {
+	return config.Config.CstoreClient.HSet(ctx, hashKey, key, value, nil)
 }
 
 func getProceedingTasksHashKey() string {
@@ -482,10 +430,20 @@ func getFinalFailedTasksHashKey() string {
 	return defaultFinalFailedTasksHashKey
 }
 
-func emailTaskErrorFromString(v string) error {
-	trimmed := strings.TrimSpace(v)
-	if trimmed == "" {
-		return nil
+func isTaskStuck(task EmailTask, now time.Time) bool {
+	lastUpdate := task.UpdatedAt
+	if lastUpdate.IsZero() {
+		lastUpdate = task.EnqueuedAt
 	}
-	return errors.New(trimmed)
+	if lastUpdate.IsZero() {
+		return false
+	}
+	return now.Sub(lastUpdate) >= defaultEmailTaskStuckThreshold
+}
+
+func shouldSkipRetryDueToCooldown(task EmailTask, now time.Time) bool {
+	if task.LastRetryAt.IsZero() {
+		return false
+	}
+	return now.Sub(task.LastRetryAt) < defaultEmailTaskRetryCooldown
 }

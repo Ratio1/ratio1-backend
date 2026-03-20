@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -105,40 +104,6 @@ func TestEnqueueEmailTaskDropsTasksWhenStopping(t *testing.T) {
 	}
 	if secondExecuted.Load() {
 		t.Fatal("expected second task to be dropped while dispatcher is stopping")
-	}
-}
-
-func TestMarkTaskFailureClosesAfterRetryLimit(t *testing.T) {
-	task := EmailTask{Name: "test_handler"}
-	now := time.Now().UTC()
-
-	for i := 0; i < defaultEmailTaskRetryLimit; i++ {
-		task = markTaskFailure(task, errors.New("boom"), now.Add(time.Duration(i+1)*time.Second))
-	}
-
-	if task.Status != emailTaskStatusFinalFailed {
-		t.Fatalf("expected task status %q, got %q", emailTaskStatusFinalFailed, task.Status)
-	}
-	if task.ClosedReason == "" {
-		t.Fatal("expected closed reason to be set")
-	}
-}
-
-func TestMarkTaskFailureIgnoresFailuresOutsideWindow(t *testing.T) {
-	now := time.Now().UTC()
-	oldFailure := now.Add(-defaultEmailTaskRetryWindow - time.Minute)
-	task := EmailTask{
-		Name:           "test_handler",
-		FailureHistory: []time.Time{oldFailure},
-	}
-
-	task = markTaskFailure(task, errors.New("boom"), now)
-
-	if task.Status != emailTaskStatusFailed {
-		t.Fatalf("expected task status %q, got %q", emailTaskStatusFailed, task.Status)
-	}
-	if len(task.FailureHistory) != 1 {
-		t.Fatalf("expected only one in-window failure, got %d", len(task.FailureHistory))
 	}
 }
 

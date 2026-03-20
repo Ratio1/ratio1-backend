@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -336,4 +337,12 @@ func decodeEmailTaskPayload(task EmailTask, out any) error {
 	}
 
 	return nil
+}
+
+func emailTaskErrorFromString(v string) error {
+	trimmed := strings.TrimSpace(v)
+	if trimmed == "" {
+		return nil
+	}
+	return errors.New(trimmed)
 }
