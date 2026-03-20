@@ -104,7 +104,7 @@ func SendErrorEmail(message string, originalErr error, fields ...ErrorEmailField
 			body.WriteString("\n")
 		}
 	}
-	var errors []error
+	var sendErrs []error
 	for _, recipient := range config.Config.ErrorEmail {
 		recipient = strings.TrimSpace(recipient)
 		if recipient == "" {
@@ -112,11 +112,11 @@ func SendErrorEmail(message string, originalErr error, fields ...ErrorEmailField
 		}
 		err := callSendTextEmail(recipient, subjectBackendErrorAlert, body.String())
 		if err != nil {
-			errors = append(errors, err)
+			sendErrs = append(sendErrs, err)
 		}
 	}
-	if len(errors) > 0 {
-		return fmt.Errorf("failed to send error email to some recipients: %v", errors)
+	if len(sendErrs) > 0 {
+		return fmt.Errorf("failed to send error email to some recipients: %v", sendErrs)
 	}
 
 	return nil
