@@ -136,7 +136,8 @@ func EnqueueEmailTask(task EmailTask, saveTask bool) {
 			log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
 			return
 		}
-		panic("email dispatcher not started")
+		log.Error("email dispatcher not started, dropping task: %s", task.Name)
+		return
 	}
 	if stopping {
 		emailDispatcher.mu.Unlock()
