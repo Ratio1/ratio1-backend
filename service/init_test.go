@@ -32,7 +32,7 @@ func init() {
 	config.Config.Oblio.ClientSecret = ""
 	config.Config.PoaiManagerAddress = "0xa8d7FFCE91a888872A9f5431B4Dd6c0c135055c1"
 	config.Config.USDCContractAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-
+	config.Config.ReaderAddress = "0xa2fDD4c7E93790Ff68a01f01AA789D619F12c6AC"
 	config.Config.NDContractAddress = "0xE658DF6dA3FB5d4FBa562F1D5934bd0F9c6bd423"
 	config.Config.R1ContractAddress = "0x6444C6c2D527D85EA97032da9A7504d6d1448ecF"
 	config.Config.TeamAddresses = []string{

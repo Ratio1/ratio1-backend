@@ -28,6 +28,7 @@ const (
 	subjectNewInvoiceDraft       = "New draft invoices have been issued"
 	subjectJobsEndingSoon        = "Ratio1 - Jobs ending soon"
 	subjectBackendErrorAlert     = "Ratio1 - Backend Error Alert"
+	subjectNodesOffline          = "Ratio1 - Your nodes are offline"
 )
 
 var (
@@ -299,6 +300,25 @@ func SendJobsEndingEmail(email string, jobs []EndingJob) error {
 	}
 
 	return callSendEmail(email, subjectJobsEndingSoon, body.String())
+}
+
+func SendNodesOfflineEmail(email string, nodes []SharedNodeDetails) error {
+	template, err := templates.GetNodesOfflineEmailTemplate()
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	var body bytes.Buffer
+	err = template.Execute(&body, struct {
+		Nodes []SharedNodeDetails
+	}{
+		Nodes: nodes,
+	})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectNodesOffline, body.String())
 }
 
 func callSendTextEmail(email, subject, text string) error {

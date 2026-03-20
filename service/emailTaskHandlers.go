@@ -8,18 +8,19 @@ import (
 )
 
 const (
-	emailTaskSendConfirmEmail     = "send_confirm_email"
-	emailTaskSendErrorEmail       = "send_error_email"
-	emailTaskSendJobsEndingEmail  = "send_jobs_ending_email"
-	emailTaskSendNodeOwnerDraft   = "send_node_owner_draft_email"
-	emailTaskSendCspDraft         = "send_csp_draft_email"
-	emailTaskSendBuyLicenseEmail  = "send_buy_license_email"
-	emailTaskSendKycFinalRejected = "send_kyc_final_rejected_email"
-	emailTaskSendKycStepRejected  = "send_kyc_step_rejected_email"
-	emailTaskSendKycConfirmed     = "send_kyc_confirmed_email"
-	emailTaskSendAccountResetted  = "send_account_resetted_email"
-	emailTaskSendBlacklistedEmail = "send_blacklisted_email"
-	emailTaskSendNewsletterBatch  = "send_newsletter_batch_email"
+	emailTaskSendConfirmEmail      = "send_confirm_email"
+	emailTaskSendErrorEmail        = "send_error_email"
+	emailTaskSendJobsEndingEmail   = "send_jobs_ending_email"
+	emailTaskSendNodeOwnerDraft    = "send_node_owner_draft_email"
+	emailTaskSendCspDraft          = "send_csp_draft_email"
+	emailTaskSendBuyLicenseEmail   = "send_buy_license_email"
+	emailTaskSendKycFinalRejected  = "send_kyc_final_rejected_email"
+	emailTaskSendKycStepRejected   = "send_kyc_step_rejected_email"
+	emailTaskSendKycConfirmed      = "send_kyc_confirmed_email"
+	emailTaskSendAccountResetted   = "send_account_resetted_email"
+	emailTaskSendBlacklistedEmail  = "send_blacklisted_email"
+	emailTaskSendNewsletterBatch   = "send_newsletter_batch_email"
+	emailTaskSendNodesOfflineEmail = "send_nodes_offline_email"
 )
 
 type emailTaskHandler func(task EmailTask) error
@@ -31,18 +32,19 @@ var (
 
 func defaultEmailTaskHandlers() map[string]emailTaskHandler {
 	return map[string]emailTaskHandler{
-		emailTaskSendConfirmEmail:     handleSendConfirmEmailTask,
-		emailTaskSendErrorEmail:       handleSendErrorEmailTask,
-		emailTaskSendJobsEndingEmail:  handleSendJobsEndingEmailTask,
-		emailTaskSendNodeOwnerDraft:   handleSendNodeOwnerDraftEmailTask,
-		emailTaskSendCspDraft:         handleSendCspDraftEmailTask,
-		emailTaskSendBuyLicenseEmail:  handleSendBuyLicenseEmailTask,
-		emailTaskSendKycFinalRejected: handleSendKycFinalRejectedEmailTask,
-		emailTaskSendKycStepRejected:  handleSendKycStepRejectedEmailTask,
-		emailTaskSendKycConfirmed:     handleSendKycConfirmedEmailTask,
-		emailTaskSendAccountResetted:  handleSendAccountResettedEmailTask,
-		emailTaskSendBlacklistedEmail: handleSendBlacklistedEmailTask,
-		emailTaskSendNewsletterBatch:  handleSendNewsletterBatchEmailTask,
+		emailTaskSendConfirmEmail:      handleSendConfirmEmailTask,
+		emailTaskSendErrorEmail:        handleSendErrorEmailTask,
+		emailTaskSendJobsEndingEmail:   handleSendJobsEndingEmailTask,
+		emailTaskSendNodeOwnerDraft:    handleSendNodeOwnerDraftEmailTask,
+		emailTaskSendCspDraft:          handleSendCspDraftEmailTask,
+		emailTaskSendBuyLicenseEmail:   handleSendBuyLicenseEmailTask,
+		emailTaskSendKycFinalRejected:  handleSendKycFinalRejectedEmailTask,
+		emailTaskSendKycStepRejected:   handleSendKycStepRejectedEmailTask,
+		emailTaskSendKycConfirmed:      handleSendKycConfirmedEmailTask,
+		emailTaskSendAccountResetted:   handleSendAccountResettedEmailTask,
+		emailTaskSendBlacklistedEmail:  handleSendBlacklistedEmailTask,
+		emailTaskSendNewsletterBatch:   handleSendNewsletterBatchEmailTask,
+		emailTaskSendNodesOfflineEmail: handleSendNodesOfflineEmailTask,
 	}
 }
 
@@ -103,6 +105,11 @@ type sendNewsletterBatchPayload struct {
 	Recipients []string `json:"recipients"`
 	Subject    string   `json:"subject"`
 	HTMLBody   string   `json:"htmlBody"`
+}
+
+type sendNodesOfflineEmailPayload struct {
+	Recipient string              `json:"recipient"`
+	Nodes     []SharedNodeDetails `json:"nodes"`
 }
 
 func NewSendConfirmEmailTask(address, email string) EmailTask {
@@ -225,6 +232,16 @@ func NewSendNewsletterBatchEmailTask(recipients []string, subject, htmlBody stri
 	}
 }
 
+func NewSendNodesOfflineEmailTask(email string, nodeDetails []SharedNodeDetails) EmailTask {
+	return EmailTask{
+		Name: emailTaskSendNodesOfflineEmail,
+		Payload: sendNodesOfflineEmailPayload{
+			Recipient: email,
+			Nodes:     append([]SharedNodeDetails(nil), nodeDetails...),
+		},
+	}
+}
+
 func handleSendConfirmEmailTask(task EmailTask) error {
 	var payload sendConfirmEmailPayload
 	if err := decodeEmailTaskPayload(task, &payload); err != nil {
@@ -319,6 +336,14 @@ func handleSendNewsletterBatchEmailTask(task EmailTask) error {
 		return err
 	}
 	return SendNewsEmail(payload.Recipients, payload.Subject, payload.HTMLBody)
+}
+
+func handleSendNodesOfflineEmailTask(task EmailTask) error {
+	var payload sendNodesOfflineEmailPayload
+	if err := decodeEmailTaskPayload(task, &payload); err != nil {
+		return err
+	}
+	return SendNodesOfflineEmail(payload.Recipient, payload.Nodes)
 }
 
 func decodeEmailTaskPayload(task EmailTask, out any) error {

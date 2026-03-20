@@ -30,6 +30,8 @@ type GeneralConfig struct {
 	Oblio                              Oblio
 	Infura                             Infura
 	DeeployApi                         string
+	OracleApi                          string
+	OracleNodeListEndpoint             string
 	NDContractAddress                  string
 	R1ContractAddress                  string
 	USDCContractAddress                string
@@ -53,6 +55,7 @@ type GeneralConfig struct {
 	CstoreEmailTasksProceedingHashKey  string
 	CstoreEmailTasksFailedHashKey      string
 	CstoreEmailTasksFinalFailedHashKey string
+	OwnersToSkipInOfflineNodes         map[string]string // k = address, v = description
 }
 
 type ApiConfig struct {

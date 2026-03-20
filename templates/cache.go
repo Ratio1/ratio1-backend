@@ -15,6 +15,7 @@ var (
 	kycFinalRejectedEmailTemplate *template.Template
 	accountResettedEmailTemplate  *template.Template
 	jobsEndingEmailTemplate       *template.Template
+	nodesOfflineEmailTemplate     *template.Template
 
 	invoiceDraftTemplate  *template.Template
 	operatorDraftTemplate *template.Template
@@ -67,6 +68,11 @@ func LoadAndCacheTemplates() {
 			panic(err)
 		}
 
+		nodesOfflineFile, err := LoadNodesOfflineEmailTemplate()
+		if err != nil {
+			panic(err)
+		}
+
 		confirmEmailTemplate = confirm
 		blacklistedEmailTemplate = blacklisted
 		kycConfirmedEmailTemplate = finalStatus
@@ -74,6 +80,7 @@ func LoadAndCacheTemplates() {
 		kycFinalRejectedEmailTemplate = finalReject
 		accountResettedEmailTemplate = accountResetted
 		jobsEndingEmailTemplate = jobsEnding
+		nodesOfflineEmailTemplate = nodesOfflineFile
 
 		invoiceDraftTemplate = invoiceDraftFile
 		operatorDraftTemplate = operatorDraftFile
@@ -119,6 +126,10 @@ func GetOperatorDraftTemplate() (*template.Template, error) {
 
 func GetCspDraftTemplate() (*template.Template, error) {
 	return getOrSetTemplate(LoadCspDraftTemplate, cspDraftTemplate)
+}
+
+func GetNodesOfflineEmailTemplate() (*template.Template, error) {
+	return getOrSetTemplate(LoadNodesOfflineEmailTemplate, nodesOfflineEmailTemplate)
 }
 
 func getOrSetTemplate(

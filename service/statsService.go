@@ -650,7 +650,8 @@ func getEpoch(date time.Time) int {
 	return int(date.Sub(mainnetStart) / (24 * time.Hour))
 }
 
-func getNodeOwners(nodes []string) (map[string]string, error) { // map[nodeAddress]nodeOwner
+// return a  map[nodeAddress]nodeOwner
+func getNodeOwners(nodes []string) (map[string]string, error) {
 	contractAddress := common.HexToAddress(config.Config.ReaderAddress)
 	parsedABI, err := abi.JSON(strings.NewReader(ratio1abi.ReaderNodeOwnersAbi))
 	if err != nil {

@@ -123,5 +123,9 @@
   "DeeployApi": "https://deeploy-api.ratio1.ai/get_oracle_job_details",
   "ViesApi": {
     "BaseUrl": "https://viesapi.eu/api"
+  },
+  "OwnersToSkipInOfflineNodes": {
+    "0x0000000000000000000000000000000000000000": "Null address, nodes not linked anymore",
+    "0xD02f544985B3e787135A1E381a367d0DbB7B0E96": "V. Lost wallet"
   }
 }
