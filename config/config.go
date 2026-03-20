@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/Ratio1/edge_sdk_go/pkg/cstore"
 	"github.com/Ratio1/edge_sdk_go/pkg/r1fs"
 )
 
@@ -18,34 +19,40 @@ var (
 )
 
 type GeneralConfig struct {
-	Api                            ApiConfig
-	Database                       DatabaseConfig
-	Jwt                            JwtConfig
-	Mail                           MailConfig
-	Sumsub                         SumsubConfig
-	MailerLite                     MailerLiteConfig
-	AcceptedDomains                AcceptedDomains
-	ChainID                        int
-	Oblio                          Oblio
-	Infura                         Infura
-	DeeployApi                     string
-	NDContractAddress              string
-	R1ContractAddress              string
-	USDCContractAddress            string
-	PoaiManagerAddress             string
-	ReaderAddress                  string
-	TeamAddresses                  []string
-	BuyLicenseInvoiceCronJobTiming map[string]string
-	DailyCronJobTiming             map[string]string
-	MonthlyCronJobTiming           map[string]string
-	AdminAddresses                 []string
-	EmailTemplatesPath             string
-	BuyLimitUSD                    BuyLimitUSDConfig
-	ViesApi                        ViesConfig
-	InvoiceMessageEmail            string
-	Ratio1redirectUrl              Ratio1redirectUrl
-	FreeCurrencyApiKey             string
-	R1fsClient                     *r1fs.Client
+	Api                                ApiConfig
+	Database                           DatabaseConfig
+	Jwt                                JwtConfig
+	Mail                               MailConfig
+	Sumsub                             SumsubConfig
+	MailerLite                         MailerLiteConfig
+	AcceptedDomains                    AcceptedDomains
+	ChainID                            int
+	Oblio                              Oblio
+	Infura                             Infura
+	DeeployApi                         string
+	NDContractAddress                  string
+	R1ContractAddress                  string
+	USDCContractAddress                string
+	PoaiManagerAddress                 string
+	ReaderAddress                      string
+	TeamAddresses                      []string
+	BuyLicenseInvoiceCronJobTiming     map[string]string
+	DailyCronJobTiming                 map[string]string
+	MonthlyCronJobTiming               map[string]string
+	EmailRetryCronJobTiming            map[string]string
+	AdminAddresses                     []string
+	EmailTemplatesPath                 string
+	BuyLimitUSD                        BuyLimitUSDConfig
+	ViesApi                            ViesConfig
+	InvoiceEmail                       []string
+	ErrorEmail                         []string
+	Ratio1redirectUrl                  Ratio1redirectUrl
+	FreeCurrencyApiKey                 string
+	R1fsClient                         *r1fs.Client
+	CstoreClient                       *cstore.Client
+	CstoreEmailTasksProceedingHashKey  string
+	CstoreEmailTasksFailedHashKey      string
+	CstoreEmailTasksFinalFailedHashKey string
 }
 
 type ApiConfig struct {
@@ -265,7 +272,17 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		return nil, errors.New("EMAIL_TEMPLATES_PATH is not set")
 	}
 
-	cfg.InvoiceMessageEmail = "corina.erhan@ratio1.ai"
+	InvoiceEmails := os.Getenv("INVOICE_EMAIL")
+	if InvoiceEmails == "" {
+		return nil, errors.New("INVOICE_EMAIL is not set")
+	}
+	cfg.InvoiceEmail = strings.Split(InvoiceEmails, ",")
+
+	ErrorEmails := os.Getenv("ERROR_EMAIL")
+	if ErrorEmails == "" {
+		return nil, errors.New("ERROR_EMAIL is not set")
+	}
+	cfg.ErrorEmail = strings.Split(ErrorEmails, ",")
 
 	r1fsClient, err := r1fs.NewFromEnv()
 	if err != nil {
@@ -273,6 +290,28 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	}
 
 	cfg.R1fsClient = r1fsClient
+
+	cstroreClient, err := cstore.NewFromEnv()
+	if err != nil {
+		return nil, errors.New("error while connecting to cstore: " + err.Error())
+	}
+
+	cfg.CstoreClient = cstroreClient
+
+	cfg.CstoreEmailTasksProceedingHashKey = strings.TrimSpace(os.Getenv("CSTORE_EMAIL_TASKS_PROCEEDING_HASH_KEY"))
+	if cfg.CstoreEmailTasksProceedingHashKey == "" {
+		cfg.CstoreEmailTasksProceedingHashKey = "ratio1_email_tasks_proceeding"
+	}
+
+	cfg.CstoreEmailTasksFailedHashKey = strings.TrimSpace(os.Getenv("CSTORE_EMAIL_TASKS_FAILED_HASH_KEY"))
+	if cfg.CstoreEmailTasksFailedHashKey == "" {
+		cfg.CstoreEmailTasksFailedHashKey = "ratio1_email_tasks_failed"
+	}
+
+	cfg.CstoreEmailTasksFinalFailedHashKey = strings.TrimSpace(os.Getenv("CSTORE_EMAIL_TASKS_FINAL_FAILED_HASH_KEY"))
+	if cfg.CstoreEmailTasksFinalFailedHashKey == "" {
+		cfg.CstoreEmailTasksFinalFailedHashKey = "ratio1_email_tasks_final_failed"
+	}
 
 	return cfg, nil
 }
@@ -289,5 +328,10 @@ func (c *GeneralConfig) GetDailyCronJobTiming(nodeAddress string) (string, bool)
 
 func (c *GeneralConfig) GetMonthlyCronJobTiming(nodeAddress string) (string, bool) {
 	nodeTiming, found := c.MonthlyCronJobTiming[nodeAddress]
+	return nodeTiming, found
+}
+
+func (c *GeneralConfig) GetEmailRetryCronJobTiming(nodeAddress string) (string, bool) {
+	nodeTiming, found := c.EmailRetryCronJobTiming[nodeAddress]
 	return nodeTiming, found
 }

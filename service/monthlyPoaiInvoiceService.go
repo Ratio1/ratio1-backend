@@ -12,11 +12,13 @@ import (
 )
 
 func MonthlyPoaiInvoiceReport() {
+	reportError := newReportError("MonthlyPoaiInvoiceReport")
+
 	/* Get all Allocations not invoiced*/
 	now := time.Now().UTC()
 	unclaimedAllocations, err := storage.GetMonthlyUnclaimedAllocations(now)
 	if err != nil {
-		fmt.Println("Error retrieving unclaimed allocations: " + err.Error())
+		reportError("Failed to retrieve monthly unclaimed allocations", err)
 		return
 	}
 
@@ -27,7 +29,7 @@ func MonthlyPoaiInvoiceReport() {
 
 	currencyMap, err := GetFreeCurrencyValues() //map[USD,EUR...]ratio always based 1 usd -> value
 	if err != nil {
-		fmt.Println("could not fetch currency map: ", err.Error())
+		reportError("Failed to fetch currency conversion map", err)
 		return
 	}
 
@@ -53,7 +55,12 @@ func MonthlyPoaiInvoiceReport() {
 
 		preference, err := storage.GetPreferenceByAddress(userAddress)
 		if err != nil {
-			fmt.Println("error while retrieving user preference: " + err.Error())
+			reportError(
+				"Failed to retrieve user preference",
+				err,
+				ErrorEmailField{Name: "UserAddress", Value: userAddress},
+				ErrorEmailField{Name: "CspOwner", Value: cspOwner},
+			)
 			continue
 		} else if preference != nil {
 			if invoice.CspProfile.Country == invoice.UserProfile.Country {
@@ -93,7 +100,14 @@ func MonthlyPoaiInvoiceReport() {
 			alloc.DraftId = &invoice.DraftId
 			err = storage.UpdateAllocation(&alloc) //TODO create more stable system with rollback for all invoices
 			if err != nil {
-				fmt.Println("error while updating allocation: " + err.Error())
+				reportError(
+					"Failed to update allocation draft ID",
+					err,
+					ErrorEmailField{Name: "UserAddress", Value: userAddress},
+					ErrorEmailField{Name: "CspOwner", Value: cspOwner},
+					ErrorEmailField{Name: "DraftID", Value: invoice.DraftId.String()},
+					ErrorEmailField{Name: "AllocationID", Value: intField(int(alloc.Id))},
+				)
 				return
 			}
 		}
@@ -103,7 +117,12 @@ func MonthlyPoaiInvoiceReport() {
 			preference.NextNumber += 1
 			err = storage.UpdatePreference(preference)
 			if err != nil {
-				fmt.Println("error while updating preference: " + err.Error())
+				reportError(
+					"Failed to update user preference",
+					err,
+					ErrorEmailField{Name: "UserAddress", Value: userAddress},
+					ErrorEmailField{Name: "DraftID", Value: invoice.DraftId.String()},
+				)
 				return
 			}
 		} else {
@@ -116,7 +135,13 @@ func MonthlyPoaiInvoiceReport() {
 		}
 		err = storage.CreateInvoiceDraft(&invoice)
 		if err != nil {
-			fmt.Println("error while saving invoice: " + err.Error())
+			reportError(
+				"Failed to create invoice draft",
+				err,
+				ErrorEmailField{Name: "UserAddress", Value: userAddress},
+				ErrorEmailField{Name: "CspOwner", Value: cspOwner},
+				ErrorEmailField{Name: "DraftID", Value: invoice.DraftId.String()},
+			)
 			continue
 		}
 		drafts = append(drafts, invoice)
@@ -133,11 +158,11 @@ func MonthlyPoaiInvoiceReport() {
 
 	//send unique email for csp and node owner ( even if they have more than 1 invoice)
 	for k := range allNodeOwner {
-		_ = SendNodeOwnerDraftEmail(k) //! doesn't check error
+		EnqueueEmailTask(NewSendNodeOwnerDraftEmailTask(k), false)
 	}
 
 	for k := range allCSP {
-		_ = SendCspDraftEmail(k) //! doesn't check error
+		EnqueueEmailTask(NewSendCspDraftEmailTask(k), false)
 	}
 }
 
