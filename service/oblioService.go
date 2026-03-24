@@ -57,11 +57,13 @@ func ElaborateInvoices() {
 			fmt.Println("Invoice already processed: " + event.InvoiceID)
 			continue
 		}
-
-		url, invoiceNumber, err := generateInvoice(*invoice, event, auth)
-		if err != nil {
-			fmt.Println("Error generating invoice: " + err.Error())
-			continue
+		var url, invoiceNumber string
+		if invoice.Address != config.Config.NaeuralAddress { //naeural not gonna emit an invoice for itsel
+			url, invoiceNumber, err = generateInvoice(*invoice, event, auth)
+			if err != nil {
+				fmt.Println("Error generating invoice: " + err.Error())
+				continue
+			}
 		}
 
 		status := model.InvoiceStatusPaid

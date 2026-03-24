@@ -184,7 +184,9 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 		}
 
 		vatPercentage := int64(ROUVatPerc)
-		if !isUeCountry(kyc.Country) {
+		if account.Address == config.Config.NaeuralAddress {
+			vatPercentage = 0
+		} else if !isUeCountry(kyc.Country) {
 			vatPercentage = 0
 		} else if kyc.Country != model.ROU_ID {
 			if kyc.ApplicantType == model.BusinessCustomer && kyc.ViesRegistered {
