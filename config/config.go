@@ -34,6 +34,7 @@ type GeneralConfig struct {
 	USDCContractAddress            string
 	PoaiManagerAddress             string
 	ReaderAddress                  string
+	NaeuralAddress                 string
 	TeamAddresses                  []string
 	BuyLicenseInvoiceCronJobTiming map[string]string
 	DailyCronJobTiming             map[string]string
