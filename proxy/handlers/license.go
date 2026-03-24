@@ -253,7 +253,9 @@ func (h *launchpadHandler) buyLicense(c *gin.Context) {
 	}
 
 	vatPercentage := int64(service.ROUVatPerc)
-	if client.IsCompany && client.Country != model.ROU_ID {
+	if address == config.Config.NaeuralAddress { //naeural not gonna pay itself VAT
+		vatPercentage = 0
+	} else if client.IsCompany && client.Country != model.ROU_ID {
 		client.ReverseCharge, client.IsUe = service.IsCompanyRegisteredAndUE(client.Country, client.IdentificationCode)
 		vatPercentage = 0
 	} else if !client.IsCompany && client.Country != model.ROU_ID {
