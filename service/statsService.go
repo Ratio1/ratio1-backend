@@ -182,20 +182,6 @@ func DailyGetStats() {
 		burnEvents[i] = b
 	}
 
-	/* store all allocation events */
-	err = generateAllocations(allocEvents)
-	if err != nil {
-		fmt.Println("Error generating allocations: " + err.Error())
-		return
-	}
-
-	/* store all burn events */
-	err = generateBurns(burnEvents)
-	if err != nil {
-		fmt.Println("Error generating burns: " + err.Error())
-		return
-	}
-
 	/* calculate daily stats */
 	dailyPoaiReward := big.NewInt(0)
 	for _, e := range allocEvents {
@@ -278,6 +264,20 @@ func DailyGetStats() {
 
 	if getEpoch(latestStats.CreationTimestamp) == getEpoch(time.Now()) { //get epoch of r1 mainnet, if today is already present, skip.
 		fmt.Println("stats already fetched")
+		return
+	}
+
+	/* store all allocation events */
+	err = generateAllocations(allocEvents)
+	if err != nil {
+		fmt.Println("Error generating allocations: " + err.Error())
+		return
+	}
+
+	/* store all burn events */
+	err = generateBurns(burnEvents)
+	if err != nil {
+		fmt.Println("Error generating burns: " + err.Error())
 		return
 	}
 
