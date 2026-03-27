@@ -126,3 +126,20 @@ func GetAllocationsByDraftId(draftId string) ([]model.Allocation, error) {
 
 	return allocations, nil
 }
+
+func GetAllocationByJobIDForJobDetails(jobId string) (*model.Allocation, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var allocation model.Allocation
+	txRead := db.Where("job_id = ? AND job_mane IS NOT NULL", jobId).First(&allocation) //i have to retrive names
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	} else if txRead.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return &allocation, nil
+}
