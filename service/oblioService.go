@@ -58,7 +58,7 @@ func ElaborateInvoices() {
 			continue
 		}
 		var url, invoiceNumber string
-		if invoice.Address != config.Config.NaeuralAddress { //naeural not gonna emit an invoice for itsel
+		if event.Address != config.Config.NaeuralAddress { //naeural not gonna emit an invoice for itsel
 			url, invoiceNumber, err = generateInvoice(*invoice, event, auth)
 			if err != nil {
 				fmt.Println("Error generating invoice: " + err.Error())
