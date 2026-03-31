@@ -129,11 +129,21 @@ func DailyGetStats() {
 	}
 
 	for k := range allJobsDetails {
-		res, err := GetJobDetails(k, config.Config.DeeployApi)
-		if err != nil {
-			continue
+		prevAlloc, err := storage.GetAllocationByJobIDForJobDetails(k)
+		if err != nil && prevAlloc == nil {
+			res, err := GetJobDetails(k, config.Config.DeeployApi)
+			if err != nil {
+				continue
+			}
+			allJobsDetails[k] = res
+		} else {
+			res := JobDetailsResult{
+				JobName:     prevAlloc.JobName,
+				JobType:     int(prevAlloc.JobType),
+				ProjectName: prevAlloc.ProjectName,
+			}
+			allJobsDetails[k] = &res
 		}
-		allJobsDetails[k] = res
 	}
 
 	/* in each allocation, add timestamp and job details */

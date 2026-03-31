@@ -126,3 +126,18 @@ func GetAllocationsByDraftId(draftId string) ([]model.Allocation, error) {
 
 	return allocations, nil
 }
+
+func GetAllocationByJobIDForJobDetails(jobId string) (*model.Allocation, error) {
+	db, err := GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var allocation model.Allocation
+	txRead := db.Where("job_id = ? AND job_name IS NOT NULL", jobId).First(&allocation) // Retrieve the allocation with a non-null job name.
+	if txRead.Error != nil {
+		return nil, txRead.Error
+	}
+
+	return &allocation, nil
+}
