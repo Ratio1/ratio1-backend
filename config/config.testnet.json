@@ -19,7 +19,12 @@
     "KeySeedHex": "",
     "Secret": "",
     "ConfirmSecret": "",
-    "ConfirmExpiryMins": 10080
+    "ConfirmExpiryMins": 10080,
+    "CookieDomain": "",
+    "CookieSecure": true,
+    "CookieSameSite": "None",
+    "AccessCookieName": "accessToken",
+    "RefreshCookieName": "refreshToken"
   },
   "Mail": {
     "ApiUrl": "https://api.postmarkapp.com",
