@@ -134,7 +134,7 @@ func GetAllocationByJobIDForJobDetails(jobId string) (*model.Allocation, error) 
 	}
 
 	var allocation model.Allocation
-	txRead := db.Where("job_id = ? AND job_name IS NOT NULL", jobId).First(&allocation) // Retrieve the allocation with a non-null job name.
+	txRead := db.Where("job_id = ? AND job_name IS NOT NULL AND job_name <> ''", jobId).First(&allocation) // Retrieve the allocation with a non-null, non-empty job name.
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
