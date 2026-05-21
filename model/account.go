@@ -17,20 +17,32 @@ type Account struct {
 	UsedSellerCode        *string   `gorm:"default:null" json:"usedSellerCode"`
 }
 
+type AccountNotificationEmail struct {
+	AccountAddress string    `gorm:"primaryKey;length:42" json:"accountAddress"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+	Email          *string   `gorm:"default:null" json:"email"`
+	EmailConfirmed bool      `gorm:"not null;default:false" json:"emailConfirmed"`
+	PendingEmail   string    `gorm:"default:null" json:"pendingEmail"`
+}
+
 type AccountDto struct {
-	Email             string  `json:"email"`
-	EmailConfirmed    bool    `json:"emailConfirmed"`
-	PendingEmail      string  `json:"pendingEmail"`
-	ApplicantType     string  `json:"applicantType"`
-	Address           string  `json:"address"`
-	Uuid              string  `json:"uuid"`
-	KycStatus         string  `json:"kycStatus"`
-	ReceiveUpdates    bool    `json:"receiveUpdates"`
-	IsActive          bool    `json:"isActive"`
-	IsBlacklisted     bool    `json:"isBlacklisted"`
-	BlacklistedReason *string `json:"blacklistedReason"`
-	UsdBuyLimit       int     `json:"usdBuyLimit"`
-	VatPercentage     int64   `json:"vatPercentage"`
-	ViesRegistered    bool    `json:"viesRegistered"`
-	UsedSellerCode    *string `json:"referral"`
+	Email                                string  `json:"email"`
+	EmailConfirmed                       bool    `json:"emailConfirmed"`
+	PendingEmail                         string  `json:"pendingEmail"`
+	AdditionalNotificationEmail          string  `json:"additionalNotificationEmail"`
+	AdditionalNotificationEmailConfirmed bool    `json:"additionalNotificationEmailConfirmed"`
+	PendingAdditionalNotificationEmail   string  `json:"pendingAdditionalNotificationEmail"`
+	ApplicantType                        string  `json:"applicantType"`
+	Address                              string  `json:"address"`
+	Uuid                                 string  `json:"uuid"`
+	KycStatus                            string  `json:"kycStatus"`
+	ReceiveUpdates                       bool    `json:"receiveUpdates"`
+	IsActive                             bool    `json:"isActive"`
+	IsBlacklisted                        bool    `json:"isBlacklisted"`
+	BlacklistedReason                    *string `json:"blacklistedReason"`
+	UsdBuyLimit                          int     `json:"usdBuyLimit"`
+	VatPercentage                        int64   `json:"vatPercentage"`
+	ViesRegistered                       bool    `json:"viesRegistered"`
+	UsedSellerCode                       *string `json:"referral"`
 }

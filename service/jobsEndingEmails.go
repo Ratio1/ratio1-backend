@@ -169,19 +169,34 @@ func sendEmailForEndingJobs(usersWithJobs map[string][]EndingJob) {
 			log.Error("error while retrieving account for address %s: %v", ownerAddress, err)
 			continue
 		}
-		if !found || account == nil || account.Email == nil {
+		if !found || account == nil {
 			continue
 		}
 
-		email := strings.TrimSpace(*account.Email)
-		if email == "" {
-			continue
-		}
-
-		err = SendJobsEndingEmail(email, jobs)
+		notificationEmail, found, err := storage.GetAccountNotificationEmailByAddress(ownerAddress)
 		if err != nil {
-			log.Error("error while sending ending jobs email to %s: %v", email, err)
+			log.Error("error while retrieving notification email for address %s: %v", ownerAddress, err)
 			continue
+		}
+		if !found {
+			notificationEmail = nil
+		}
+
+		emails := notificationEmailsForAccount(account, notificationEmail)
+		if len(emails) == 0 {
+			continue
+		}
+		for _, email := range emails {
+			email = strings.TrimSpace(email)
+			if email == "" {
+				continue
+			}
+
+			err = SendJobsEndingEmail(email, jobs)
+			if err != nil {
+				log.Error("error while sending ending jobs email to %s: %v", email, err)
+				continue
+			}
 		}
 	}
 }

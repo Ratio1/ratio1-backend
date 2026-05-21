@@ -83,9 +83,10 @@ func ConfirmEmail(token string) (*model.Account, error) {
 	if err != nil {
 		return nil, errors.New("error while validating confirm jwt: " + err.Error())
 	}
-	if claims.Address == "" && claims.Email == "" {
+	if claims.Address == "" || claims.Email == "" {
 		return nil, errors.New("found bad claims in confirm token")
 	}
+	email := TrimWhitespacesAndToLower(claims.Email)
 
 	account, err := getAcocunt(claims.Address)
 	if err != nil {
@@ -94,19 +95,37 @@ func ConfirmEmail(token string) (*model.Account, error) {
 		return nil, ErrorAccountNotFound
 	}
 
-	if account.EmailConfirmed {
-		if *account.Email == claims.Email {
-			return account, nil // already confirmed
-		} else {
-			return nil, errors.New("account already has another email")
+	if account.EmailConfirmed && account.Email != nil && TrimWhitespacesAndToLower(*account.Email) == email {
+		return account, nil // already confirmed
+	}
+
+	if !account.EmailConfirmed && TrimWhitespacesAndToLower(account.PendingEmail) == email {
+		return confirmPrimaryEmail(account, email)
+	}
+
+	notificationEmail, found, err := storage.GetAccountNotificationEmailByAddress(claims.Address)
+	if err != nil {
+		return nil, errors.New("error while retrieving notification email from storage: " + err.Error())
+	}
+	if found {
+		confirmed, err := confirmPendingNotificationEmail(notificationEmail, email)
+		if err != nil {
+			return nil, err
+		}
+		if confirmed {
+			err = storage.CreateOrUpdateAccountNotificationEmail(notificationEmail)
+			if err != nil {
+				return nil, errors.New("error while updating notification email on storage: " + err.Error())
+			}
+			return account, nil
 		}
 	}
 
-	if account.PendingEmail != claims.Email {
-		return nil, errors.New("wrong confirmation token")
-	}
+	return nil, errors.New("wrong confirmation token")
+}
 
-	account.Email = &claims.Email
+func confirmPrimaryEmail(account *model.Account, email string) (*model.Account, error) {
+	account.Email = &email
 	account.EmailConfirmed = true
 	account.PendingEmail = ""
 	receiveUpdates := account.PendingReceiveUpdates
@@ -119,7 +138,7 @@ func ConfirmEmail(token string) (*model.Account, error) {
 	}
 	account.PendingReceiveUpdates = false
 
-	err = storage.UpdateAccount(account)
+	err := storage.UpdateAccount(account)
 	if err != nil {
 		return nil, errors.New("error while updating account on storage: " + err.Error())
 	}
@@ -175,6 +194,19 @@ func UnsubscribeEmail(kyc *model.Kyc) error {
 }
 
 func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, error) {
+	notificationEmail, found, err := storage.GetAccountNotificationEmailByAddress(account.Address)
+	if err != nil {
+		return nil, errors.New("error while retrieving notification email from storage: " + err.Error())
+	}
+	additionalNotificationEmail := ""
+	additionalNotificationEmailConfirmed := false
+	pendingAdditionalNotificationEmail := ""
+	if found && notificationEmail != nil {
+		additionalNotificationEmail = StringOrEmpty(notificationEmail.Email)
+		additionalNotificationEmailConfirmed = notificationEmail.EmailConfirmed
+		pendingAdditionalNotificationEmail = notificationEmail.PendingEmail
+	}
+
 	if kyc != nil {
 		limit := 0
 		if kyc.ApplicantType == model.BusinessCustomer {
@@ -202,21 +234,24 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 		}
 
 		return &model.AccountDto{
-			Email:             StringOrEmpty(account.Email),
-			EmailConfirmed:    account.EmailConfirmed,
-			PendingEmail:      account.PendingEmail,
-			Address:           account.Address,
-			ApplicantType:     kyc.ApplicantType,
-			Uuid:              kyc.Uuid.String(),
-			KycStatus:         kyc.KycStatus,
-			ReceiveUpdates:    *kyc.ReceiveUpdates,
-			IsActive:          kyc.IsActive,
-			IsBlacklisted:     account.IsBlacklisted,
-			BlacklistedReason: account.BlacklistedReason,
-			UsdBuyLimit:       limit,
-			VatPercentage:     vatPercentage,
-			ViesRegistered:    kyc.ViesRegistered,
-			UsedSellerCode:    account.UsedSellerCode,
+			Email:                                StringOrEmpty(account.Email),
+			EmailConfirmed:                       account.EmailConfirmed,
+			PendingEmail:                         account.PendingEmail,
+			AdditionalNotificationEmail:          additionalNotificationEmail,
+			AdditionalNotificationEmailConfirmed: additionalNotificationEmailConfirmed,
+			PendingAdditionalNotificationEmail:   pendingAdditionalNotificationEmail,
+			Address:                              account.Address,
+			ApplicantType:                        kyc.ApplicantType,
+			Uuid:                                 kyc.Uuid.String(),
+			KycStatus:                            kyc.KycStatus,
+			ReceiveUpdates:                       *kyc.ReceiveUpdates,
+			IsActive:                             kyc.IsActive,
+			IsBlacklisted:                        account.IsBlacklisted,
+			BlacklistedReason:                    account.BlacklistedReason,
+			UsdBuyLimit:                          limit,
+			VatPercentage:                        vatPercentage,
+			ViesRegistered:                       kyc.ViesRegistered,
+			UsedSellerCode:                       account.UsedSellerCode,
 		}, nil
 	}
 
@@ -227,20 +262,23 @@ func NewAccountDto(account *model.Account, kyc *model.Kyc) (*model.AccountDto, e
 		vatPercentage = 2200
 	}
 	return &model.AccountDto{
-		Email:             StringOrEmpty(account.Email),
-		EmailConfirmed:    account.EmailConfirmed,
-		PendingEmail:      account.PendingEmail,
-		Address:           account.Address,
-		ApplicantType:     "",
-		Uuid:              "",
-		KycStatus:         "",
-		ReceiveUpdates:    false,
-		IsActive:          false,
-		IsBlacklisted:     account.IsBlacklisted,
-		BlacklistedReason: account.BlacklistedReason,
-		UsdBuyLimit:       UsdBuyLimit,
-		VatPercentage:     int64(vatPercentage),
-		UsedSellerCode:    account.UsedSellerCode,
+		Email:                                StringOrEmpty(account.Email),
+		EmailConfirmed:                       account.EmailConfirmed,
+		PendingEmail:                         account.PendingEmail,
+		AdditionalNotificationEmail:          additionalNotificationEmail,
+		AdditionalNotificationEmailConfirmed: additionalNotificationEmailConfirmed,
+		PendingAdditionalNotificationEmail:   pendingAdditionalNotificationEmail,
+		Address:                              account.Address,
+		ApplicantType:                        "",
+		Uuid:                                 "",
+		KycStatus:                            "",
+		ReceiveUpdates:                       false,
+		IsActive:                             false,
+		IsBlacklisted:                        account.IsBlacklisted,
+		BlacklistedReason:                    account.BlacklistedReason,
+		UsdBuyLimit:                          UsdBuyLimit,
+		VatPercentage:                        int64(vatPercentage),
+		UsedSellerCode:                       account.UsedSellerCode,
 	}, nil
 
 }
