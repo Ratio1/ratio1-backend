@@ -44,6 +44,7 @@ func Connect() {
 func TryMigrate() error {
 	err := database.AutoMigrate(
 		&model.Account{},
+		&model.AccountNotificationEmail{},
 		&model.Kyc{},
 		&model.InvoiceClient{},
 		&model.Seller{},

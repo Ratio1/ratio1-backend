@@ -12,21 +12,27 @@ import (
 )
 
 const (
-	baseAccountEndpoint   = "/accounts"
-	getAccountEndpoint    = "/account"
-	registerEmailEndpoint = "/email/register"
-	confirmEmailEndpoint  = "/email/confirm"
-	subscribeEndpoint     = "/subscribe"
-	unsubscribeEndpoint   = "/unsubscribe"
-	blacklistEndpoint     = "/blacklist"
-	addSellerCodeEndpoint = "/add-seller-code"
-	getKycinfoEndpoint    = "/kyc-info"
-	getIsKybEndpoint      = "/is-kyb"
+	baseAccountEndpoint               = "/accounts"
+	getAccountEndpoint                = "/account"
+	registerEmailEndpoint             = "/email/register"
+	confirmEmailEndpoint              = "/email/confirm"
+	registerNotificationEmailEndpoint = "/notification-email/register"
+	deleteNotificationEmailEndpoint   = "/notification-email"
+	subscribeEndpoint                 = "/subscribe"
+	unsubscribeEndpoint               = "/unsubscribe"
+	blacklistEndpoint                 = "/blacklist"
+	addSellerCodeEndpoint             = "/add-seller-code"
+	getKycinfoEndpoint                = "/kyc-info"
+	getIsKybEndpoint                  = "/is-kyb"
 )
 
 type registerEmailRequest struct {
 	Email          string `json:"email"`
 	ReceiveUpdates bool   `json:"receiveUpdates"`
+}
+
+type notificationEmailRequest struct {
+	Email string `json:"email"`
 }
 
 type blaclistUserRequest struct {
@@ -65,6 +71,8 @@ func NewAccountHandler(groupHandler *groupHandler) {
 	authEndpoints := []EndpointHandler{
 		{Method: http.MethodGet, Path: getAccountEndpoint, HandlerFunc: h.getOrCreateAccount},
 		{Method: http.MethodPost, Path: registerEmailEndpoint, HandlerFunc: h.registerEmail},
+		{Method: http.MethodPost, Path: registerNotificationEmailEndpoint, HandlerFunc: h.registerNotificationEmail},
+		{Method: http.MethodDelete, Path: deleteNotificationEmailEndpoint, HandlerFunc: h.deleteNotificationEmail},
 		{Method: http.MethodGet, Path: subscribeEndpoint, HandlerFunc: h.subscribe},
 		{Method: http.MethodGet, Path: unsubscribeEndpoint, HandlerFunc: h.unsubscribe},
 		{Method: http.MethodPost, Path: blacklistEndpoint, HandlerFunc: h.blackListAccount},
@@ -161,6 +169,98 @@ func (h *accountHandler) registerEmail(c *gin.Context) {
 	account, err := service.RegisterEmail(address, req.Email, req.ReceiveUpdates)
 	if err != nil {
 		log.Error("error while register email: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	var kyc *model.Kyc
+	if account.Email != nil {
+		kyc, _, err = storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+	}
+
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) registerNotificationEmail(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	var req notificationEmailRequest
+	err = c.Bind(&req)
+	if err != nil {
+		log.Error("error while binding request: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.RegisterNotificationEmail(address, req.Email)
+	if err != nil {
+		log.Error("error while register notification email: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	var kyc *model.Kyc
+	if account.Email != nil {
+		kyc, _, err = storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+	}
+
+	accountDto, err := service.NewAccountDto(account, kyc)
+	if err != nil {
+		log.Error("error while creating account dto: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+		return
+	}
+
+	model.JsonResponse(c, http.StatusOK, accountDto, nodeAddress, "")
+}
+
+func (h *accountHandler) deleteNotificationEmail(c *gin.Context) {
+	nodeAddress, err := service.GetAddress()
+	if err != nil {
+		log.Error("error while retrieving node address: " + err.Error())
+		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+
+	address, err := middleware.AddressFromBearer(c)
+	if err != nil {
+		log.Error("error while retrieving address from bearer: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+
+	account, err := service.DeleteNotificationEmail(address)
+	if err != nil {
+		log.Error("error while deleting notification email: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
