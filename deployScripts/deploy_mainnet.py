@@ -50,6 +50,12 @@ if __name__ == "__main__":
     'INFURA_SECRET':'',
 
     'EMAIL_TEMPLATES_PATH':'./templates/html/',
+    'INVOICE_EMAIL':'',
+    'ERROR_EMAIL':'',
+    'EE_CHAINSTORE_API_URL':'',
+    'CSTORE_EMAIL_TASKS_PROCEEDING_HASH_KEY':'ratio1_email_tasks_proceeding',
+    'CSTORE_EMAIL_TASKS_FAILED_HASH_KEY':'ratio1_email_tasks_failed',
+    'CSTORE_EMAIL_TASKS_FINAL_FAILED_HASH_KEY':'ratio1_email_tasks_final_failed',
   }
 
   # Defining the assets of the application.

@@ -273,17 +273,23 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		return nil, errors.New("EMAIL_TEMPLATES_PATH is not set")
 	}
 
-	InvoiceEmails := os.Getenv("INVOICE_EMAIL")
-	if InvoiceEmails == "" {
+	invoiceEmails := os.Getenv("INVOICE_EMAIL")
+	if invoiceEmails == "" {
 		return nil, errors.New("INVOICE_EMAIL is not set")
 	}
-	cfg.InvoiceEmail = strings.Split(InvoiceEmails, ",")
+	cfg.InvoiceEmail, err = parseRequiredEmailList(invoiceEmails)
+	if err != nil {
+		return nil, errors.New("INVOICE_EMAIL is invalid: " + err.Error())
+	}
 
-	ErrorEmails := os.Getenv("ERROR_EMAIL")
-	if ErrorEmails == "" {
+	errorEmails := os.Getenv("ERROR_EMAIL")
+	if errorEmails == "" {
 		return nil, errors.New("ERROR_EMAIL is not set")
 	}
-	cfg.ErrorEmail = strings.Split(ErrorEmails, ",")
+	cfg.ErrorEmail, err = parseRequiredEmailList(errorEmails)
+	if err != nil {
+		return nil, errors.New("ERROR_EMAIL is invalid: " + err.Error())
+	}
 
 	r1fsClient, err := r1fs.NewFromEnv()
 	if err != nil {
@@ -335,4 +341,20 @@ func (c *GeneralConfig) GetMonthlyCronJobTiming(nodeAddress string) (string, boo
 func (c *GeneralConfig) GetEmailRetryCronJobTiming(nodeAddress string) (string, bool) {
 	nodeTiming, found := c.EmailRetryCronJobTiming[nodeAddress]
 	return nodeTiming, found
+}
+
+func parseRequiredEmailList(value string) ([]string, error) {
+	parts := strings.Split(value, ",")
+	emails := make([]string, 0, len(parts))
+	for _, part := range parts {
+		email := strings.TrimSpace(part)
+		if email == "" {
+			continue
+		}
+		emails = append(emails, email)
+	}
+	if len(emails) == 0 {
+		return nil, errors.New("at least one email is required")
+	}
+	return emails, nil
 }

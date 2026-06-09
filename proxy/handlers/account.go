@@ -520,8 +520,7 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		kyc, _, err = storage.GetKycByEmail(*account.Email)
 		if err != nil {
 			log.Error("error while retrieving kyc information from storage(blacklisted successfully): " + err.Error())
-			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-			return
+			kyc = nil
 		}
 	}
 

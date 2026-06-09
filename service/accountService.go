@@ -70,7 +70,9 @@ func RegisterEmail(address, email string, receiveUpdates bool) (*model.Account, 
 		return nil, err
 	}
 
-	EnqueueEmailTask(NewSendConfirmEmailTask(address, email), true)
+	if err := EnqueueEmailTask(NewSendConfirmEmailTask(address, email), true); err != nil {
+		return nil, errors.New("error while queueing confirmation email: " + err.Error())
+	}
 
 	return account, nil
 }

@@ -107,13 +107,10 @@ type sendNewsletterBatchPayload struct {
 }
 
 func NewSendConfirmEmailTask(address, email string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendConfirmEmail,
-		Payload: sendConfirmEmailPayload{
-			Address: address,
-			Email:   email,
-		},
-	}
+	return newEmailTask(emailTaskSendConfirmEmail, sendConfirmEmailPayload{
+		Address: address,
+		Email:   email,
+	})
 }
 
 func NewSendErrorEmailTask(message string, originalErr error, fields []ErrorEmailField) EmailTask {
@@ -125,105 +122,72 @@ func NewSendErrorEmailTask(message string, originalErr error, fields []ErrorEmai
 		payload.OriginalError = originalErr.Error()
 	}
 
-	return EmailTask{
-		Name:    emailTaskSendErrorEmail,
-		Payload: payload,
-	}
+	return newEmailTask(emailTaskSendErrorEmail, payload)
 }
 
 func NewSendJobsEndingEmailTask(recipient string, jobs []EndingJob) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendJobsEndingEmail,
-		Payload: sendJobsEndingEmailPayload{
-			Recipient: recipient,
-			Jobs:      append([]EndingJob(nil), jobs...),
-		},
-	}
+	return newEmailTask(emailTaskSendJobsEndingEmail, sendJobsEndingEmailPayload{
+		Recipient: recipient,
+		Jobs:      append([]EndingJob(nil), jobs...),
+	})
 }
 
 func NewSendNodeOwnerDraftEmailTask(recipient string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendNodeOwnerDraft,
-		Payload: sendSingleRecipientPayload{
-			Recipient: recipient,
-		},
-	}
+	return newEmailTask(emailTaskSendNodeOwnerDraft, sendSingleRecipientPayload{
+		Recipient: recipient,
+	})
 }
 
 func NewSendCspDraftEmailTask(recipient string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendCspDraft,
-		Payload: sendSingleRecipientPayload{
-			Recipient: recipient,
-		},
-	}
+	return newEmailTask(emailTaskSendCspDraft, sendSingleRecipientPayload{
+		Recipient: recipient,
+	})
 }
 
 func NewSendBuyLicenseEmailTask(recipient, invoiceURL, invoiceNumber string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendBuyLicenseEmail,
-		Payload: sendBuyLicenseEmailPayload{
-			Recipient:     recipient,
-			URL:           invoiceURL,
-			InvoiceNumber: invoiceNumber,
-		},
-	}
+	return newEmailTask(emailTaskSendBuyLicenseEmail, sendBuyLicenseEmailPayload{
+		Recipient:     recipient,
+		URL:           invoiceURL,
+		InvoiceNumber: invoiceNumber,
+	})
 }
 
 func NewSendKycFinalRejectedEmailTask(email string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendKycFinalRejected,
-		Payload: sendSingleRecipientPayload{
-			Recipient: email,
-		},
-	}
+	return newEmailTask(emailTaskSendKycFinalRejected, sendSingleRecipientPayload{
+		Recipient: email,
+	})
 }
 
 func NewSendKycStepRejectedEmailTask(email string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendKycStepRejected,
-		Payload: sendSingleRecipientPayload{
-			Recipient: email,
-		},
-	}
+	return newEmailTask(emailTaskSendKycStepRejected, sendSingleRecipientPayload{
+		Recipient: email,
+	})
 }
 
 func NewSendKycConfirmedEmailTask(email string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendKycConfirmed,
-		Payload: sendSingleRecipientPayload{
-			Recipient: email,
-		},
-	}
+	return newEmailTask(emailTaskSendKycConfirmed, sendSingleRecipientPayload{
+		Recipient: email,
+	})
 }
 
 func NewSendAccountResettedEmailTask(email string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendAccountResetted,
-		Payload: sendSingleRecipientPayload{
-			Recipient: email,
-		},
-	}
+	return newEmailTask(emailTaskSendAccountResetted, sendSingleRecipientPayload{
+		Recipient: email,
+	})
 }
 
 func NewSendBlacklistedEmailTask(email string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendBlacklistedEmail,
-		Payload: sendSingleRecipientPayload{
-			Recipient: email,
-		},
-	}
+	return newEmailTask(emailTaskSendBlacklistedEmail, sendSingleRecipientPayload{
+		Recipient: email,
+	})
 }
 
 func NewSendNewsletterBatchEmailTask(recipients []string, subject, htmlBody string) EmailTask {
-	return EmailTask{
-		Name: emailTaskSendNewsletterBatch,
-		Payload: sendNewsletterBatchPayload{
-			Recipients: append([]string(nil), recipients...),
-			Subject:    subject,
-			HTMLBody:   htmlBody,
-		},
-	}
+	return newEmailTask(emailTaskSendNewsletterBatch, sendNewsletterBatchPayload{
+		Recipients: append([]string(nil), recipients...),
+		Subject:    subject,
+		HTMLBody:   htmlBody,
+	})
 }
 
 func handleSendConfirmEmailTask(task EmailTask) error {
@@ -327,16 +291,26 @@ func decodeEmailTaskPayload(task EmailTask, out any) error {
 		return fmt.Errorf("nil payload decode target for task %s", task.Name)
 	}
 
-	raw, err := json.Marshal(task.Payload)
-	if err != nil {
-		return fmt.Errorf("cannot encode payload for task %s: %w", task.Name, err)
+	if len(task.Payload) == 0 {
+		return fmt.Errorf("empty payload for task %s", task.Name)
 	}
 
-	if err := json.Unmarshal(raw, out); err != nil {
+	if err := json.Unmarshal(task.Payload, out); err != nil {
 		return fmt.Errorf("cannot decode payload for task %s: %w", task.Name, err)
 	}
 
 	return nil
+}
+
+func newEmailTask(name string, payload any) EmailTask {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		log.Error("cannot encode payload for task %s: %v", name, err)
+	}
+	return EmailTask{
+		Name:    name,
+		Payload: raw,
+	}
 }
 
 func emailTaskErrorFromString(v string) error {

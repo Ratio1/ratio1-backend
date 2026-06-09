@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -23,17 +24,17 @@ import (
 */
 
 type EmailTask struct {
-	ID             string      `json:"id"`
-	Name           string      `json:"name"`
-	Payload        any         `json:"payload,omitempty"`
-	NodeAddress    string      `json:"nodeAddress,omitempty"`
-	EnqueuedAt     time.Time   `json:"enqueuedAt,omitempty"`
-	UpdatedAt      time.Time   `json:"updatedAt,omitempty"`
-	LastRetryAt    time.Time   `json:"lastRetryAt,omitempty"`
-	Errors         []string    `json:"lastError,omitempty"`
-	RetryCount     int         `json:"retryCount,omitempty"`
-	FailureHistory []time.Time `json:"failureHistory,omitempty"`
-	Persist        bool        `json:"persist,omitempty"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Payload        json.RawMessage `json:"payload,omitempty"`
+	NodeAddress    string          `json:"nodeAddress,omitempty"`
+	EnqueuedAt     time.Time       `json:"enqueuedAt,omitempty"`
+	UpdatedAt      time.Time       `json:"updatedAt,omitempty"`
+	LastRetryAt    time.Time       `json:"lastRetryAt,omitempty"`
+	Errors         []string        `json:"lastError,omitempty"`
+	RetryCount     int             `json:"retryCount,omitempty"`
+	FailureHistory []time.Time     `json:"failureHistory,omitempty"`
+	Persist        bool            `json:"persist,omitempty"`
 }
 
 type dispatcherState struct {
@@ -92,7 +93,7 @@ func StartEmailDispatcher(ctx context.Context) {
 		emailDispatcher.done = done
 		emailDispatcher.stopping = false
 		emailDispatcher.nodeAddr = nodeAddr
-		emailDispatcher.ctx = ctx
+		emailDispatcher.ctx = context.Background()
 		emailDispatcher.mu.Unlock()
 
 		go emailDispatcherLoop(queue, done)
@@ -120,14 +121,12 @@ func StopEmailDispatcher(ctx context.Context) {
 	waitForDispatcherDone(ctx)
 }
 
-func EnqueueEmailTask(task EmailTask, saveTask bool) { //TO Be called outside of the process
+func EnqueueEmailTask(task EmailTask, saveTask bool) (err error) { //TO Be called outside of the process
 	if strings.TrimSpace(task.Name) == "" {
-		log.Error("email task has empty handler name")
-		return
+		return errors.New("email task has empty handler name")
 	}
 	if _, found := getEmailTaskHandler(task.Name); !found {
-		log.Error("email task has unknown handler: %s", task.Name)
-		return
+		return fmt.Errorf("email task has unknown handler: %s", task.Name)
 	}
 	if strings.TrimSpace(task.ID) == "" {
 		task.ID = uuid.NewString()
@@ -140,16 +139,13 @@ func EnqueueEmailTask(task EmailTask, saveTask bool) { //TO Be called outside of
 	if queue == nil {
 		emailDispatcher.mu.Unlock()
 		if stopping {
-			log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
-			return
+			return fmt.Errorf("email dispatcher is stopping, dropping task: %s", task.Name)
 		}
-		log.Error("email dispatcher not started, dropping task: %s", task.Name)
-		return
+		return fmt.Errorf("email dispatcher not started, dropping task: %s", task.Name)
 	}
 	if stopping {
 		emailDispatcher.mu.Unlock()
-		log.Warn("email dispatcher is stopping, dropping task: %s", task.Name)
-		return
+		return fmt.Errorf("email dispatcher is stopping, dropping task: %s", task.Name)
 	}
 	emailDispatcher.mu.Unlock()
 
@@ -163,21 +159,21 @@ func EnqueueEmailTask(task EmailTask, saveTask bool) { //TO Be called outside of
 
 	//saving in proceeding before actually running the task ( so that if it fails while in queue it doesn't get lost)
 	if task.Persist {
-		err := saveOrUpdateInCstore(emailDispatcher.ctx, getProceedingTasksHashKey(), task.ID, task)
-		if err != nil {
-			log.Error("error on saving email in proceeding task: %s", task.Name)
+		if err := saveOrUpdateInCstore(emailDispatcher.ctx, getProceedingTasksHashKey(), task.ID, task); err != nil {
+			return fmt.Errorf("error on saving email in proceeding task %s: %w", task.Name, err)
 		}
 	}
 
 	defer func() {
 		if rec := recover(); rec != nil {
-			log.Warn("email dispatcher queue closed while enqueueing task (%s): %v", task.Name, rec)
+			err = fmt.Errorf("email dispatcher queue closed while enqueueing task (%s): %v", task.Name, rec)
 		}
 	}()
 	select {
 	case queue <- task:
+		return nil
 	default:
-		log.Warn("email dispatcher queue full, dropping task: %s", task.Name)
+		return fmt.Errorf("email dispatcher queue full, dropping task: %s", task.Name)
 	}
 }
 
@@ -216,18 +212,28 @@ func processEmailTask(task EmailTask) {
 			task.UpdatedAt = now
 			task.Errors = append(task.Errors, err.Error())
 			task.FailureHistory = append(task.FailureHistory, now)
-			saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil) //remove from proceeding
+			if err := saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil); err != nil { //remove from proceeding
+				log.Warn("cannot clear proceeding email task %s: %v", task.ID, err)
+			}
 			task.RetryCount = task.RetryCount - 1
 			if task.RetryCount == 0 {
-				saveOrUpdateInCstore(ctx, getFinalFailedTasksHashKey(), task.ID, task)
+				if err := saveOrUpdateInCstore(ctx, getFinalFailedTasksHashKey(), task.ID, task); err != nil {
+					log.Warn("cannot save final failed email task %s: %v", task.ID, err)
+				}
 			} else {
-				saveOrUpdateInCstore(ctx, getFailedTasksHashKey(), task.ID, task)
+				if err := saveOrUpdateInCstore(ctx, getFailedTasksHashKey(), task.ID, task); err != nil {
+					log.Warn("cannot save failed email task %s: %v", task.ID, err)
+				}
 			}
 		}
 		return
 	}
 
-	saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil) //remove from proceeding
+	if task.Persist {
+		if err := saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil); err != nil { //remove from proceeding
+			log.Warn("cannot clear proceeding email task %s: %v", task.ID, err)
+		}
+	}
 }
 
 func runEmailTask(task EmailTask) (err error) {
@@ -279,6 +285,7 @@ func waitForDispatcherDone(ctx context.Context) {
 func retryStuckProceedingTasks() {
 	emailDispatcher.mu.Lock()
 	ctx := emailDispatcher.ctx
+	nodeAddr := emailDispatcher.nodeAddr
 	emailDispatcher.mu.Unlock()
 	tasks, err := fetchAllFromCstore(ctx, getProceedingTasksHashKey())
 	if err != nil {
@@ -301,12 +308,19 @@ func retryStuckProceedingTasks() {
 		task.FailureHistory = append(task.FailureHistory, now)
 		task.LastRetryAt = now
 		task.UpdatedAt = now
-		task.NodeAddress = emailDispatcher.nodeAddr
+		task.NodeAddress = nodeAddr
 		if task.RetryCount == 0 {
-			saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil)   //remove from proceeding
-			saveOrUpdateInCstore(ctx, getFinalFailedTasksHashKey(), task.ID, task) //add to final failed
+			if err := saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, nil); err != nil { //remove from proceeding
+				log.Warn("cannot clear proceeding email task %s: %v", task.ID, err)
+			}
+			if err := saveOrUpdateInCstore(ctx, getFinalFailedTasksHashKey(), task.ID, task); err != nil { //add to final failed
+				log.Warn("cannot save final failed email task %s: %v", task.ID, err)
+			}
 		} else {
-			saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, task) //update to prevent other nodes to fetch stuck task
+			if err := saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, task); err != nil { //update to prevent other nodes to fetch stuck task
+				log.Warn("cannot update proceeding email task %s: %v", task.ID, err)
+				continue
+			}
 			enqueueStuckAndFailedTasks(task)
 		}
 	}
@@ -315,6 +329,7 @@ func retryStuckProceedingTasks() {
 func retryFailedTasks() {
 	emailDispatcher.mu.Lock()
 	ctx := emailDispatcher.ctx
+	nodeAddr := emailDispatcher.nodeAddr
 	emailDispatcher.mu.Unlock()
 	tasks, err := fetchAllFromCstore(ctx, getFailedTasksHashKey())
 	if err != nil {
@@ -332,9 +347,14 @@ func retryFailedTasks() {
 		}
 		task.LastRetryAt = now
 		task.UpdatedAt = now
-		task.NodeAddress = emailDispatcher.nodeAddr
-		saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, task) //add task to processing
-		saveOrUpdateInCstore(ctx, getFailedTasksHashKey(), task.ID, nil)      //remove from failed tasks
+		task.NodeAddress = nodeAddr
+		if err := saveOrUpdateInCstore(ctx, getProceedingTasksHashKey(), task.ID, task); err != nil { //add task to processing
+			log.Warn("cannot move failed email task %s to proceeding: %v", task.ID, err)
+			continue
+		}
+		if err := saveOrUpdateInCstore(ctx, getFailedTasksHashKey(), task.ID, nil); err != nil { //remove from failed tasks
+			log.Warn("cannot clear failed email task %s: %v", task.ID, err)
+		}
 		enqueueStuckAndFailedTasks(task)
 	}
 }
@@ -406,6 +426,9 @@ func fetchAllFromCstore(ctx context.Context, hashKey string) ([]EmailTask, error
 }
 
 func saveOrUpdateInCstore(ctx context.Context, hashKey, key string, value any) error {
+	if config.Config.CstoreClient == nil {
+		return errors.New("cstore client is not configured")
+	}
 	return config.Config.CstoreClient.HSet(ctx, hashKey, key, value, nil)
 }
 
