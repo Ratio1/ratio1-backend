@@ -128,16 +128,43 @@ func GetAllocationsByDraftId(draftId string) ([]model.Allocation, error) {
 }
 
 func GetAllocationByJobIDForJobDetails(jobId string) (*model.Allocation, error) {
+	allocations, err := GetAllocationsByJobIDsForJobDetails([]string{jobId})
+	if err != nil {
+		return nil, err
+	}
+
+	allocation, ok := allocations[jobId]
+	if !ok {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return allocation, nil
+}
+
+func GetAllocationsByJobIDsForJobDetails(jobIDs []string) (map[string]*model.Allocation, error) {
+	allocationsByJobID := make(map[string]*model.Allocation)
+	if len(jobIDs) == 0 {
+		return allocationsByJobID, nil
+	}
+
 	db, err := GetDB()
 	if err != nil {
 		return nil, err
 	}
 
-	var allocation model.Allocation
-	txRead := db.Where("job_id = ? AND job_name IS NOT NULL AND job_name <> ''", jobId).First(&allocation) // Retrieve the allocation with a non-null, non-empty job name.
+	var allocations []model.Allocation
+	txRead := db.
+		Where("job_id IN ? AND job_name IS NOT NULL AND job_name <> ''", jobIDs).
+		Order("job_id, block_number DESC, allocation_creation DESC, id DESC").
+		Distinct("ON (job_id) *").
+		Find(&allocations)
 	if txRead.Error != nil {
 		return nil, txRead.Error
 	}
 
-	return &allocation, nil
+	for i := range allocations {
+		allocationsByJobID[allocations[i].JobId] = &allocations[i]
+	}
+
+	return allocationsByJobID, nil
 }

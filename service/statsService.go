@@ -128,9 +128,20 @@ func DailyGetStats() {
 		allJobsDetails[a.JobId] = nil
 	}
 
+	jobIDs := make([]string, 0, len(allJobsDetails))
 	for k := range allJobsDetails {
-		prevAlloc, err := storage.GetAllocationByJobIDForJobDetails(k)
-		if err != nil && prevAlloc == nil {
+		jobIDs = append(jobIDs, k)
+	}
+
+	prevAllocations, err := storage.GetAllocationsByJobIDsForJobDetails(jobIDs)
+	if err != nil {
+		fmt.Println("error getting allocations for job details: " + err.Error())
+		return
+	}
+
+	for k := range allJobsDetails {
+		prevAlloc, ok := prevAllocations[k]
+		if !ok {
 			res, err := GetJobDetails(k, config.Config.DeeployApi)
 			if err != nil {
 				continue
