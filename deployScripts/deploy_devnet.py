@@ -42,6 +42,7 @@ if __name__ == "__main__":
     'SUMSUB_JWT_SECRET_KEY':'',
 
     'EMAIL_TEMPLATES_PATH':'./templates/html/',
+    'EE_CHAINSTORE_API_URL':'',
   }
 
   # Defining the assets of the application.

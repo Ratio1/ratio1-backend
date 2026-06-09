@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ var (
 	fetchOracleNodesListFn      = fetchOracleNodesList
 	resolveNodeOwnersFn         = getNodeOwners
 	getAccountByAddressFn       = storage.GetAccountByAddress
+	getNotificationEmailFn      = storage.GetAccountNotificationEmailByAddress
 	sendOfflineNodesEmailFn     = SendOfflineNodesEmail
 	newCStoreClientFromEnvFn    = cstore.NewFromEnv
 	newOwnerNotificationStoreFn = newCStoreOwnerNotificationStore
@@ -37,6 +39,19 @@ type OfflineNodeAlert struct {
 	NodeAlias      string
 	NodeAddress    string
 	OfflineSeconds int64
+}
+
+func ValidateOfflineNodesNotifierConfig() error {
+	if strings.TrimSpace(config.Config.OraclesApi) == "" {
+		return errors.New("oracles api url is not configured")
+	}
+	if strings.TrimSpace(os.Getenv("EE_CHAINSTORE_API_URL")) == "" {
+		return errors.New("EE_CHAINSTORE_API_URL is not set")
+	}
+	if _, err := newCStoreClientFromEnvFn(); err != nil {
+		return errors.New("invalid CStore configuration: " + err.Error())
+	}
+	return nil
 }
 
 type oracleNodesListResponse struct {
@@ -51,9 +66,11 @@ type oracleNodesListResult struct {
 type oracleNodeRaw struct {
 	Alias        string `json:"alias"`
 	EthAddress   string `json:"eth_address"`
+	EthAddr      string `json:"eth_addr"`
 	LastState    string `json:"last_state"`
 	LastSeenAgo  any    `json:"last_seen_ago"`
 	NodeIsOnline *bool  `json:"node_is_online"`
+	IsOnline     *bool  `json:"is_online"`
 }
 
 type ownerNotificationStore interface {
@@ -130,12 +147,12 @@ func NotifyOfflineLinkedNodes() {
 
 	now := time.Now().UTC()
 	for ownerAddress, ownerNodes := range nodesByOwner {
-		email, found, err := getConfirmedAccountEmail(ownerAddress)
+		emails, err := getConfirmedAccountEmails(ownerAddress)
 		if err != nil {
 			log.Error("offline nodes notifier failed account lookup for %s: %s", ownerAddress, err.Error())
 			continue
 		}
-		if !found {
+		if len(emails) == 0 {
 			continue
 		}
 
@@ -160,9 +177,16 @@ func NotifyOfflineLinkedNodes() {
 			continue
 		}
 
-		err = sendOfflineNodesEmailFn(email, ownerNodes)
-		if err != nil {
-			log.Error("offline nodes notifier failed to send email to %s: %s", email, err.Error())
+		sentCount := 0
+		for _, email := range emails {
+			err = sendOfflineNodesEmailFn(email, ownerNodes)
+			if err != nil {
+				log.Error("offline nodes notifier failed to send email to %s: %s", email, err.Error())
+				continue
+			}
+			sentCount++
+		}
+		if sentCount == 0 {
 			continue
 		}
 
@@ -203,6 +227,9 @@ func fetchOracleNodesList() ([]OfflineNodeAlert, error) {
 	for _, node := range response.Result.Nodes {
 		ethAddress := strings.TrimSpace(node.EthAddress)
 		if ethAddress == "" {
+			ethAddress = strings.TrimSpace(node.EthAddr)
+		}
+		if ethAddress == "" {
 			continue
 		}
 
@@ -237,6 +264,9 @@ func fetchOracleNodesList() ([]OfflineNodeAlert, error) {
 func parseNodeOfflineState(node oracleNodeRaw) (bool, bool) {
 	if node.NodeIsOnline != nil {
 		return !(*node.NodeIsOnline), true
+	}
+	if node.IsOnline != nil {
+		return !(*node.IsOnline), true
 	}
 	state := strings.TrimSpace(strings.ToLower(node.LastState))
 	switch state {
@@ -324,35 +354,35 @@ func parseLastSeenSecondsFromString(raw string) (int64, bool) {
 	return 0, false
 }
 
-func getConfirmedAccountEmail(ownerAddress string) (string, bool, error) {
+func getConfirmedAccountEmails(ownerAddress string) ([]string, error) {
 	address := strings.TrimSpace(ownerAddress)
 	if address == "" {
-		return "", false, nil
+		return nil, nil
 	}
 
 	account, found, err := getAccountByAddressFn(address)
 	if err != nil {
-		return "", false, err
+		return nil, err
 	}
 	if !found && strings.ToLower(address) != address {
 		account, found, err = getAccountByAddressFn(strings.ToLower(address))
 		if err != nil {
-			return "", false, err
+			return nil, err
 		}
 	}
-	if !found || account == nil || account.Email == nil {
-		return "", false, nil
-	}
-	if !account.EmailConfirmed {
-		return "", false, nil
+	if !found || account == nil {
+		return nil, nil
 	}
 
-	email := strings.TrimSpace(*account.Email)
-	if email == "" {
-		return "", false, nil
+	notificationEmail, found, err := getNotificationEmailFn(account.Address)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		notificationEmail = nil
 	}
 
-	return email, true, nil
+	return notificationEmailsForAccount(account, notificationEmail), nil
 }
 
 func newCStoreOwnerNotificationStore() (ownerNotificationStore, error) {

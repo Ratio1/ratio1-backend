@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func boolPtr(value bool) *bool {
+	return &value
+}
+
 type mockOwnerNotificationStore struct {
 	syncErr       error
 	lastSentByKey map[string]time.Time
@@ -54,10 +58,10 @@ func TestFetchOracleNodesListFiltersOfflineNodes(t *testing.T) {
 		require.Equal(t, "https://oracle.test/nodes_list", url)
 		response := castTarget.(*oracleNodesListResponse)
 		response.Result.Nodes = map[string]oracleNodeRaw{
-			"node1": {Alias: "alpha", EthAddress: "0x1111111111111111111111111111111111111111", LastState: "offline", LastSeenAgo: 90061},
-			"node2": {Alias: "beta", EthAddress: "0x2222222222222222222222222222222222222222", LastState: "offline", LastSeenAgo: 86400},
-			"node3": {Alias: "gamma", EthAddress: "0x3333333333333333333333333333333333333333", LastState: "online", LastSeenAgo: 99999},
-			"node4": {Alias: "delta", EthAddress: "0x4444444444444444444444444444444444444444", LastSeenAgo: 92000},
+			"node1": {Alias: "alpha", EthAddr: "0x1111111111111111111111111111111111111111", IsOnline: boolPtr(false), LastState: "2026-06-08 10:00:00", LastSeenAgo: "25:01:01"},
+			"node2": {Alias: "beta", EthAddr: "0x2222222222222222222222222222222222222222", IsOnline: boolPtr(false), LastState: "2026-06-08 12:00:00", LastSeenAgo: "24:00:00"},
+			"node3": {Alias: "gamma", EthAddr: "0x3333333333333333333333333333333333333333", IsOnline: boolPtr(true), LastState: "2026-06-09 10:00:00", LastSeenAgo: 99999},
+			"node4": {Alias: "delta", EthAddr: "0x4444444444444444444444444444444444444444", LastSeenAgo: 92000},
 		}
 		return nil
 	}
@@ -76,17 +80,36 @@ func TestFetchOracleNodesListFiltersOfflineNodes(t *testing.T) {
 	require.True(t, nodes[0].OfflineSeconds > int64(offlineNodeThreshold.Seconds()))
 }
 
+func TestValidateOfflineNodesNotifierConfigRequiresCStore(t *testing.T) {
+	previousNewCStoreClient := newCStoreClientFromEnvFn
+	defer func() {
+		newCStoreClientFromEnvFn = previousNewCStoreClient
+	}()
+
+	oldOraclesAPI := config.Config.OraclesApi
+	config.Config.OraclesApi = "https://oracle.test"
+	defer func() {
+		config.Config.OraclesApi = oldOraclesAPI
+	}()
+
+	t.Setenv("EE_CHAINSTORE_API_URL", "")
+	err := ValidateOfflineNodesNotifierConfig()
+	require.ErrorContains(t, err, "EE_CHAINSTORE_API_URL is not set")
+}
+
 func TestNotifyOfflineLinkedNodesFailClosedWhenStoreInitFails(t *testing.T) {
 	previousFetch := fetchOracleNodesListFn
 	previousStore := newOwnerNotificationStoreFn
 	previousResolve := resolveNodeOwnersFn
 	previousGetAccount := getAccountByAddressFn
+	previousGetNotificationEmail := getNotificationEmailFn
 	previousSend := sendOfflineNodesEmailFn
 	defer func() {
 		fetchOracleNodesListFn = previousFetch
 		newOwnerNotificationStoreFn = previousStore
 		resolveNodeOwnersFn = previousResolve
 		getAccountByAddressFn = previousGetAccount
+		getNotificationEmailFn = previousGetNotificationEmail
 		sendOfflineNodesEmailFn = previousSend
 	}()
 
@@ -122,12 +145,14 @@ func TestNotifyOfflineLinkedNodesGroupsAndThrottlesOwners(t *testing.T) {
 	previousStore := newOwnerNotificationStoreFn
 	previousResolve := resolveNodeOwnersFn
 	previousGetAccount := getAccountByAddressFn
+	previousGetNotificationEmail := getNotificationEmailFn
 	previousSend := sendOfflineNodesEmailFn
 	defer func() {
 		fetchOracleNodesListFn = previousFetch
 		newOwnerNotificationStoreFn = previousStore
 		resolveNodeOwnersFn = previousResolve
 		getAccountByAddressFn = previousGetAccount
+		getNotificationEmailFn = previousGetNotificationEmail
 		sendOfflineNodesEmailFn = previousSend
 	}()
 
@@ -179,12 +204,24 @@ func TestNotifyOfflineLinkedNodesGroupsAndThrottlesOwners(t *testing.T) {
 		}
 	}
 
+	getNotificationEmailFn = func(address string) (*model.AccountNotificationEmail, bool, error) {
+		if address != "0xowner1" {
+			return nil, false, nil
+		}
+		email := "alerts@example.com"
+		return &model.AccountNotificationEmail{
+			AccountAddress: address,
+			Email:          &email,
+			EmailConfirmed: true,
+		}, true, nil
+	}
+
 	sendCalls := 0
-	var sentEmail string
+	var sentEmails []string
 	var sentNodes []OfflineNodeAlert
 	sendOfflineNodesEmailFn = func(email string, nodes []OfflineNodeAlert) error {
 		sendCalls++
-		sentEmail = email
+		sentEmails = append(sentEmails, email)
 		sentNodes = append([]OfflineNodeAlert(nil), nodes...)
 		return nil
 	}
@@ -192,8 +229,8 @@ func TestNotifyOfflineLinkedNodesGroupsAndThrottlesOwners(t *testing.T) {
 	NotifyOfflineLinkedNodes()
 
 	require.Len(t, resolvedAddresses, 3)
-	require.Equal(t, 1, sendCalls)
-	require.Equal(t, "owner1@example.com", sentEmail)
+	require.Equal(t, 2, sendCalls)
+	require.ElementsMatch(t, []string{"owner1@example.com", "alerts@example.com"}, sentEmails)
 	require.Len(t, sentNodes, 2)
 	require.Equal(t, 1, mockStore.setCalls)
 }
@@ -203,12 +240,14 @@ func TestNotifyOfflineLinkedNodesSkipsSetWhenEmailFails(t *testing.T) {
 	previousStore := newOwnerNotificationStoreFn
 	previousResolve := resolveNodeOwnersFn
 	previousGetAccount := getAccountByAddressFn
+	previousGetNotificationEmail := getNotificationEmailFn
 	previousSend := sendOfflineNodesEmailFn
 	defer func() {
 		fetchOracleNodesListFn = previousFetch
 		newOwnerNotificationStoreFn = previousStore
 		resolveNodeOwnersFn = previousResolve
 		getAccountByAddressFn = previousGetAccount
+		getNotificationEmailFn = previousGetNotificationEmail
 		sendOfflineNodesEmailFn = previousSend
 	}()
 
