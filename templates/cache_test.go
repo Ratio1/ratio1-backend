@@ -3,10 +3,12 @@ package templates
 import (
 	"testing"
 
+	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
+	config.Config.EmailTemplatesPath = "../templates/html/"
 	LoadAndCacheTemplates()
 }
 
@@ -34,4 +36,8 @@ func TestTemplateGetters(t *testing.T) {
 	c, err = GetJobsEndingEmailTemplate()
 	require.Nil(t, err)
 	require.Equal(t, c.Name(), emailJobsEndingFile)
+
+	c, err = GetNodesOfflineEmailTemplate()
+	require.Nil(t, err)
+	require.Equal(t, c.Name(), emailNodesOfflineFile)
 }

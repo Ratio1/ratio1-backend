@@ -86,6 +86,19 @@ func startApi(ctx *cli.Context) error {
 			c.Start()
 		}
 
+		offlineNodeTiming, found := config.Config.GetOfflineNodesCronJobTiming(nodeAddress)
+		if found {
+			if err := service.ValidateOfflineNodesNotifierConfig(); err != nil {
+				return errors.New("invalid offline nodes notifier config: " + err.Error())
+			}
+			c := cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
+			_, err = c.AddFunc(offlineNodeTiming, service.NotifyOfflineLinkedNodes)
+			if err != nil {
+				return errors.New("error while starting offline nodes cronjob: " + err.Error())
+			}
+			c.Start()
+		}
+
 		monthlyNodeTiming, found := config.Config.GetMonthlyCronJobTiming(nodeAddress)
 		if found {
 			c := cron.New()

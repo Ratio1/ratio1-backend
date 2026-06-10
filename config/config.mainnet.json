@@ -96,6 +96,14 @@
     "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "40 * * * *",
     "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "50 * * * *"
   },
+  "OfflineNodesCronJobTiming": {
+    "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "05 * * * *",
+    "0xA48C80afb9eC73A9F6731a9Cea6774Ed6249a922": "15 * * * *",
+    "0x3B373897136687af87DDbF65662Eb7004090eAF8": "25 * * * *",
+    "0x7388fC301eb7CF6743ecF9e6c781210758669bAD": "35 * * * *",
+    "0x2539fDD57f93b267E58d5f2E6F77063C0230F6F4": "45 * * * *",
+    "0xdc4fDFd5B86aeA7BaB17d4742B7c39A2728Ff59B": "55 * * * *"
+  },
   "MonthlyCronJobTiming": {
     "0xe240d9cf8893d6bE9fb3Ac4C9CE1E504343b64a0": "0 08 1 * *",
     "0xA48C80afb9eC73A9F6731a9Cea6774Ed6249a922": "0 10 1 * *",
@@ -114,6 +122,7 @@
     "CspUrl": "https://deeploy.ratio1.ai/account?tab=invoicing"
   },
   "DeeployApi": "https://deeploy-api.ratio1.ai/get_oracle_job_details",
+  "OraclesApi": "https://oracle.ratio1.ai",
   "ViesApi": {
     "BaseUrl": "https://viesapi.eu/api"
   }

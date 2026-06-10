@@ -50,6 +50,7 @@ if __name__ == "__main__":
     'INFURA_SECRET':'',
 
     'EMAIL_TEMPLATES_PATH':'./templates/html/',
+    'EE_CHAINSTORE_API_URL':'',
   }
 
   # Defining the assets of the application.
