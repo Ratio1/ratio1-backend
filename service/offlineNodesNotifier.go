@@ -170,7 +170,7 @@ func NotifyOfflineLinkedNodes() {
 		cancelLastSent()
 		if err != nil {
 			log.Error("offline nodes notifier failed cstore read for %s: %s", ownerAddress, err.Error())
-			return
+			continue
 		}
 
 		if hasLastSent && now.Sub(lastSent) < ownerNotificationInterval {
@@ -195,7 +195,7 @@ func NotifyOfflineLinkedNodes() {
 		cancelSetLastSent()
 		if err != nil {
 			log.Error("offline nodes notifier failed cstore write for %s: %s", ownerAddress, err.Error())
-			return
+			continue
 		}
 	}
 }

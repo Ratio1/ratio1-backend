@@ -17,11 +17,13 @@ func boolPtr(value bool) *bool {
 }
 
 type mockOwnerNotificationStore struct {
-	syncErr       error
-	lastSentByKey map[string]time.Time
-	lastSentErr   error
-	setErr        error
-	setCalls      int
+	syncErr         error
+	lastSentByKey   map[string]time.Time
+	lastSentErr     error
+	failLastSentNow bool
+	setErr          error
+	failSetNow      bool
+	setCalls        int
 }
 
 func (m *mockOwnerNotificationStore) Sync(ctx context.Context) error {
@@ -29,6 +31,10 @@ func (m *mockOwnerNotificationStore) Sync(ctx context.Context) error {
 }
 
 func (m *mockOwnerNotificationStore) LastSent(ctx context.Context, ownerAddress string) (time.Time, bool, error) {
+	if m.failLastSentNow {
+		m.failLastSentNow = false
+		return time.Time{}, false, errors.New("last sent unavailable")
+	}
 	if m.lastSentErr != nil {
 		return time.Time{}, false, m.lastSentErr
 	}
@@ -37,6 +43,10 @@ func (m *mockOwnerNotificationStore) LastSent(ctx context.Context, ownerAddress 
 }
 
 func (m *mockOwnerNotificationStore) SetLastSent(ctx context.Context, ownerAddress string, sentAt time.Time) error {
+	if m.failSetNow {
+		m.failSetNow = false
+		return errors.New("set unavailable")
+	}
 	if m.setErr != nil {
 		return m.setErr
 	}
@@ -286,4 +296,128 @@ func TestNotifyOfflineLinkedNodesSkipsSetWhenEmailFails(t *testing.T) {
 	NotifyOfflineLinkedNodes()
 
 	require.Equal(t, 0, mockStore.setCalls)
+}
+
+func TestNotifyOfflineLinkedNodesContinuesAfterOwnerLastSentError(t *testing.T) {
+	previousFetch := fetchOracleNodesListFn
+	previousStore := newOwnerNotificationStoreFn
+	previousResolve := resolveNodeOwnersFn
+	previousGetAccount := getAccountByAddressFn
+	previousGetNotificationEmail := getNotificationEmailFn
+	previousSend := sendOfflineNodesEmailFn
+	defer func() {
+		fetchOracleNodesListFn = previousFetch
+		newOwnerNotificationStoreFn = previousStore
+		resolveNodeOwnersFn = previousResolve
+		getAccountByAddressFn = previousGetAccount
+		getNotificationEmailFn = previousGetNotificationEmail
+		sendOfflineNodesEmailFn = previousSend
+	}()
+
+	fetchOracleNodesListFn = func() ([]OfflineNodeAlert, error) {
+		return []OfflineNodeAlert{
+			{NodeAlias: "alpha", NodeAddress: "0x1111111111111111111111111111111111111111", OfflineSeconds: 100000},
+			{NodeAlias: "beta", NodeAddress: "0x2222222222222222222222222222222222222222", OfflineSeconds: 110000},
+		}, nil
+	}
+
+	mockStore := &mockOwnerNotificationStore{
+		lastSentByKey:   map[string]time.Time{},
+		failLastSentNow: true,
+	}
+	newOwnerNotificationStoreFn = func() (ownerNotificationStore, error) {
+		return mockStore, nil
+	}
+
+	resolveNodeOwnersFn = func(nodes []string) (map[string]string, error) {
+		return map[string]string{
+			"0x1111111111111111111111111111111111111111": "0xowner1",
+			"0x2222222222222222222222222222222222222222": "0xowner2",
+		}, nil
+	}
+
+	getAccountByAddressFn = func(address string) (*model.Account, bool, error) {
+		email := address + "@example.com"
+		return &model.Account{
+			Address:        address,
+			Email:          &email,
+			EmailConfirmed: true,
+		}, true, nil
+	}
+	getNotificationEmailFn = func(address string) (*model.AccountNotificationEmail, bool, error) {
+		return nil, false, nil
+	}
+
+	sendCalls := 0
+	sendOfflineNodesEmailFn = func(email string, nodes []OfflineNodeAlert) error {
+		sendCalls++
+		return nil
+	}
+
+	NotifyOfflineLinkedNodes()
+
+	require.Equal(t, 1, sendCalls)
+	require.Equal(t, 1, mockStore.setCalls)
+}
+
+func TestNotifyOfflineLinkedNodesContinuesAfterOwnerSetLastSentError(t *testing.T) {
+	previousFetch := fetchOracleNodesListFn
+	previousStore := newOwnerNotificationStoreFn
+	previousResolve := resolveNodeOwnersFn
+	previousGetAccount := getAccountByAddressFn
+	previousGetNotificationEmail := getNotificationEmailFn
+	previousSend := sendOfflineNodesEmailFn
+	defer func() {
+		fetchOracleNodesListFn = previousFetch
+		newOwnerNotificationStoreFn = previousStore
+		resolveNodeOwnersFn = previousResolve
+		getAccountByAddressFn = previousGetAccount
+		getNotificationEmailFn = previousGetNotificationEmail
+		sendOfflineNodesEmailFn = previousSend
+	}()
+
+	fetchOracleNodesListFn = func() ([]OfflineNodeAlert, error) {
+		return []OfflineNodeAlert{
+			{NodeAlias: "alpha", NodeAddress: "0x1111111111111111111111111111111111111111", OfflineSeconds: 100000},
+			{NodeAlias: "beta", NodeAddress: "0x2222222222222222222222222222222222222222", OfflineSeconds: 110000},
+		}, nil
+	}
+
+	mockStore := &mockOwnerNotificationStore{
+		lastSentByKey: map[string]time.Time{},
+		failSetNow:    true,
+	}
+	newOwnerNotificationStoreFn = func() (ownerNotificationStore, error) {
+		return mockStore, nil
+	}
+
+	resolveNodeOwnersFn = func(nodes []string) (map[string]string, error) {
+		return map[string]string{
+			"0x1111111111111111111111111111111111111111": "0xowner1",
+			"0x2222222222222222222222222222222222222222": "0xowner2",
+		}, nil
+	}
+
+	getAccountByAddressFn = func(address string) (*model.Account, bool, error) {
+		email := address + "@example.com"
+		return &model.Account{
+			Address:        address,
+			Email:          &email,
+			EmailConfirmed: true,
+		}, true, nil
+	}
+	getNotificationEmailFn = func(address string) (*model.AccountNotificationEmail, bool, error) {
+		return nil, false, nil
+	}
+
+	sendCalls := 0
+	sendOfflineNodesEmailFn = func(email string, nodes []OfflineNodeAlert) error {
+		sendCalls++
+		return nil
+	}
+
+	NotifyOfflineLinkedNodes()
+
+	require.Equal(t, 2, sendCalls)
+	require.Equal(t, 1, mockStore.setCalls)
 }
