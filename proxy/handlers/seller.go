@@ -93,14 +93,10 @@ func (h *sellerHandler) newSeller(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetAccount(address)
+	account, err := service.GetOrCreateAccount(address)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "error while retrieving account information: "+err.Error())
-		return
-	} else if account == nil {
-		log.Error(service.ErrorAccountNotFound.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, service.ErrorAccountNotFound.Error())
 		return
 	}
 

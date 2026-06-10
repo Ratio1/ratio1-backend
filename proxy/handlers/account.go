@@ -554,8 +554,6 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		err = service.SendBlacklistedEmail(*account.Email)
 		if err != nil {
 			log.Error("error while sending blacklisted email: " + err.Error())
-			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-			return
 		}
 	}
 

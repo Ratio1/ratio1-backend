@@ -94,6 +94,10 @@ func createMonthlyPoaiDraft(userAddress, cspOwner string, allocations []model.Al
 	}
 
 	err := storage.WithTransaction(func(tx *gorm.DB) error {
+		if err := storage.ClaimAllocationsForDraft(tx, allocations, invoice.DraftId); err != nil {
+			return fmt.Errorf("error while claiming allocations: %w", err)
+		}
+
 		preference, preferenceExists, err := loadDraftPreference(tx, userAddress, &invoice)
 		if err != nil {
 			return err
@@ -102,10 +106,6 @@ func createMonthlyPoaiDraft(userAddress, cspOwner string, allocations []model.Al
 		totalUsdcAmount := big.NewInt(0)
 		for _, alloc := range allocations {
 			totalUsdcAmount.Add(totalUsdcAmount, alloc.GetUsdcAmountPayed())
-			alloc.DraftId = &invoice.DraftId
-			if err := storage.UpdateAllocation(tx, &alloc); err != nil {
-				return fmt.Errorf("error while updating allocation: %w", err)
-			}
 		}
 		invoice.TotalUsdcAmount += GetAmountAsFloat(totalUsdcAmount, model.UsdcDecimals)
 

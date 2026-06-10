@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +56,34 @@ func UpdateAllocation(tx *gorm.DB, alloc *model.Allocation) error {
 	}
 	if txUpdate.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func ClaimAllocationsForDraft(tx *gorm.DB, allocations []model.Allocation, draftID uuid.UUID) error {
+	if len(allocations) == 0 {
+		return nil
+	}
+
+	exec, err := getExecutor(tx)
+	if err != nil {
+		return err
+	}
+
+	ids := make([]uint, 0, len(allocations))
+	for _, alloc := range allocations {
+		ids = append(ids, alloc.Id)
+	}
+
+	txUpdate := exec.Model(&model.Allocation{}).
+		Where("id IN ? AND draft_id IS NULL", ids).
+		Update("draft_id", draftID)
+	if txUpdate.Error != nil {
+		return txUpdate.Error
+	}
+	if txUpdate.RowsAffected != int64(len(ids)) {
+		return fmt.Errorf("claimed %d of %d allocations", txUpdate.RowsAffected, len(ids))
 	}
 
 	return nil

@@ -277,19 +277,23 @@ func DailyGetStats() {
 		LastBlockNumber:          to,
 	}
 
-	//last check due to asynch calls, other server might have finished the job first
-	latestStats, err := storage.GetLatestStats()
-	if err != nil {
-		fmt.Println("error getting latest stats: " + err.Error())
-		return
-	}
-
-	if getEpoch(latestStats.CreationTimestamp) == getEpoch(time.Now()) { //get epoch of r1 mainnet, if today is already present, skip.
-		fmt.Println("stats already fetched")
-		return
-	}
-
+	statsPersisted := false
 	err = storage.WithTransaction(func(tx *gorm.DB) error {
+		if err := storage.LockTransaction(tx, "daily_stats"); err != nil {
+			return errors.New("error locking daily stats transaction: " + err.Error())
+		}
+
+		//last check due to asynch calls, other server might have finished the job first
+		latestStats, err := storage.GetLatestStatsTx(tx)
+		if err != nil {
+			return errors.New("error getting latest stats: " + err.Error())
+		}
+
+		if getEpoch(latestStats.CreationTimestamp) == getEpoch(time.Now()) { //get epoch of r1 mainnet, if today is already present, skip.
+			fmt.Println("stats already fetched")
+			return nil
+		}
+
 		if err := generateAllocations(tx, allocEvents); err != nil {
 			return err
 		}
@@ -299,10 +303,14 @@ func DailyGetStats() {
 		if err := storage.CreateStats(tx, &stats); err != nil {
 			return errors.New("error storing daily stats: " + err.Error())
 		}
+		statsPersisted = true
 		return nil
 	})
 	if err != nil {
 		fmt.Println("error persisting daily stats batch: " + err.Error())
+		return
+	}
+	if !statsPersisted {
 		return
 	}
 

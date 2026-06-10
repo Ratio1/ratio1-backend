@@ -79,14 +79,18 @@ func UpdateStats(stats *model.Stats) error {
 }
 
 func GetLatestStats() (*model.Stats, error) {
-	db, err := GetDB()
+	return GetLatestStatsTx(nil)
+}
+
+func GetLatestStatsTx(tx *gorm.DB) (*model.Stats, error) {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	var r statsRow
 	// selezioniamo castando i NUMERIC a testo
-	err = db.Model(&model.Stats{}).
+	err = exec.Model(&model.Stats{}).
 		Select(`
 			creation_timestamp,
 			daily_active_jobs,
