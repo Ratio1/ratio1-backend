@@ -15,6 +15,7 @@ const (
 	emailKycConfirmedFile    = "email.kyc.confirmed.html"
 	emailAccountResettedFile = "email.account.resetted.html"
 	emailJobsEndingFile      = "email.jobs.ending.html"
+	emailNodesOfflineFile    = "email.nodes.offline.html"
 
 	invoiceDraftFile  = "invoice.draft.html"
 	emailOperatorFile = "email.operator.draft.html"
@@ -69,6 +70,10 @@ func LoadAccountResettedEmailTemplate() (*template.Template, error) {
 
 func LoadJobsEndingEmailTemplate() (*template.Template, error) {
 	return loadTemplate(emailJobsEndingFile)
+}
+
+func LoadNodesOfflineEmailTemplate() (*template.Template, error) {
+	return loadTemplate(emailNodesOfflineFile)
 }
 
 func LoadInvoiceDraftTemplate() (*template.Template, error) {

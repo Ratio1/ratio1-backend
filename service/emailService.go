@@ -26,6 +26,7 @@ const (
 	subjectNewBuyLicenseInvoice  = "A new buy license invoice has been sent"
 	subjectNewInvoiceDraft       = "New draft invoices have been issued"
 	subjectJobsEndingSoon        = "Ratio1 - Jobs ending soon"
+	subjectNodesOffline          = "Ratio1 - Linked nodes offline for more than 24h"
 )
 
 var (
@@ -237,6 +238,64 @@ func SendJobsEndingEmail(email string, jobs []EndingJob) error {
 	}
 
 	return callSendEmail(email, subjectJobsEndingSoon, body.String())
+}
+
+func SendOfflineNodesEmail(email string, nodes []OfflineNodeAlert) error {
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	tmpl, err := templates.GetNodesOfflineEmailTemplate()
+	if err != nil {
+		return errors.New("error while retrieving email template: " + err.Error())
+	}
+
+	type offlineNodeTemplateRow struct {
+		Alias      string
+		Address    string
+		OfflineFor string
+	}
+
+	rows := make([]offlineNodeTemplateRow, 0, len(nodes))
+	for _, node := range nodes {
+		rows = append(rows, offlineNodeTemplateRow{
+			Alias:      node.NodeAlias,
+			Address:    node.NodeAddress,
+			OfflineFor: formatOfflineDuration(node.OfflineSeconds),
+		})
+	}
+
+	var body bytes.Buffer
+	err = tmpl.Execute(&body, struct {
+		Nodes      []offlineNodeTemplateRow
+		NodesCount int
+	}{
+		Nodes:      rows,
+		NodesCount: len(rows),
+	})
+	if err != nil {
+		return errors.New("error while executing email template: " + err.Error())
+	}
+
+	return callSendEmail(email, subjectNodesOffline, body.String())
+}
+
+func formatOfflineDuration(seconds int64) string {
+	if seconds <= 0 {
+		return "0m"
+	}
+
+	days := seconds / 86400
+	hours := (seconds % 86400) / 3600
+	minutes := (seconds % 3600) / 60
+
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+	}
+	if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	}
+	return fmt.Sprintf("%dm", minutes)
 }
 
 func callSendTextEmail(email, subject, text string) error {

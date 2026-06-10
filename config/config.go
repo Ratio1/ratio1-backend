@@ -29,6 +29,7 @@ type GeneralConfig struct {
 	Oblio                          Oblio
 	Infura                         Infura
 	DeeployApi                     string
+	OraclesApi                     string
 	NDContractAddress              string
 	R1ContractAddress              string
 	USDCContractAddress            string
@@ -38,6 +39,7 @@ type GeneralConfig struct {
 	TeamAddresses                  []string
 	BuyLicenseInvoiceCronJobTiming map[string]string
 	DailyCronJobTiming             map[string]string
+	OfflineNodesCronJobTiming      map[string]string
 	MonthlyCronJobTiming           map[string]string
 	AdminAddresses                 []string
 	EmailTemplatesPath             string
@@ -290,5 +292,10 @@ func (c *GeneralConfig) GetDailyCronJobTiming(nodeAddress string) (string, bool)
 
 func (c *GeneralConfig) GetMonthlyCronJobTiming(nodeAddress string) (string, bool) {
 	nodeTiming, found := c.MonthlyCronJobTiming[nodeAddress]
+	return nodeTiming, found
+}
+
+func (c *GeneralConfig) GetOfflineNodesCronJobTiming(nodeAddress string) (string, bool) {
+	nodeTiming, found := c.OfflineNodesCronJobTiming[nodeAddress]
 	return nodeTiming, found
 }
