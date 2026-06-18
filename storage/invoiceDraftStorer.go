@@ -65,38 +65,34 @@ func GetCspDraftByReportId(id, userAddress string) (*model.InvoiceDraft, error) 
 	return &pInvs, nil
 }
 
-func CreateInvoiceDraft(pInv *model.InvoiceDraft) error {
-	db, err := GetDB()
+func CreateInvoiceDraft(tx *gorm.DB, pInv *model.InvoiceDraft) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&pInv)
+	txCreate := exec.Create(pInv)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-func UpdateInvoiceDraft(pInv *model.InvoiceDraft) error {
-	db, err := GetDB()
+func UpdateInvoiceDraft(tx *gorm.DB, pInv *model.InvoiceDraft) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txUpdate := db.Save(&pInv)
+	txUpdate := exec.Save(pInv)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 

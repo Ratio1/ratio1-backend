@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"errors"
+
 	"gorm.io/gorm"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -61,24 +63,26 @@ func GetKycByUuid(uuid uuid.UUID) (*model.Kyc, bool, error) {
 	return &acc, true, nil
 }
 
-func CreateOrUpdateKyc(kyc *model.Kyc) error {
-	db, err := GetDB()
+func CreateOrUpdateKyc(tx *gorm.DB, kyc *model.Kyc) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
 	var existingKyc model.Kyc
-	err = db.Where("email = ?", kyc.Email).First(&existingKyc).Error
-	if err == gorm.ErrRecordNotFound {
-		err = db.Create(kyc).Error
+	err = exec.Where("email = ?", kyc.Email).First(&existingKyc).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = exec.Create(kyc).Error
 		if err != nil {
 			return err
 		}
 	} else if err == nil {
-		err = db.Model(&existingKyc).Where("email = ?", existingKyc.Email).Updates(kyc).Error
+		err = exec.Model(&existingKyc).Where("email = ?", existingKyc.Email).Updates(kyc).Error
 		if err != nil {
 			return err
 		}
+	} else {
+		return err
 	}
 
 	return nil

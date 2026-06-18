@@ -106,7 +106,15 @@ func (h *burnReportHandler) getBurnReport(c *gin.Context) {
 		service.BuildMocks()
 		b := service.GetMockBurnEvents()
 		burnReport := []burnReportStruct{}
-		eventRequested := b[startPosInt : startPosInt+pageDimInt]
+		lenB := len(b)
+		endPos := startPosInt + pageDimInt
+		if startPosInt >= lenB {
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "starting position is greater than burns")
+			return
+		} else if endPos > lenB {
+			endPos = lenB
+		}
+		eventRequested := b[startPosInt:endPos]
 		for _, be := range eventRequested {
 			newBurnreport := burnReportStruct{
 				CreationTimestamp: be.BurnTimestamp,
@@ -116,10 +124,11 @@ func (h *burnReportHandler) getBurnReport(c *gin.Context) {
 			burnReport = append(burnReport, newBurnreport)
 		}
 		response := getBurnReportsResponse{
-			TotalBurnedEventFound: len(b),
+			TotalBurnedEventFound: lenB,
 			BurnReports:           burnReport,
 		}
 		model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
+		return
 	}
 
 	burnEvents, err := storage.GetBurnEventsByOwnerAddress(userAddress)
@@ -134,8 +143,16 @@ func (h *burnReportHandler) getBurnReport(c *gin.Context) {
 		return
 	}
 
+	lenB := len(burnEvents)
+	endPos := startPosInt + pageDimInt
+	if startPosInt >= lenB {
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "starting position is greater than burns")
+		return
+	} else if endPos > lenB {
+		endPos = lenB
+	}
 	burnReport := []burnReportStruct{}
-	eventRequested := burnEvents[startPosInt : startPosInt+pageDimInt]
+	eventRequested := burnEvents[startPosInt:endPos]
 	for _, b := range eventRequested {
 		newBurnreport := burnReportStruct{
 			CreationTimestamp: b.BurnTimestamp,
@@ -146,7 +163,7 @@ func (h *burnReportHandler) getBurnReport(c *gin.Context) {
 	}
 
 	response := getBurnReportsResponse{
-		TotalBurnedEventFound: len(burnEvents),
+		TotalBurnedEventFound: lenB,
 		BurnReports:           burnReport,
 	}
 

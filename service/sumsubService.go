@@ -16,6 +16,7 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
+	"gorm.io/gorm"
 )
 
 type InitSessionResponse struct {
@@ -48,6 +49,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 	}
 
 	kyc.LastUpdated = time.Now().UTC()
+	var userInfoToCreate *model.UserInfo
 
 	switch event.Type {
 	case model.ApplicantCreated:
@@ -81,10 +83,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 			}
 			userInfo.BlockchainAddress = userAddress
 			userInfo.Email = kyc.Email
-			err = storage.CreateUserInfo(userInfo)
-			if err != nil {
-				return errors.New("error while creating userinfo: " + err.Error())
-			}
+			userInfoToCreate = userInfo
 		}
 		kyc.KycStatus = status
 
@@ -131,9 +130,19 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 		kyc.KycStatus = status
 	}
 
-	err = storage.CreateOrUpdateKyc(&kyc)
+	err = storage.WithTransaction(func(tx *gorm.DB) error {
+		if userInfoToCreate != nil {
+			if err := storage.CreateUserInfo(tx, userInfoToCreate); err != nil {
+				return errors.New("error while creating userinfo: " + err.Error())
+			}
+		}
+		if err := storage.CreateOrUpdateKyc(tx, &kyc); err != nil {
+			return errors.New("error while updating kyc information on storage: " + err.Error())
+		}
+		return nil
+	})
 	if err != nil {
-		return errors.New("error while updateing kyc information on storage: " + err.Error())
+		return err
 	}
 
 	return nil

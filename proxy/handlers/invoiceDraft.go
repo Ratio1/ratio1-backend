@@ -542,7 +542,7 @@ func (h *invoiceDraftHandler) getPreferences(c *gin.Context) {
 		return
 	}
 
-	preference, err := storage.GetPreferenceByAddress(userAddress)
+	preference, err := storage.GetPreferenceByAddress(nil, userAddress)
 	if err != nil {
 		log.Error("error while retrieving report: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -591,7 +591,7 @@ func (h *invoiceDraftHandler) createPreferences(c *gin.Context) {
 	}
 	pref.UserAddress = userAddress
 
-	err = storage.CreatePreference(&pref)
+	err = storage.CreatePreference(nil, &pref)
 	if err != nil {
 		log.Error("error while updating preference: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -629,7 +629,7 @@ func (h *invoiceDraftHandler) changePreferences(c *gin.Context) {
 		return
 	}
 
-	err = storage.UpdatePreference(&pref)
+	err = storage.UpdatePreference(nil, &pref)
 	if err != nil {
 		log.Error("error while updating preference: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())

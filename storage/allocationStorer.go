@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -25,39 +27,63 @@ func GetLatestAllocationBlock() (int64, error) {
 	return allocation.BlockNumber, nil
 }
 
-func CreateAllocation(alloc *model.Allocation) error {
-	db, err := GetDB()
+func CreateAllocation(tx *gorm.DB, alloc *model.Allocation) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&alloc)
+	txCreate := exec.Create(alloc)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-func UpdateAllocation(alloc *model.Allocation) error {
-	db, err := GetDB()
+func UpdateAllocation(tx *gorm.DB, alloc *model.Allocation) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txUpdate := db.Save(&alloc)
+	txUpdate := exec.Save(alloc)
 	if txUpdate.Error != nil {
-		txUpdate.Rollback()
 		return txUpdate.Error
 	}
 	if txUpdate.RowsAffected == 0 {
-		txUpdate.Rollback()
 		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func ClaimAllocationsForDraft(tx *gorm.DB, allocations []model.Allocation, draftID uuid.UUID) error {
+	if len(allocations) == 0 {
+		return nil
+	}
+
+	exec, err := getExecutor(tx)
+	if err != nil {
+		return err
+	}
+
+	ids := make([]uint, 0, len(allocations))
+	for _, alloc := range allocations {
+		ids = append(ids, alloc.Id)
+	}
+
+	txUpdate := exec.Model(&model.Allocation{}).
+		Where("id IN ? AND draft_id IS NULL", ids).
+		Update("draft_id", draftID)
+	if txUpdate.Error != nil {
+		return txUpdate.Error
+	}
+	if txUpdate.RowsAffected != int64(len(ids)) {
+		return fmt.Errorf("claimed %d of %d allocations", txUpdate.RowsAffected, len(ids))
 	}
 
 	return nil

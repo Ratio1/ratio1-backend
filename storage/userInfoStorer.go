@@ -5,19 +5,17 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateUserInfo(userInfo *model.UserInfo) error {
-	db, err := GetDB()
+func CreateUserInfo(tx *gorm.DB, userInfo *model.UserInfo) error {
+	exec, err := getExecutor(tx)
 	if err != nil {
 		return err
 	}
 
-	txCreate := db.Create(&userInfo)
+	txCreate := exec.Create(userInfo)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
 	}
 	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
 		return gorm.ErrRecordNotFound
 	}
 
