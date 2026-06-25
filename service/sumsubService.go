@@ -71,19 +71,9 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" {
 			status = model.StatusApproved
-			userInfo, err := fetchUserInfo(&kyc)
+			err = createOrUpdateApprovedUserInfo(&kyc, userAddress)
 			if err != nil {
-				return errors.New("error while getting user info: " + err.Error())
-			}
-			err = SendKycConfirmedEmail(kyc.Email)
-			if err != nil {
-				return errors.New("error while sending email: " + err.Error())
-			}
-			userInfo.BlockchainAddress = userAddress
-			userInfo.Email = kyc.Email
-			err = storage.CreateUserInfo(userInfo)
-			if err != nil {
-				return errors.New("error while creating userinfo: " + err.Error())
+				return err
 			}
 		}
 		kyc.KycStatus = status
@@ -123,9 +113,9 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 			}
 		} else if event.ReviewResult.ReviewAnswer == "GREEN" && event.Type == model.ApplicantOnHold {
 			status = model.StatusApproved
-			err = SendKycConfirmedEmail(kyc.Email)
+			err = createOrUpdateApprovedUserInfo(&kyc, userAddress)
 			if err != nil {
-				return errors.New("error while sending email: " + err.Error())
+				return err
 			}
 		}
 		kyc.KycStatus = status
@@ -134,6 +124,29 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 	err = storage.CreateOrUpdateKyc(&kyc)
 	if err != nil {
 		return errors.New("error while updateing kyc information on storage: " + err.Error())
+	}
+
+	if (event.Type == model.ApplicantReviewed || event.Type == model.ApplicantOnHold) && event.ReviewResult.ReviewAnswer == "GREEN" {
+		err = SendKycConfirmedEmail(kyc.Email)
+		if err != nil {
+			log.Warn("error while sending kyc confirmed email: " + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func createOrUpdateApprovedUserInfo(kyc *model.Kyc, userAddress string) error {
+	userInfo, err := fetchUserInfo(kyc)
+	if err != nil {
+		return errors.New("error while getting user info: " + err.Error())
+	}
+
+	userInfo.BlockchainAddress = userAddress
+	userInfo.Email = kyc.Email
+	err = storage.CreateOrUpdateUserInfo(userInfo)
+	if err != nil {
+		return errors.New("error while creating or updating userinfo: " + err.Error())
 	}
 
 	return nil
