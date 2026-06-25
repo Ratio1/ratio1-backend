@@ -3,6 +3,7 @@ package storage
 import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func CreateUserInfo(userInfo *model.UserInfo) error {
@@ -31,6 +32,39 @@ func UpdateUserInfo(userInfo *model.UserInfo) error {
 	}
 
 	txUpdate := db.Save(&userInfo)
+	if txUpdate.Error != nil {
+		txUpdate.Rollback()
+		return txUpdate.Error
+	}
+	if txUpdate.RowsAffected == 0 {
+		txUpdate.Rollback()
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
+}
+
+func CreateOrUpdateUserInfo(userInfo *model.UserInfo) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+
+	txUpdate := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "blockchain_address"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"email",
+			"name",
+			"surname",
+			"company_name",
+			"identification_code",
+			"address",
+			"state",
+			"city",
+			"country",
+			"is_company",
+		}),
+	}).Create(userInfo)
 	if txUpdate.Error != nil {
 		txUpdate.Rollback()
 		return txUpdate.Error
