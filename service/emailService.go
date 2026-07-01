@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -49,12 +50,19 @@ type EmailSendResponse struct {
 }
 
 type EmailMessage struct {
-	From          string `json:"From"`
-	To            string `json:"To"`
-	Subject       string `json:"Subject"`
-	TextBody      string `json:"TextBody"`
-	HtmlBody      string `json:"HtmlBody"`
-	MessageStream string `json:"MessageStream"`
+	From          string            `json:"From"`
+	To            string            `json:"To"`
+	Subject       string            `json:"Subject"`
+	TextBody      string            `json:"TextBody"`
+	HtmlBody      string            `json:"HtmlBody"`
+	MessageStream string            `json:"MessageStream"`
+	Attachments   []EmailAttachment `json:"Attachments,omitempty"`
+}
+
+type EmailAttachment struct {
+	Name        string `json:"Name"`
+	Content     string `json:"Content"`
+	ContentType string `json:"ContentType"`
 }
 
 func SendNewsEmail(email []string, subject, htmlBody string) error {
@@ -162,7 +170,7 @@ func SendAccountResettedEmail(email string) error {
 	return callSendEmail(email, subjectEmailAccountResetted, body.String())
 }
 
-func SendNodeOwnerDraftEmail(email string) error {
+func SendNodeOwnerDraftEmail(email string, attachments ...EmailAttachment) error {
 	template, err := templates.GetOperatorDraftTemplate()
 	if err != nil {
 		return errors.New("error while retrieving email template: " + err.Error())
@@ -173,7 +181,7 @@ func SendNodeOwnerDraftEmail(email string) error {
 	if err != nil {
 		return errors.New("error while executing email template: " + err.Error())
 	}
-	return callSendEmail(email, subjectNewInvoiceDraft, body.String())
+	return callSendEmailWithAttachments(email, subjectNewInvoiceDraft, body.String(), attachments)
 }
 
 func SendCspDraftEmail(email string) error {
@@ -350,6 +358,10 @@ func callSendBatchEmail(emails []string, subject, htmlBody string) error {
 }
 
 func callSendEmail(email, subject, htmlBody string) error {
+	return callSendEmailWithAttachments(email, subject, htmlBody, nil)
+}
+
+func callSendEmailWithAttachments(email, subject, htmlBody string, attachments []EmailAttachment) error {
 	msg := EmailMessage{
 		From:          config.Config.Mail.FromEmail,
 		To:            email,
@@ -357,6 +369,7 @@ func callSendEmail(email, subject, htmlBody string) error {
 		TextBody:      "",
 		HtmlBody:      htmlBody,
 		MessageStream: messageStreamSend,
+		Attachments:   attachments,
 	}
 
 	var resp EmailSendResponse
@@ -370,6 +383,14 @@ func callSendEmail(email, subject, htmlBody string) error {
 	}
 
 	return nil
+}
+
+func newEmailAttachment(name, contentType string, content []byte) EmailAttachment {
+	return EmailAttachment{
+		Name:        name,
+		Content:     base64.StdEncoding.EncodeToString(content),
+		ContentType: contentType,
+	}
 }
 
 func confirmUrl(t string) string {

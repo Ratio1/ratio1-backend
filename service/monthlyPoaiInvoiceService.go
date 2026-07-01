@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
@@ -122,23 +123,124 @@ func MonthlyPoaiInvoiceReport() {
 		drafts = append(drafts, invoice)
 	}
 
-	allCSP := make(map[string]bool) //map[email]true to have unique emails
-	allNodeOwner := make(map[string]bool)
+	cspEmails := make(map[string][]string)
+	nodeOwnerDrafts := make(map[string][]model.InvoiceDraft)
 	for _, invoice := range drafts {
 		if invoice.UserAddress != invoice.CspOwner { // I should not receive emails if i worked on my nodes
-			allNodeOwner[invoice.UserProfile.Email] = true
-			allCSP[invoice.CspProfile.Email] = true
+			nodeOwnerDrafts[invoice.UserAddress] = append(nodeOwnerDrafts[invoice.UserAddress], invoice)
+			if _, found := cspEmails[invoice.CspOwner]; !found {
+				cspEmails[invoice.CspOwner] = draftNotificationEmails(invoice.CspOwner, invoice.CspProfile.Email)
+			}
 		}
 	}
 
 	//send unique email for csp and node owner ( even if they have more than 1 invoice)
-	for k := range allNodeOwner {
-		_ = SendNodeOwnerDraftEmail(k) //! doesn't check error
+	for address, invoices := range nodeOwnerDrafts {
+		attachments, err := draftInvoiceAttachments(invoices)
+		if err != nil {
+			fmt.Println("error while generating draft invoice attachments: " + err.Error())
+			continue
+		}
+		for _, email := range draftNotificationEmails(address, invoices[0].UserProfile.Email) {
+			_ = SendNodeOwnerDraftEmail(email, attachments...) //! doesn't check error
+		}
 	}
 
-	for k := range allCSP {
-		_ = SendCspDraftEmail(k) //! doesn't check error
+	for _, emails := range cspEmails {
+		for _, email := range emails {
+			_ = SendCspDraftEmail(email) //! doesn't check error
+		}
 	}
+}
+
+func draftNotificationEmails(address, fallbackEmail string) []string {
+	emails, err := getConfirmedAccountEmails(address)
+	if err != nil {
+		fmt.Println("error while retrieving draft notification emails: " + err.Error())
+		return nil
+	}
+	if len(emails) > 0 {
+		return emails
+	}
+
+	email := TrimWhitespacesAndToLower(fallbackEmail)
+	if email == "" {
+		return nil
+	}
+	return []string{email}
+}
+
+func draftInvoiceAttachments(drafts []model.InvoiceDraft) ([]EmailAttachment, error) {
+	attachments := make([]EmailAttachment, 0, len(drafts))
+	for _, draft := range drafts {
+		allocations, err := storage.GetAllocationsByDraftId(draft.DraftId.String())
+		if err != nil {
+			return nil, err
+		}
+		content, err := FillInvoiceDraftTemplate(draft, allocations)
+		if err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, newEmailAttachment(draftInvoiceAttachmentName(draft, ".doc"), "application/msword", content))
+	}
+	return attachments, nil
+}
+
+func draftInvoiceAttachmentName(draft model.InvoiceDraft, ext string) string {
+	if ext == "" {
+		ext = ".doc"
+	}
+	if ext[0] != '.' {
+		ext = "." + ext
+	}
+
+	supplier, ok := draft.UserProfile.GetNameAsString()
+	if !ok {
+		supplier = draft.UserAddress
+	}
+	beneficiary, ok := draft.CspProfile.GetNameAsString()
+	if !ok {
+		beneficiary = draft.CspOwner
+	}
+	invoiceNumber := fmt.Sprintf("%d", draft.InvoiceNumber)
+	if strings.TrimSpace(draft.InvoiceSeries) != "" {
+		invoiceNumber += "-" + draft.InvoiceSeries
+	}
+
+	return fmt.Sprintf("%s_%s_%s_%s%s",
+		draft.CreationTimestamp.Format("200601"),
+		safeFileNamePart(supplier),
+		safeFileNamePart(beneficiary),
+		safeFileNamePart(invoiceNumber),
+		ext,
+	)
+}
+
+func safeFileNamePart(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "unknown"
+	}
+
+	var out strings.Builder
+	lastDash := false
+	for _, r := range value {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			out.WriteRune(r)
+			lastDash = false
+			continue
+		}
+		if !lastDash {
+			out.WriteByte('-')
+			lastDash = true
+		}
+	}
+
+	name := strings.Trim(out.String(), "-")
+	if name == "" {
+		return "unknown"
+	}
+	return name
 }
 
 func formKey(address1, address2 string) string {
