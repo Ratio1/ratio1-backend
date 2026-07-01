@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -38,6 +39,19 @@ func TestDraftNotificationEmailsUsesConfirmedPrimaryAndSecondary(t *testing.T) {
 	}
 
 	require.Equal(t, []string{"owner@example.com", "ops@example.com"}, draftNotificationEmails("0xowner", "fallback@example.com"))
+}
+
+func TestDraftNotificationEmailsSkipsFallbackWhenAccountLookupFails(t *testing.T) {
+	previousGetAccount := getAccountByAddressFn
+	defer func() {
+		getAccountByAddressFn = previousGetAccount
+	}()
+
+	getAccountByAddressFn = func(address string) (*model.Account, bool, error) {
+		return nil, false, errors.New("storage unavailable")
+	}
+
+	require.Nil(t, draftNotificationEmails("0xowner", "fallback@example.com"))
 }
 
 func TestDraftInvoiceAttachmentName(t *testing.T) {

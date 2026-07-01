@@ -128,7 +128,9 @@ func MonthlyPoaiInvoiceReport() {
 	for _, invoice := range drafts {
 		if invoice.UserAddress != invoice.CspOwner { // I should not receive emails if i worked on my nodes
 			nodeOwnerDrafts[invoice.UserAddress] = append(nodeOwnerDrafts[invoice.UserAddress], invoice)
-			cspEmails[invoice.CspOwner] = draftNotificationEmails(invoice.CspOwner, invoice.CspProfile.Email)
+			if _, found := cspEmails[invoice.CspOwner]; !found {
+				cspEmails[invoice.CspOwner] = draftNotificationEmails(invoice.CspOwner, invoice.CspProfile.Email)
+			}
 		}
 	}
 
@@ -155,6 +157,7 @@ func draftNotificationEmails(address, fallbackEmail string) []string {
 	emails, err := getConfirmedAccountEmails(address)
 	if err != nil {
 		fmt.Println("error while retrieving draft notification emails: " + err.Error())
+		return nil
 	}
 	if len(emails) > 0 {
 		return emails
