@@ -25,11 +25,11 @@ func TestGetAllocationsByJobIDsForJobDetails(t *testing.T) {
 	})
 
 	allocations := []model.Allocation{
-		allocationForJobDetailsTest(jobID1, "old job", model.JobType(1), "old project", 10, now.Add(-2*time.Hour)),
-		allocationForJobDetailsTest(jobID1, "latest job", model.JobType(2), "latest project", 11, now.Add(-time.Hour)),
-		allocationForJobDetailsTest(jobID1, "", model.JobType(3), "ignored project", 12, now),
-		allocationForJobDetailsTest(jobID2, "same block older", model.JobType(4), "same block old project", 20, now.Add(-30*time.Minute)),
-		allocationForJobDetailsTest(jobID2, "same block newer", model.JobType(5), "same block new project", 20, now.Add(-20*time.Minute)),
+		allocationForJobDetailsTest(jobID1, "old job", model.JobType(1), "old project", 10, 1, now.Add(-2*time.Hour)),
+		allocationForJobDetailsTest(jobID1, "latest job", model.JobType(2), "latest project", 11, 2, now.Add(-time.Hour)),
+		allocationForJobDetailsTest(jobID1, "", model.JobType(3), "ignored project", 12, 3, now),
+		allocationForJobDetailsTest(jobID2, "same block older", model.JobType(4), "same block old project", 20, 4, now.Add(-30*time.Minute)),
+		allocationForJobDetailsTest(jobID2, "same block newer", model.JobType(5), "same block new project", 20, 5, now.Add(-20*time.Minute)),
 	}
 	require.NoError(t, db.Create(&allocations).Error)
 
@@ -53,11 +53,12 @@ func TestGetAllocationsByJobIDsForJobDetailsEmptyInput(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func allocationForJobDetailsTest(jobID, jobName string, jobType model.JobType, projectName string, blockNumber int64, allocationCreation time.Time) model.Allocation {
+func allocationForJobDetailsTest(jobID, jobName string, jobType model.JobType, projectName string, blockNumber int64, logIndex uint, allocationCreation time.Time) model.Allocation {
 	return model.Allocation{
 		AllocationCreation: allocationCreation,
 		BlockNumber:        blockNumber,
 		TxHash:             "0x0000000000000000000000000000000000000000000000000000000000000000",
+		LogIndex:           &logIndex,
 		JobId:              jobID,
 		JobName:            jobName,
 		JobType:            jobType,

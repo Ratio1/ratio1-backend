@@ -352,9 +352,11 @@ func decodeAllocLogs(vLog types.Log) (*model.Allocation, error) {
 		return nil, fmt.Errorf("jobId too large for uint64: %s", jobIDBig.String())
 	}
 	jobID = jobIDBig.Uint64()
+	logIndex := vLog.Index
 	result := model.Allocation{
 		CspAddress:  vLog.Address.String(),
 		TxHash:      vLog.TxHash.Hex(),
+		LogIndex:    &logIndex,
 		BlockNumber: int64(vLog.BlockNumber),
 
 		NodeAddress:     event.NodeAddress.String(),
