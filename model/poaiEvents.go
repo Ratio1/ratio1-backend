@@ -14,7 +14,8 @@ type Allocation struct {
 	Id                 uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	AllocationCreation time.Time `json:"allocationCreation"`
 	BlockNumber        int64     `gorm:"type:bigint;not null" json:"blockNumber"`
-	TxHash             string    `gorm:"type:varchar(66);not null" json:"txHash"`
+	TxHash             string    `gorm:"type:varchar(66);not null;uniqueIndex:idx_allocation_tx_log,priority:1,where:log_index IS NOT NULL" json:"txHash"`
+	LogIndex           *uint     `gorm:"type:bigint;uniqueIndex:idx_allocation_tx_log,priority:2,where:log_index IS NOT NULL" json:"logIndex"`
 
 	JobId       string  `gorm:"type:text;not null" json:"jobId"`
 	JobName     string  `gorm:"type:text;default:null" json:"jobName"`

@@ -5,6 +5,7 @@ import (
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func GetLatestAllocationBlock() (int64, error) {
@@ -31,14 +32,18 @@ func CreateAllocation(alloc *model.Allocation) error {
 		return err
 	}
 
-	txCreate := db.Create(&alloc)
+	txCreate := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "tx_hash"},
+			{Name: "log_index"},
+		},
+		TargetWhere: clause.Where{Exprs: []clause.Expression{
+			clause.Expr{SQL: "log_index IS NOT NULL"},
+		}},
+		DoNothing: true,
+	}).Create(&alloc)
 	if txCreate.Error != nil {
-		txCreate.Rollback()
 		return txCreate.Error
-	}
-	if txCreate.RowsAffected == 0 {
-		txCreate.Rollback()
-		return gorm.ErrRecordNotFound
 	}
 
 	return nil
