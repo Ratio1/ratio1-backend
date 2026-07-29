@@ -1,0 +1,25 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000112",
+  "session_kind": "user",
+  "status": "Declined",
+  "workflow_id": "00000000-0000-4000-8000-000000000201",
+  "vendor_data": "00000000-0000-4000-8000-000000000312",
+  "environment": "sandbox",
+  "id_verifications": [
+    {
+      "node_id": "id-document",
+      "status": "Declined",
+      "warnings": [
+        {
+          "feature": "ID_VERIFICATION",
+          "risk": "DOCUMENT_EXPIRED",
+          "additional_data": null,
+          "log_type": "error",
+          "short_description": "Document expired",
+          "long_description": "The document expiration date has passed.",
+          "node_id": "id-document"
+        }
+      ]
+    }
+  ]
+}

@@ -23,6 +23,7 @@ type GeneralConfig struct {
 	Jwt                            JwtConfig
 	Mail                           MailConfig
 	Sumsub                         SumsubConfig
+	Didit                          DiditConfig
 	MailerLite                     MailerLiteConfig
 	AcceptedDomains                AcceptedDomains
 	ChainID                        int
@@ -93,6 +94,16 @@ type SumsubConfig struct {
 	SumsubSecretKey    string
 	SumsubJwtSecretKey string
 }
+
+type DiditConfig struct {
+	ApiUrl        string
+	Environment   string
+	KycWorkflowId string
+	KybWorkflowId string
+	ApiKey        string `json:"-"`
+	WebhookSecret string `json:"-"`
+}
+
 type MailerLiteConfig struct {
 	Url     string
 	GroupId string
@@ -211,6 +222,24 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	cfg.Sumsub.SumsubJwtSecretKey = os.Getenv("SUMSUB_JWT_SECRET_KEY")
 	if cfg.Sumsub.SumsubJwtSecretKey == "" {
 		return nil, errors.New("SUMSUB_JWT_SECRET_KEY is not set")
+	}
+
+	/*
+		DIDIT ENV VARIABLES
+
+		Didit remains optional until the provider cutover. The client constructor
+		validates these values when the Didit integration is instantiated.
+	*/
+	cfg.Didit.ApiKey = os.Getenv("DIDIT_API_KEY")
+	cfg.Didit.WebhookSecret = os.Getenv("DIDIT_WEBHOOK_SECRET")
+	if apiUrl := os.Getenv("DIDIT_API_URL"); apiUrl != "" {
+		cfg.Didit.ApiUrl = apiUrl
+	}
+	if workflowId := os.Getenv("DIDIT_KYC_WORKFLOW_ID"); workflowId != "" {
+		cfg.Didit.KycWorkflowId = workflowId
+	}
+	if workflowId := os.Getenv("DIDIT_KYB_WORKFLOW_ID"); workflowId != "" {
+		cfg.Didit.KybWorkflowId = workflowId
 	}
 
 	/*	INFURA ENV VARIABLES */

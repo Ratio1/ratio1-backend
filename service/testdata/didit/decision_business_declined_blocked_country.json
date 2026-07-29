@@ -1,0 +1,20 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000113",
+  "session_kind": "business",
+  "status": "Declined",
+  "decision_reason_code": "blocked_country",
+  "workflow_id": "00000000-0000-4000-8000-000000000202",
+  "vendor_data": "00000000-0000-4000-8000-000000000313",
+  "environment": "sandbox",
+  "registry_checks": [
+    {
+      "node_id": "registry",
+      "status": "Declined",
+      "company": {
+        "country": "XX"
+      },
+      "ownership_structure": [],
+      "warnings": []
+    }
+  ]
+}

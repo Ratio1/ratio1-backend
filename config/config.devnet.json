@@ -36,6 +36,12 @@
     "SumsubSecretKey": "",
     "SumsubJwtSecretKey": ""
   },
+  "Didit": {
+    "ApiUrl": "https://verification.didit.me",
+    "Environment": "sandbox",
+    "KycWorkflowId": "e7ea8679-898e-4439-bbd0-79246d6eb628",
+    "KybWorkflowId": "44fe0ecb-9a11-4717-aed5-c11b73c8a07c"
+  },
   "MailerLite": {
     "Url": "https://connect.mailerlite.com/api",
     "GroupId": "",

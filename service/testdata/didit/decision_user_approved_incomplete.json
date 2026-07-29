@@ -1,0 +1,25 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000101",
+  "session_kind": "user",
+  "session_number": 101,
+  "session_url": "https://verify.invalid/session/test-token-only",
+  "status": "Approved",
+  "workflow_id": "00000000-0000-4000-8000-000000000201",
+  "vendor_data": "00000000-0000-4000-8000-000000000301",
+  "features": [
+    "ID_VERIFICATION",
+    "LIVENESS",
+    "FACE_MATCH",
+    "POA",
+    "AML",
+    "QUESTIONNAIRE"
+  ],
+  "metadata": null,
+  "environment": "sandbox",
+  "id_verifications": [],
+  "liveness_checks": null,
+  "face_matches": [],
+  "poa_verifications": null,
+  "aml_screenings": [],
+  "questionnaire_responses": []
+}

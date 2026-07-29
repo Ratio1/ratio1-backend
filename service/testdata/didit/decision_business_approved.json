@@ -1,0 +1,204 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000102",
+  "session_kind": "business",
+  "session_number": 102,
+  "session_url": "https://verify.invalid/session/test-business-token",
+  "status": "Approved",
+  "workflow_id": "00000000-0000-4000-8000-000000000202",
+  "vendor_data": "00000000-0000-4000-8000-000000000302",
+  "features": [
+    "KYB_REGISTRY",
+    "KYB_DOCUMENTS",
+    "KYB_KEY_PEOPLE",
+    "AML",
+    "QUESTIONNAIRE"
+  ],
+  "metadata": {
+    "applicant_type": "company"
+  },
+  "environment": "sandbox",
+  "registry_checks": [
+    {
+      "node_id": "registry",
+      "status": "Approved",
+      "company": {
+        "company_name": "Example SRL",
+        "country_code": "IT",
+        "registration_number": "TEST-001"
+      },
+      "ownership_structure": {},
+      "warnings": []
+    }
+  ],
+  "document_verifications": [
+    {
+      "node_id": "company-documents",
+      "status": "Approved",
+      "items": [
+        {
+          "document_type": "CERTIFICATE_OF_INCORPORATION",
+          "status": "Approved"
+        },
+        {
+          "document_type": "OWNERSHIP_STRUCTURE",
+          "status": "Approved"
+        }
+      ],
+      "groups": {
+        "LEGAL_PRESENCE": {
+          "approved": 1,
+          "pending": 0,
+          "declined": 0,
+          "in_review": 0,
+          "other": 0,
+          "missing": 0
+        },
+        "OWNERSHIP_STRUCTURE": {
+          "approved": 1,
+          "pending": 0,
+          "declined": 0,
+          "in_review": 0,
+          "other": 0,
+          "missing": 0
+        }
+      },
+      "required_groups": [
+        "LEGAL_PRESENCE",
+        "OWNERSHIP_STRUCTURE"
+      ],
+      "warnings": []
+    }
+  ],
+  "key_people_checks": [
+    {
+      "node_id": "key-people",
+      "status": "Approved",
+      "registry": {
+        "officers": [
+          {
+            "name": "Ada Example",
+            "role": "director",
+            "requires_verification": true,
+            "kyc_status": "Approved"
+          }
+        ]
+      },
+      "submitted": {
+        "parties": [
+          {
+            "name": "Ada Example",
+            "role": "ubo",
+            "ownership_percent": 100,
+            "requires_verification": true,
+            "kyc_session_status": "Approved"
+          }
+        ]
+      },
+      "ubo_kyc_summary": {
+        "total": 1,
+        "approved": 1,
+        "flagged": 0,
+        "pending": 0
+      },
+      "warnings": []
+    }
+  ],
+  "aml_screenings": [
+    {
+      "node_id": "company-aml",
+      "status": "Approved",
+      "total_hits": 0,
+      "warnings": []
+    }
+  ],
+  "questionnaire_responses": [
+    {
+      "node_id": "source-of-funds",
+      "status": "Approved",
+      "questionnaire_id": "e6c959b9-b5e2-4ba5-9217-92ebe8613f5a",
+      "questionnaire_group_id": "00000000-0000-4000-8000-000000000504",
+      "version": 1,
+      "sections": [
+        {
+          "items": [
+            {
+              "uuid": "1c2fd10b-c439-4f53-ba4a-d4581563b52d",
+              "element_type": "DROPDOWN",
+              "is_required": true,
+              "answer": {
+                "value": "business_income"
+              }
+            },
+            {
+              "uuid": "4ec8a1c8-1b79-4aeb-a91e-2ed2a24552a0",
+              "element_type": "LONG_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "Synthetic business revenue"
+              }
+            },
+            {
+              "uuid": "ecac1d83-3413-4c5d-871a-a492f1a1be5b",
+              "element_type": "DROPDOWN",
+              "is_required": true,
+              "answer": {
+                "value": "100k-250k"
+              }
+            },
+            {
+              "uuid": "a714b441-bfd2-4d35-9248-716e668ce2b9",
+              "element_type": "DROPDOWN",
+              "is_required": true,
+              "answer": {
+                "value": "250k-1m"
+              }
+            },
+            {
+              "uuid": "f15f7874-69a4-45de-9cfe-c7fa854b85f6",
+              "element_type": "LONG_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "Synthetic retained earnings, 100000 EUR"
+              }
+            },
+            {
+              "uuid": "bfde3e4c-6148-45cd-a04c-c151dd789930",
+              "element_type": "LONG_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "Business income 100%"
+              }
+            },
+            {
+              "uuid": "82cfd962-7414-4f8c-8e8d-9cf1d46589de",
+              "element_type": "SINGLE_CHOICE",
+              "is_required": true,
+              "answer": {
+                "value": "no"
+              }
+            },
+            {
+              "uuid": "77250407-9e4c-4dfe-80a8-3f091890f217",
+              "element_type": "SINGLE_CHOICE",
+              "is_required": true,
+              "answer": {
+                "value": "yes",
+                "text": "Synthetic test assets"
+              }
+            },
+            {
+              "uuid": "d7517e61-084e-4e8d-b96c-9f137c5b7c81",
+              "element_type": "FILE_UPLOAD",
+              "is_required": true,
+              "answer": {
+                "files": [
+                  "https://media.invalid/synthetic-proof.pdf"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
