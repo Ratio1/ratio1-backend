@@ -1,11 +1,16 @@
 package storage
 
 import (
-	"gorm.io/gorm"
+	"errors"
+	"strings"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrKycIdentityConflict = errors.New("kyc email belongs to a different uuid")
 
 func GetKycByEmail(email string) (*model.Kyc, bool, error) {
 	db, err := GetDB()
@@ -67,21 +72,55 @@ func CreateOrUpdateKyc(kyc *model.Kyc) error {
 		return err
 	}
 
-	var existingKyc model.Kyc
-	err = db.Where("email = ?", kyc.Email).First(&existingKyc).Error
-	if err == gorm.ErrRecordNotFound {
-		err = db.Create(kyc).Error
-		if err != nil {
-			return err
-		}
-	} else if err == nil {
-		err = db.Model(&existingKyc).Where("email = ?", existingKyc.Email).Updates(kyc).Error
-		if err != nil {
-			return err
-		}
+	return createOrUpdateKyc(db, kyc)
+}
+
+func createOrUpdateKyc(db *gorm.DB, kyc *model.Kyc) error {
+	if kyc == nil {
+		return errors.New("kyc is nil")
+	}
+	if kyc.Uuid == uuid.Nil {
+		return errors.New("kyc uuid is required")
+	}
+	if strings.TrimSpace(kyc.Email) == "" || strings.TrimSpace(kyc.Email) != kyc.Email {
+		return errors.New("kyc email must be non-empty and must not contain surrounding whitespace")
+	}
+	if kyc.KycStatus == "" {
+		return errors.New("kyc status is required")
+	}
+	if kyc.ReceiveUpdates == nil {
+		return errors.New("kyc receive-updates preference is required")
+	}
+
+	txUpdate := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "email"}},
+		DoUpdates: clause.Assignments(kycUpdateAssignments(kyc)),
+		Where: clause.Where{Exprs: []clause.Expression{
+			clause.Expr{SQL: "kycs.uuid = EXCLUDED.uuid"},
+		}},
+	}).Create(kyc)
+	if txUpdate.Error != nil {
+		return txUpdate.Error
+	}
+	if txUpdate.RowsAffected == 0 {
+		return ErrKycIdentityConflict
 	}
 
 	return nil
+}
+
+func kycUpdateAssignments(kyc *model.Kyc) map[string]any {
+	return map[string]any{
+		"applicant_id":     kyc.ApplicantId,
+		"applicant_type":   kyc.ApplicantType,
+		"kyc_status":       kyc.KycStatus,
+		"last_updated":     kyc.LastUpdated,
+		"is_active":        kyc.IsActive,
+		"has_been_deleted": kyc.HasBeenDeleted,
+		"receive_updates":  kyc.ReceiveUpdates,
+		"country":          kyc.Country,
+		"vies_registered":  kyc.ViesRegistered,
+	}
 }
 
 func GetAllUsersEmails() ([]string, error) {

@@ -10,7 +10,7 @@ type Kyc struct {
 	Uuid           uuid.UUID `gorm:"primarykey;unique" json:"uuid"`
 	ApplicantId    string    `json:"applicant_id"`
 	ApplicantType  string    `json:"applicant_type"`
-	Email          string    `json:"email"`
+	Email          string    `gorm:"uniqueIndex" json:"email"`
 	KycStatus      string    `json:"kyc_status"`
 	LastUpdated    time.Time `json:"last_updated"`
 	IsActive       bool      `gorm:"not null;default:true" json:"is_active"`
@@ -54,3 +54,7 @@ const (
 	IndividualCustomer = "individual"
 	BusinessCustomer   = "company"
 )
+
+func ShouldPreserveKycOnProviderCutover(status string) bool {
+	return status == StatusApproved || status == StatusFinalRejected
+}

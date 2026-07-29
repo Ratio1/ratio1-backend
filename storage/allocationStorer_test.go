@@ -10,6 +10,8 @@ import (
 )
 
 func TestGetAllocationsByJobIDsForJobDetails(t *testing.T) {
+	requireStorageTestDatabase(t)
+
 	db, err := GetDB()
 	require.NoError(t, err)
 
@@ -19,6 +21,15 @@ func TestGetAllocationsByJobIDsForJobDetails(t *testing.T) {
 	jobID2 := fmt.Sprintf("job-details-%d-2", suffix)
 	missingJobID := fmt.Sprintf("job-details-%d-missing", suffix)
 	jobIDs := []string{jobID1, jobID2, missingJobID}
+	profileAddress := "0x0000000000000000000000000000000000000000"
+
+	require.NoError(t, db.Create(&model.UserInfo{
+		BlockchainAddress: profileAddress,
+		Email:             fmt.Sprintf("allocation-profile-%d@example.com", suffix),
+	}).Error)
+	t.Cleanup(func() {
+		require.NoError(t, db.Where("blockchain_address = ?", profileAddress).Delete(&model.UserInfo{}).Error)
+	})
 
 	t.Cleanup(func() {
 		require.NoError(t, db.Where("job_id IN ?", jobIDs).Delete(&model.Allocation{}).Error)
