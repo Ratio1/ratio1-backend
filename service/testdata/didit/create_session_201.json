@@ -1,0 +1,14 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000101",
+  "session_number": 101,
+  "session_token": "test-token-only",
+  "url": "https://verify.invalid/session/test-token-only",
+  "vendor_data": "00000000-0000-4000-8000-000000000301",
+  "metadata": {
+    "applicant_type": "individual"
+  },
+  "status": "Not Started",
+  "workflow_id": "00000000-0000-4000-8000-000000000201",
+  "workflow_version": 1,
+  "callback": "https://app.invalid/verification-complete"
+}
