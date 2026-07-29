@@ -24,6 +24,7 @@ jobs:
 
         env:
             RATIO1_STORAGE_TEST_DATABASE: "1"
+            RATIO1_SERVICE_TEST_DATABASE: "1"
             RATIO1_TEST_DATABASE_HOST: 127.0.0.1
             RATIO1_TEST_DATABASE_PORT: "5432"
             RATIO1_TEST_DATABASE_USER: postgres
@@ -44,5 +45,19 @@ jobs:
             - name: Run model and storage tests
               run: go test ./model ./storage -count=1
 
+            - name: Run verification policy and HTTP contract tests
+              run: |
+                  go test ./config -count=1
+                  go test ./service -run 'Test(Didit|NewDidit|MapDidit|Verification|GrandfatheredSumsub|SumsubMonitoring|ProjectDidit)' -count=1
+                  go test ./proxy/handlers -run 'Test(DiditWebhook|SumsubWebhook)' -count=1
+
+            - name: Run verification workflow database tests
+              run: go test ./service -run 'Test(RetryableTerminalDiditSessionCreatesOneReplacementConcurrently|StoredSumsubMonitoringEventIsRestartRecoverable)' -count=1
+
+            - name: Compile runtime packages
+              run: go test ./model ./config ./storage ./service ./proxy/handlers ./proxy -run '^$'
+
             - name: Run persistence contention tests
-              run: go test -race ./storage -run 'Test(UpdateAccountAndCreateKyc|CreateOrUpdateKycConcurrentCreateKeepsOneRow|CreateVerificationWebhookEventConcurrentDuplicateHasOneWinner)' -count=3
+              run: |
+                  go test -race ./storage -run 'Test(UpdateAccountAndCreateKyc|CreateOrUpdateKycConcurrentCreateKeepsOneRow|CreateVerificationWebhookEventConcurrentDuplicateHasOneWinner|WithVerificationCreationLockSerializesSameVerification)' -count=3
+                  go test -race ./service -run '^TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently$' -count=3

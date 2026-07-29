@@ -7,17 +7,18 @@ import (
 )
 
 type Kyc struct {
-	Uuid           uuid.UUID `gorm:"primarykey;unique" json:"uuid"`
-	ApplicantId    string    `json:"applicant_id"`
-	ApplicantType  string    `json:"applicant_type"`
-	Email          string    `gorm:"uniqueIndex" json:"email"`
-	KycStatus      string    `json:"kyc_status"`
-	LastUpdated    time.Time `json:"last_updated"`
-	IsActive       bool      `gorm:"not null;default:true" json:"is_active"`
-	HasBeenDeleted bool      `gorm:"not null;default:false" json:"has_been_deleted"`
-	ReceiveUpdates *bool     `gorm:"not null;default:false" json:"receiveUpdates"`
-	Country        string    `json:"country"`
-	ViesRegistered bool      `json:"vies_registered"`
+	Uuid                 uuid.UUID `gorm:"primarykey;unique" json:"uuid"`
+	ApplicantId          string    `json:"applicant_id"`
+	ApplicantType        string    `json:"applicant_type"`
+	VerificationProvider string    `gorm:"type:varchar(32);not null;default:'';index" json:"verification_provider"`
+	Email                string    `gorm:"uniqueIndex" json:"email"`
+	KycStatus            string    `json:"kyc_status"`
+	LastUpdated          time.Time `json:"last_updated"`
+	IsActive             bool      `gorm:"not null;default:true" json:"is_active"`
+	HasBeenDeleted       bool      `gorm:"not null;default:false" json:"has_been_deleted"`
+	ReceiveUpdates       *bool     `gorm:"not null;default:false" json:"receiveUpdates"`
+	Country              string    `json:"country"`
+	ViesRegistered       bool      `json:"vies_registered"`
 }
 
 const (

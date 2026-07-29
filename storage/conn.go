@@ -62,6 +62,7 @@ func TryMigrate() error {
 		&model.Branding{},
 		&model.VerificationSession{},
 		&model.VerificationWebhookEvent{},
+		&model.VerificationNotification{},
 	)
 	if err != nil {
 		return err

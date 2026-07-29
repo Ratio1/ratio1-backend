@@ -48,6 +48,7 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 	}
 
 	kyc.LastUpdated = time.Now().UTC()
+	kyc.VerificationProvider = model.VerificationProviderSumsub
 
 	switch event.Type {
 	case model.ApplicantCreated:
@@ -134,6 +135,99 @@ func ProcessKycEvent(event model.SumsubEvent, kyc model.Kyc, userAddress string)
 	}
 
 	return nil
+}
+
+// PrepareSumsubKycForFullProcessing preserves the pre-cutover/default Sumsub
+// lifecycle, including rows created before provider ownership was persisted.
+// Didit-owned rows are never handed back to Sumsub implicitly.
+func PrepareSumsubKycForFullProcessing(kyc model.Kyc) (model.Kyc, bool) {
+	if kyc.VerificationProvider != "" &&
+		kyc.VerificationProvider != model.VerificationProviderSumsub {
+		return kyc, false
+	}
+	kyc.VerificationProvider = model.VerificationProviderSumsub
+	return kyc, true
+}
+
+// ProcessGrandfatheredSumsubMonitoringEvent is intentionally revoke-only.
+// Sumsub remains connected after the cutover solely to receive monitoring
+// changes for the explicitly Sumsub-owned approved cohort. It never onboards,
+// resets, retries, or re-approves an account.
+func ProcessGrandfatheredSumsubMonitoringEvent(event model.SumsubEvent, kyc model.Kyc) error {
+	updatedKyc, changed, err := grandfatheredSumsubMonitoringTransition(event, kyc)
+	if err != nil || !changed {
+		return err
+	}
+	previousStatus := kyc.KycStatus
+	if err := storage.CreateOrUpdateKyc(&updatedKyc); err != nil {
+		return err
+	}
+	if previousStatus != updatedKyc.KycStatus {
+		switch updatedKyc.KycStatus {
+		case model.StatusFinalRejected:
+			if err := SendKycFinalRejectedEmail(updatedKyc.Email); err != nil {
+				log.Warn("could not send Sumsub monitoring final-rejection email: " + err.Error())
+			}
+		case model.StatusOnHold:
+			if err := SendStepRejectedEmail(updatedKyc.Email); err != nil {
+				log.Warn("could not send Sumsub monitoring suspension email: " + err.Error())
+			}
+		}
+	}
+	return nil
+}
+
+func ParseSumsubMonitoringOccurredAt(value string) (time.Time, error) {
+	const layout = "2006-01-02 15:04:05.000"
+	occurredAt, err := time.ParseInLocation(layout, value, time.UTC)
+	if err != nil {
+		return time.Time{}, errors.New("error while parsing Sumsub monitoring time: " + err.Error())
+	}
+	return occurredAt, nil
+}
+
+func grandfatheredSumsubMonitoringTransition(
+	event model.SumsubEvent,
+	kyc model.Kyc,
+) (model.Kyc, bool, error) {
+	if kyc.VerificationProvider != model.VerificationProviderSumsub ||
+		(kyc.KycStatus != model.StatusApproved && kyc.KycStatus != model.StatusOnHold) ||
+		kyc.ApplicantId == "" ||
+		kyc.ApplicantId != event.ApplicantID {
+		return kyc, false, nil
+	}
+	occurredAt, err := ParseSumsubMonitoringOccurredAt(event.CreatedAtMs)
+	if err != nil {
+		return kyc, false, err
+	}
+	if !kyc.LastUpdated.IsZero() && !occurredAt.After(kyc.LastUpdated) {
+		return kyc, false, nil
+	}
+
+	switch event.Type {
+	case model.ApplicantDeactivated:
+		kyc.IsActive = false
+		kyc.KycStatus = model.StatusOnHold
+	case model.ApplicantDeleted:
+		kyc.HasBeenDeleted = true
+		kyc.KycStatus = model.StatusOnHold
+	case model.ApplicantReviewed,
+		model.ApplicantOnHold,
+		model.ApplicantActionReviewed,
+		model.ApplicantActionOnHold:
+		if event.ReviewResult.ReviewAnswer != "RED" {
+			return kyc, false, nil
+		}
+		if event.ReviewResult.ReviewRejectType == "FINAL" {
+			kyc.KycStatus = model.StatusFinalRejected
+		} else {
+			kyc.KycStatus = model.StatusOnHold
+		}
+	default:
+		return kyc, false, nil
+	}
+	kyc.LastUpdated = occurredAt
+	return kyc, true, nil
 }
 
 func createOrUpdateApprovedUserInfo(kyc *model.Kyc, userAddress string) error {

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
@@ -21,9 +22,10 @@ import (
 )
 
 const (
-	baseSumsubEndpoint = "/sumsub"
-	kycInitEndpoint    = "/init/Kyc"
-	hookEndpoint       = "/hook"
+	baseSumsubEndpoint        = "/sumsub"
+	kycInitEndpoint           = "/init/Kyc"
+	hookEndpoint              = "/hook"
+	maxSumsubWebhookBodyBytes = int64(1 << 20)
 )
 
 type initSessionRequest struct {
@@ -65,6 +67,10 @@ func (h *sumsubHandler) initSession(c *gin.Context) {
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
+		return
+	}
+	if config.Config.Verification.Provider != model.VerificationProviderSumsub {
+		model.JsonResponse(c, http.StatusGone, nil, nodeAddress, "Sumsub onboarding is inactive")
 		return
 	}
 
@@ -124,6 +130,17 @@ func (h *sumsubHandler) initSession(c *gin.Context) {
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "user is final rejected, cannot retry")
 		return
 	}
+	if kyc.VerificationProvider != "" &&
+		kyc.VerificationProvider != model.VerificationProviderSumsub {
+		model.JsonResponse(
+			c,
+			http.StatusConflict,
+			nil,
+			nodeAddress,
+			"verification is owned by another provider and requires an explicit rollback",
+		)
+		return
+	}
 
 	//User never init kyc
 	if kyc.ApplicantType == "" {
@@ -156,6 +173,7 @@ func (h *sumsubHandler) initSession(c *gin.Context) {
 		return
 	}
 
+	kyc.VerificationProvider = model.VerificationProviderSumsub
 	err = storage.CreateOrUpdateKyc(kyc)
 	if err != nil {
 		log.Error("error while saving kyc information in storage: " + err.Error())
@@ -167,19 +185,30 @@ func (h *sumsubHandler) initSession(c *gin.Context) {
 }
 
 func (h *sumsubHandler) processEvents(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSumsubWebhookBodyBytes)
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		status := http.StatusBadRequest
+		var maxBytesError *http.MaxBytesError
+		if errors.As(err, &maxBytesError) {
+			status = http.StatusRequestEntityTooLarge
+		}
+		model.JsonResponse(c, status, nil, "", "invalid Sumsub webhook body")
+		return
+	}
+
 	nodeAddress, err := service.GetAddress()
 	if err != nil {
 		log.Error("error while retrieving node address: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, "", err.Error())
 		return
 	}
-
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		log.Error("error while parsing request body: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+	if config.Config.Verification.Provider != model.VerificationProviderSumsub &&
+		!config.Config.Verification.LegacySumsubWebhooksEnabled {
+		model.JsonResponse(c, http.StatusGone, nil, nodeAddress, "Sumsub monitoring is inactive")
 		return
 	}
+
 	err = h.validateSecret(c, body)
 	if err != nil {
 		log.Error("error while validating secret: " + err.Error())
@@ -197,6 +226,7 @@ func (h *sumsubHandler) processEvents(c *gin.Context) {
 
 	if checkIfBeneficiaryUUID(kycEvent.ExternalUserID) {
 		model.JsonResponse(c, http.StatusOK, "External user id found", nodeAddress, "")
+		return
 	}
 
 	uuid, err := uuid.Parse(kycEvent.ExternalUserID)
@@ -217,30 +247,97 @@ func (h *sumsubHandler) processEvents(c *gin.Context) {
 		return
 	}
 
-	if kyc.KycStatus == model.StatusFinalRejected && kycEvent.Type != model.ApplicantReset {
-		log.Error("user is final rejected, cannot retry")
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "user is final rejected, cannot retry")
+	if config.Config.Verification.Provider == model.VerificationProviderSumsub {
+		fullKyc, shouldProcess := service.PrepareSumsubKycForFullProcessing(*kyc)
+		if !shouldProcess {
+			model.JsonResponse(c, http.StatusOK, "", nodeAddress, "")
+			return
+		}
+		if fullKyc.KycStatus == model.StatusFinalRejected &&
+			kycEvent.Type != model.ApplicantReset {
+			model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, "user is final rejected, cannot retry")
+			return
+		}
+		user, accountFound, accountErr := storage.GetAccountByEmail(fullKyc.Email)
+		if accountErr != nil {
+			log.Error("error while retrieving account information from storage: " + accountErr.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, accountErr.Error())
+			return
+		}
+		if !accountFound {
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
+			return
+		}
+		if err = service.ProcessKycEvent(kycEvent, fullKyc, user.Address); err != nil {
+			log.Error("error while processing Sumsub event: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
+		model.JsonResponse(c, http.StatusOK, "", nodeAddress, "")
 		return
 	}
 
-	user, found, err := storage.GetAccountByEmail(kyc.Email)
+	if kyc.KycStatus == model.StatusFinalRejected {
+		model.JsonResponse(c, http.StatusOK, "", nodeAddress, "")
+		return
+	}
+	if kyc.VerificationProvider != model.VerificationProviderSumsub ||
+		(kyc.KycStatus != model.StatusApproved && kyc.KycStatus != model.StatusOnHold) ||
+		kyc.ApplicantId == "" ||
+		kyc.ApplicantId != kycEvent.ApplicantID {
+		model.JsonResponse(c, http.StatusOK, "", nodeAddress, "")
+		return
+	}
+
+	eventId := strings.TrimSpace(kycEvent.CorrelationID)
+	if eventId == "" {
+		digest := sha256.Sum256(body)
+		eventId = "payload:" + hex.EncodeToString(digest[:])
+	}
+	payloadDigest := sha256.Sum256(body)
+	environment := model.VerificationEnvironmentProduction
+	if kycEvent.SandboxMode {
+		environment = model.VerificationEnvironmentSandbox
+	}
+	occurredAt, err := service.ParseSumsubMonitoringOccurredAt(kycEvent.CreatedAtMs)
 	if err != nil {
-		log.Error("error while retrieving account information from storage: " + err.Error())
+		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
+		return
+	}
+	created, err := storage.CreateVerificationWebhookEvent(&model.VerificationWebhookEvent{
+		Provider:          model.VerificationProviderSumsub,
+		Environment:       environment,
+		EventId:           eventId,
+		EventType:         kycEvent.Type,
+		ProviderSessionId: kycEvent.ApplicantID,
+		VendorData:        kycEvent.ExternalUserID,
+		ProviderStatus:    kycEvent.ReviewResult.ReviewAnswer,
+		StatusReason:      kycEvent.ReviewResult.ReviewRejectType,
+		OccurredAt:        &occurredAt,
+		ReceivedAt:        time.Now().UTC(),
+		PayloadSha256:     hex.EncodeToString(payloadDigest[:]),
+		ProcessingStatus:  model.VerificationEventReceived,
+	})
+	if err != nil {
+		log.Error("error while persisting Sumsub monitoring event: " + err.Error())
 		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
 		return
-	} else if !found {
-		log.Error("account not found in storage")
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, "user email not found")
-		return
 	}
-
-	err = service.ProcessKycEvent(kycEvent, *kyc, user.Address)
-	if err != nil {
-		log.Error("error whil eprocessing event: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
+	if !created {
+		storedEvent, found, readErr := storage.GetVerificationWebhookEvent(
+			model.VerificationProviderSumsub,
+			environment,
+			eventId,
+		)
+		if readErr != nil {
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, readErr.Error())
+			return
+		}
+		if found && storedEvent.ProcessingStatus == model.VerificationEventProcessed {
+			model.JsonResponse(c, http.StatusOK, "", nodeAddress, "")
+			return
+		}
 	}
-
 	model.JsonResponse(c, http.StatusOK, "", nodeAddress, "")
 }
 

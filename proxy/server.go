@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -20,7 +21,9 @@ var corsHeaders = []string{
 }
 
 type WebServer struct {
-	router *gin.Engine
+	router              *gin.Engine
+	verificationService *service.VerificationService
+	verificationWorker  *service.VerificationWorker
 }
 
 func NewWebServer() (*WebServer, error) {
@@ -35,11 +38,17 @@ func NewWebServer() (*WebServer, error) {
 	groupHandler := handlers.NewGroupHandler()
 
 	service.NewAuthService()
+	verificationService, err := service.NewVerificationService(config.Config)
+	if err != nil {
+		return nil, err
+	}
 
 	handlers.NewAuthHandler(groupHandler)
+	handlers.NewHealthHandler(groupHandler)
 	handlers.NewLaunchpadHandler(groupHandler)
 	handlers.NewAccountHandler(groupHandler)
 	handlers.NewSumsubHandler(groupHandler)
+	handlers.NewVerificationHandler(groupHandler, verificationService)
 	handlers.NewTokenHandler(groupHandler)
 	handlers.NewSellerHandler(groupHandler)
 	handlers.NewAdminHandler(groupHandler)
@@ -50,11 +59,13 @@ func NewWebServer() (*WebServer, error) {
 	groupHandler.RegisterEndpoints(router)
 
 	return &WebServer{
-		router: router,
+		router:              router,
+		verificationService: verificationService,
 	}, nil
 }
 
 func (w *WebServer) Run() *http.Server {
+	w.verificationWorker = w.verificationService.StartWorker(context.Background())
 	address := config.Config.Api.Address
 	if !strings.Contains(address, ":") {
 		panic("bad address")
@@ -81,4 +92,11 @@ func (w *WebServer) Run() *http.Server {
 	}()
 
 	return server
+}
+
+func (w *WebServer) Shutdown(ctx context.Context, server *http.Server) error {
+	if w.verificationWorker != nil {
+		w.verificationWorker.Stop()
+	}
+	return server.Shutdown(ctx)
 }
