@@ -2,7 +2,7 @@
   "session_id": "00000000-0000-4000-8000-000000000102",
   "session_kind": "business",
   "session_number": 102,
-  "session_url": "https://verify.invalid/session/test-business-token",
+  "session_url": "https://verify.didit.me/session/test-business-token",
   "status": "Approved",
   "workflow_id": "00000000-0000-4000-8000-000000000202",
   "vendor_data": "00000000-0000-4000-8000-000000000302",

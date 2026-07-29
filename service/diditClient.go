@@ -192,6 +192,42 @@ func (c *DiditClient) RetrieveDecision(
 	return &decision, nil
 }
 
+func (c *DiditClient) RetrieveEntity(
+	ctx context.Context,
+	sessionKind model.DiditSessionKind,
+	vendorData string,
+) (*model.DiditEntity, error) {
+	if _, err := uuid.Parse(vendorData); err != nil {
+		return nil, errors.New("Didit entity vendor data must be the KYC UUID")
+	}
+	var resource string
+	switch sessionKind {
+	case model.DiditSessionKindUser:
+		resource = "users"
+	case model.DiditSessionKindBusiness:
+		resource = "businesses"
+	default:
+		return nil, errors.New("Didit entity session kind is invalid")
+	}
+
+	path := "v3/" + resource + "/" + url.PathEscape(vendorData) + "/"
+	body, err := c.doJSON(ctx, http.MethodGet, path, nil, http.StatusOK, "retrieve entity")
+	if err != nil {
+		return nil, err
+	}
+
+	var entity model.DiditEntity
+	if err = json.Unmarshal(body, &entity); err != nil {
+		return nil, fmt.Errorf("%w: entity JSON", ErrDiditInvalidResponse)
+	}
+	if entity.DiditInternalId == uuid.Nil ||
+		entity.VendorData != vendorData ||
+		strings.TrimSpace(entity.Status) == "" {
+		return nil, ErrDiditInvalidResponse
+	}
+	return &entity, nil
+}
+
 func (c *DiditClient) doJSON(
 	ctx context.Context,
 	method string,
@@ -320,11 +356,23 @@ func validateDiditCreateSessionResponse(
 	if response.SessionKind != "" && response.SessionKind != request.ExpectedSessionKind {
 		return ErrDiditKindMismatch
 	}
-	sessionURL, err := url.Parse(response.Url)
-	if err != nil || sessionURL.Scheme != "https" || sessionURL.Host == "" {
+	if !isAllowedDiditHostedURL(response.Url) {
 		return ErrDiditInvalidResponse
 	}
 	return nil
+}
+
+func isAllowedDiditHostedURL(value string) bool {
+	sessionURL, err := url.Parse(strings.TrimSpace(value))
+	if err != nil ||
+		sessionURL.Scheme != "https" ||
+		sessionURL.Host != "verify.didit.me" ||
+		sessionURL.User != nil ||
+		sessionURL.Fragment != "" {
+		return false
+	}
+	token := strings.TrimPrefix(sessionURL.EscapedPath(), "/session/")
+	return token != "" && token != sessionURL.EscapedPath() && !strings.Contains(token, "/")
 }
 
 func validateDiditDecision(

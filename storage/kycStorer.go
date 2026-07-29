@@ -111,15 +111,16 @@ func createOrUpdateKyc(db *gorm.DB, kyc *model.Kyc) error {
 
 func kycUpdateAssignments(kyc *model.Kyc) map[string]any {
 	return map[string]any{
-		"applicant_id":     kyc.ApplicantId,
-		"applicant_type":   kyc.ApplicantType,
-		"kyc_status":       kyc.KycStatus,
-		"last_updated":     kyc.LastUpdated,
-		"is_active":        kyc.IsActive,
-		"has_been_deleted": kyc.HasBeenDeleted,
-		"receive_updates":  kyc.ReceiveUpdates,
-		"country":          kyc.Country,
-		"vies_registered":  kyc.ViesRegistered,
+		"applicant_id":          kyc.ApplicantId,
+		"applicant_type":        kyc.ApplicantType,
+		"verification_provider": kyc.VerificationProvider,
+		"kyc_status":            kyc.KycStatus,
+		"last_updated":          kyc.LastUpdated,
+		"is_active":             kyc.IsActive,
+		"has_been_deleted":      kyc.HasBeenDeleted,
+		"receive_updates":       kyc.ReceiveUpdates,
+		"country":               kyc.Country,
+		"vies_registered":       kyc.ViesRegistered,
 	}
 }
 

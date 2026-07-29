@@ -68,6 +68,7 @@ func UpdateVerificationSession(session *model.VerificationSession) error {
 			"provider_application_id": session.ProviderApplicationId,
 			"kyc_status":              session.KycStatus,
 			"provider_status":         session.ProviderStatus,
+			"status_reason":           session.StatusReason,
 			"decision_at":             session.DecisionAt,
 			"last_reconciled_at":      session.LastReconciledAt,
 			"updated_at":              session.UpdatedAt,
@@ -255,7 +256,11 @@ func validateApplicantType(applicantType string) error {
 
 func validateVerificationEventStatus(status string) error {
 	switch status {
-	case model.VerificationEventReceived, model.VerificationEventProcessed, model.VerificationEventFailed:
+	case model.VerificationEventReceived,
+		model.VerificationEventProcessing,
+		model.VerificationEventProcessed,
+		model.VerificationEventFailed,
+		model.VerificationEventDeadLetter:
 		return nil
 	default:
 		return fmt.Errorf("unsupported verification event status %q", status)

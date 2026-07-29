@@ -262,3 +262,10 @@ type DiditReview struct {
 	NewStatus string          `json:"new_status"`
 	User      json.RawMessage `json:"user"`
 }
+
+type DiditEntity struct {
+	DiditInternalId uuid.UUID       `json:"didit_internal_id"`
+	VendorData      string          `json:"vendor_data"`
+	Status          string          `json:"status"`
+	Features        json.RawMessage `json:"features"`
+}

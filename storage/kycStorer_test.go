@@ -157,17 +157,62 @@ func TestCreateOrUpdateKycRejectsEmailReassignmentToDifferentUuid(t *testing.T) 
 	require.True(t, stored.IsActive)
 }
 
-func TestMigrateAddsKycEmailUniqueIndex(t *testing.T) {
+func TestMigrateAddsKycEmailUniqueConstraint(t *testing.T) {
 	requireStorageTestDatabase(t)
 
 	db, err := GetDB()
 	require.NoError(t, err)
 
-	require.NoError(t, db.Migrator().DropIndex(&model.Kyc{}, "idx_kycs_email"))
-	require.False(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
+	require.NoError(t, db.Migrator().DropConstraint(&model.Kyc{}, "uni_kycs_email"))
+	require.NoError(t, db.Exec(`CREATE INDEX "idx_kycs_email" ON "kycs" ("email")`).Error)
+	require.False(t, db.Migrator().HasConstraint(&model.Kyc{}, "uni_kycs_email"))
 
-	require.NoError(t, db.AutoMigrate(&model.Kyc{}))
-	require.True(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
+	require.NoError(t, migrateDatabase(context.Background(), db))
+	require.True(t, db.Migrator().HasConstraint(&model.Kyc{}, "uni_kycs_email"))
+	require.False(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
+}
+
+func TestMigrateWithKycEmailUniqueConstraintIsRepeatable(t *testing.T) {
+	requireStorageTestDatabase(t)
+
+	db, err := GetDB()
+	require.NoError(t, err)
+	require.NoError(t, migrateDatabase(context.Background(), db))
+	require.NoError(t, migrateDatabase(context.Background(), db))
+	require.NoError(t, verifyMigrationSchema(context.Background(), db))
+}
+
+func TestMigrateExistingKycSchemaAddsVerificationProvider(t *testing.T) {
+	requireStorageTestDatabase(t)
+
+	db, err := GetDB()
+	require.NoError(t, err)
+	require.NoError(t, db.Migrator().DropIndex(&model.Kyc{}, "idx_kycs_verification_provider"))
+	require.NoError(t, db.Migrator().DropColumn(&model.Kyc{}, "VerificationProvider"))
+	t.Cleanup(func() {
+		require.NoError(t, migrateDatabase(context.Background(), db))
+	})
+
+	require.NoError(t, migrateDatabase(context.Background(), db))
+	require.True(t, db.Migrator().HasColumn(&model.Kyc{}, "VerificationProvider"))
+	require.True(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_verification_provider"))
+}
+
+func TestEnsureKycEmailUniqueIndexRemovesLegacyIndexAfterConstraintCreation(t *testing.T) {
+	requireStorageTestDatabase(t)
+
+	db, err := GetDB()
+	require.NoError(t, err)
+	require.True(t, db.Migrator().HasConstraint(&model.Kyc{}, "uni_kycs_email"))
+	require.NoError(t, db.Exec(`CREATE INDEX "idx_kycs_email" ON "kycs" ("email")`).Error)
+	t.Cleanup(func() {
+		require.NoError(t, migrateDatabase(context.Background(), db))
+	})
+
+	require.NoError(t, ensureKycEmailUniqueIndex(context.Background(), db))
+	require.NoError(t, verifyMigrationSchema(context.Background(), db))
+	require.True(t, db.Migrator().HasConstraint(&model.Kyc{}, "uni_kycs_email"))
+	require.False(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
 }
 
 func TestMigrateRejectsLegacyDuplicateKycEmailsBeforeAddingIndex(t *testing.T) {
@@ -179,11 +224,12 @@ func TestMigrateRejectsLegacyDuplicateKycEmailsBeforeAddingIndex(t *testing.T) {
 	email := fmt.Sprintf("kyc-duplicate-preflight-%s@example.com", uuid.NewString())
 	nullEmailUuidOne := uuid.New()
 	nullEmailUuidTwo := uuid.New()
-	require.NoError(t, db.Migrator().DropIndex(&model.Kyc{}, "idx_kycs_email"))
+	require.NoError(t, db.Migrator().DropConstraint(&model.Kyc{}, "uni_kycs_email"))
+	require.NoError(t, db.Exec(`CREATE INDEX "idx_kycs_email" ON "kycs" ("email")`).Error)
 	t.Cleanup(func() {
 		require.NoError(t, db.Where("email = ?", email).Delete(&model.Kyc{}).Error)
 		require.NoError(t, db.Where("uuid IN ?", []uuid.UUID{nullEmailUuidOne, nullEmailUuidTwo}).Delete(&model.Kyc{}).Error)
-		require.NoError(t, db.AutoMigrate(&model.Kyc{}))
+		require.NoError(t, migrateDatabase(context.Background(), db))
 	})
 
 	receiveUpdates := false
@@ -204,7 +250,7 @@ func TestMigrateRejectsLegacyDuplicateKycEmailsBeforeAddingIndex(t *testing.T) {
 
 	err = migrateDatabase(context.Background(), db)
 	require.ErrorContains(t, err, "found 1 duplicate email groups")
-	require.False(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
+	require.False(t, db.Migrator().HasConstraint(&model.Kyc{}, "uni_kycs_email"))
 
 	require.NoError(t, db.Where("email = ?", email).Delete(&model.Kyc{}).Error)
 	require.NoError(t, db.Exec(
@@ -213,8 +259,9 @@ func TestMigrateRejectsLegacyDuplicateKycEmailsBeforeAddingIndex(t *testing.T) {
 		nullEmailUuidTwo,
 	).Error)
 	require.NoError(t, validateExistingKycEmailsAreUnique(db))
-	require.NoError(t, db.AutoMigrate(&model.Kyc{}))
-	require.True(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
+	require.NoError(t, migrateDatabase(context.Background(), db))
+	require.True(t, db.Migrator().HasConstraint(&model.Kyc{}, "uni_kycs_email"))
+	require.False(t, db.Migrator().HasIndex(&model.Kyc{}, "idx_kycs_email"))
 }
 
 func TestCreateOrUpdateKycConcurrentCreateKeepsOneRow(t *testing.T) {

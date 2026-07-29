@@ -27,6 +27,13 @@
     "ConfirmUrl": "https://testnet-app.ratio1.ai/confirm-email?token=%s",
     "FromEmail": "noreply@ratio1.ai"
   },
+  "Verification": {
+    "Provider": "sumsub",
+    "LegacySumsubWebhooksEnabled": true,
+    "WorkerPollSeconds": 2,
+    "WorkerBatchSize": 20,
+    "WorkerMaxAttempts": 10
+  },
   "Sumsub": {
     "ApiUrl": "https://api.sumsub.com",
     "ApiEndpoint": "/resources/accessTokens/sdk",
@@ -39,8 +46,11 @@
   "Didit": {
     "ApiUrl": "https://verification.didit.me",
     "Environment": "sandbox",
+    "CallbackUrl": "https://testnet-app.ratio1.ai/profile",
     "KycWorkflowId": "e7ea8679-898e-4439-bbd0-79246d6eb628",
-    "KybWorkflowId": "44fe0ecb-9a11-4717-aed5-c11b73c8a07c"
+    "KycWorkflowVersion": 1,
+    "KybWorkflowId": "44fe0ecb-9a11-4717-aed5-c11b73c8a07c",
+    "KybWorkflowVersion": 1
   },
   "MailerLite": {
     "Url": "https://connect.mailerlite.com/api",

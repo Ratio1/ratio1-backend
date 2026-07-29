@@ -116,7 +116,17 @@ func TestDiditClientCreateSessionRejectsInvalidRoutingIdentity(t *testing.T) {
 		},
 		{
 			name:        "insecure hosted URL",
-			response:    strings.Replace(valid, "https://verify.invalid", "http://verify.invalid", 1),
+			response:    strings.Replace(valid, "https://verify.didit.me", "http://verify.didit.me", 1),
+			expectedErr: ErrDiditInvalidResponse,
+		},
+		{
+			name:        "unexpected hosted URL origin",
+			response:    strings.Replace(valid, "verify.didit.me", "attacker.invalid", 1),
+			expectedErr: ErrDiditInvalidResponse,
+		},
+		{
+			name:        "unexpected hosted URL path",
+			response:    strings.Replace(valid, "/session/", "/other/", 1),
 			expectedErr: ErrDiditInvalidResponse,
 		},
 		{

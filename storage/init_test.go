@@ -73,7 +73,10 @@ func TestMain(m *testing.M) {
 	sqlDb.SetMaxOpenConns(10)
 	sqlDb.SetMaxIdleConns(10)
 
-	database, err = gorm.Open(postgres.New(postgres.Config{Conn: sqlDb}))
+	database, err = gorm.Open(postgres.New(postgres.Config{
+		Conn:       sqlDb,
+		DriverName: "postgres",
+	}))
 	if err == nil {
 		err = migrateDatabase(context.Background(), database)
 	}
