@@ -27,7 +27,10 @@ func Connect() {
 		}
 		sqlDb.SetMaxOpenConns(config.Config.Database.MaxOpenConns)
 		sqlDb.SetMaxIdleConns(config.Config.Database.MaxIdleConns)
-		conn, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDb}))
+		conn, err := gorm.Open(postgres.New(postgres.Config{
+			Conn:       sqlDb,
+			DriverName: "postgres",
+		}))
 		if err != nil {
 			panic(err)
 		}
