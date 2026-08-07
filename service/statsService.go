@@ -467,15 +467,10 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 		addresses = append(addresses, common.HexToAddress(k))
 	}
 
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	eventSignatureAsBytes := []byte(ratio1abi.AllocationEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: addresses,
 		Topics:    [][]common.Hash{{eventHash}},
 	}
@@ -488,7 +483,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 
 	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
 	defer cancel()
-	logs, err := client.FilterLogs(ctx, query)
+	logs, err := filterLogsInChunks(ctx, client, query, from, to)
 	if err != nil {
 		return nil, errors.New("error while filtering logs: " + err.Error())
 	}
@@ -549,15 +544,10 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 		addresses = append(addresses, common.HexToAddress(k))
 	}
 
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	eventSignatureAsBytes := []byte(ratio1abi.BurnEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: addresses,
 		Topics:    [][]common.Hash{{eventHash}},
 	}
@@ -570,7 +560,7 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 
 	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
 	defer cancel()
-	logs, err := client.FilterLogs(ctx, query)
+	logs, err := filterLogsInChunks(ctx, client, query, from, to)
 	if err != nil {
 		return nil, errors.New("error while filtering logs: " + err.Error())
 	}
