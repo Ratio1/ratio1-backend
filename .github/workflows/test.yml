@@ -1,0 +1,63 @@
+name: Test
+
+on:
+    pull_request:
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:15-alpine
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: ratio1_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U postgres -d ratio1_test"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+        env:
+            RATIO1_STORAGE_TEST_DATABASE: "1"
+            RATIO1_SERVICE_TEST_DATABASE: "1"
+            RATIO1_TEST_DATABASE_HOST: 127.0.0.1
+            RATIO1_TEST_DATABASE_PORT: "5432"
+            RATIO1_TEST_DATABASE_USER: postgres
+            RATIO1_TEST_DATABASE_PASSWORD: postgres
+            RATIO1_TEST_DATABASE_NAME: ratio1_test
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-go@v5
+              with:
+                  go-version-file: go.mod
+                  cache: true
+
+            - name: Download dependencies
+              run: go mod download
+
+            - name: Run model and storage tests
+              run: go test ./model ./storage -count=1
+
+            - name: Run verification policy and HTTP contract tests
+              run: |
+                  go test ./config -count=1
+                  go test ./service -run 'Test(Didit|NewDidit|MapDidit|Verification|GrandfatheredSumsub|SumsubMonitoring|ProjectDidit)' -count=1
+                  go test ./proxy/handlers -run 'Test(DiditWebhook|SumsubWebhook)' -count=1
+
+            - name: Run verification workflow database tests
+              run: go test ./service -run 'Test(RetryableTerminalDiditSessionCreatesOneReplacementConcurrently|StoredSumsubMonitoringEventIsRestartRecoverable)' -count=1
+
+            - name: Compile runtime packages
+              run: go test ./model ./config ./storage ./service ./proxy/handlers ./proxy -run '^$'
+
+            - name: Run persistence contention tests
+              run: |
+                  go test -race ./storage -run 'Test(UpdateAccountAndCreateKyc|CreateOrUpdateKycConcurrentCreateKeepsOneRow|CreateVerificationWebhookEventConcurrentDuplicateHasOneWinner|WithVerificationCreationLockSerializesSameVerification)' -count=3
+                  go test -race ./service -run '^TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently$' -count=3

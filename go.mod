@@ -10,6 +10,7 @@ require (
 	github.com/ElrondNetwork/elrond-go-logger v1.0.6
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.4
 	github.com/GoRoadster/go-log v1.0.0
+	github.com/biter777/countries v1.7.5
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v4 v4.5.0

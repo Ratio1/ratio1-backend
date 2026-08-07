@@ -27,6 +27,13 @@
     "ConfirmUrl": "https://app.ratio1.ai/confirm-email?token=%s",
     "FromEmail": "noreply@ratio1.ai"
   },
+  "Verification": {
+    "Provider": "sumsub",
+    "LegacySumsubWebhooksEnabled": true,
+    "WorkerPollSeconds": 2,
+    "WorkerBatchSize": 20,
+    "WorkerMaxAttempts": 10
+  },
   "Sumsub": {
     "ApiUrl": "https://api.sumsub.com",
     "ApiEndpoint": "/resources/accessTokens/sdk",
@@ -35,6 +42,15 @@
     "SumsubAppToken": "",
     "SumsubSecretKey": "",
     "SumsubJwtSecretKey": ""
+  },
+  "Didit": {
+    "ApiUrl": "https://verification.didit.me",
+    "Environment": "production",
+    "CallbackUrl": "https://app.ratio1.ai/profile",
+    "KycWorkflowId": "",
+    "KycWorkflowVersion": 0,
+    "KybWorkflowId": "",
+    "KybWorkflowVersion": 0
   },
   "MailerLite": {
     "Url": "https://connect.mailerlite.com/api",

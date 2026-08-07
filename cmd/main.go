@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/proxy"
@@ -116,20 +117,19 @@ func startApi(ctx *cli.Context) error {
 	}
 	server := api.Run()
 
-	waitForGracefulShutdown(server)
+	waitForGracefulShutdown(api, server)
 
 	return nil
 }
 
-func waitForGracefulShutdown(server *http.Server) {
+func waitForGracefulShutdown(api *proxy.WebServer, server *http.Server) {
 	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt, os.Kill)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
 	ctx, cancel := context.WithTimeout(context.Background(), backgroundContextTimeout)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
+	if err := api.Shutdown(ctx, server); err != nil {
 		panic(err)
 	}
-	_ = server.Close()
 }

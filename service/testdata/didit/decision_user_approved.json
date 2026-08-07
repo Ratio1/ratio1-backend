@@ -1,0 +1,195 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000101",
+  "session_kind": "user",
+  "session_number": 101,
+  "session_url": "https://verify.didit.me/session/test-token-only",
+  "status": "Approved",
+  "workflow_id": "00000000-0000-4000-8000-000000000201",
+  "vendor_data": "00000000-0000-4000-8000-000000000301",
+  "features": [
+    "ID_VERIFICATION",
+    "LIVENESS",
+    "FACE_MATCH",
+    "POA",
+    "AML",
+    "QUESTIONNAIRE"
+  ],
+  "metadata": {
+    "applicant_type": "individual"
+  },
+  "environment": "sandbox",
+  "id_verifications": [
+    {
+      "node_id": "id-document",
+      "status": "Approved",
+      "first_name": "Ada",
+      "last_name": "Example",
+      "full_name": "Ada Example",
+      "date_of_birth": "1990-01-01",
+      "age": 36,
+      "nationality": "ITA",
+      "issuing_state": "ITA",
+      "expiration_date": "2030-01-01",
+      "document_type": "ID",
+      "warnings": []
+    }
+  ],
+  "liveness_checks": [
+    {
+      "node_id": "liveness",
+      "status": "Approved",
+      "warnings": []
+    }
+  ],
+  "face_matches": [
+    {
+      "node_id": "face-match",
+      "status": "Approved",
+      "warnings": []
+    }
+  ],
+  "poa_verifications": [
+    {
+      "node_id": "proof-of-address",
+      "status": "Approved",
+      "name_on_document": "Ada Example",
+      "poa_address": "1 Example Street",
+      "poa_formatted_address": "1 Example Street, Rome, Italy",
+      "issuing_state": "ITA",
+      "issue_date": "2026-01-01",
+      "warnings": []
+    }
+  ],
+  "phone_verifications": [
+    {
+      "node_id": "phone",
+      "status": "Approved",
+      "warnings": []
+    }
+  ],
+  "email_verifications": [
+    {
+      "node_id": "email",
+      "status": "Approved",
+      "warnings": []
+    }
+  ],
+  "document_ai_documents": [
+    {
+      "node_id": "document-ai",
+      "status": "Approved",
+      "items": [],
+      "warnings": []
+    }
+  ],
+  "aml_screenings": [
+    {
+      "node_id": "aml",
+      "status": "Approved",
+      "total_hits": 0,
+      "warnings": []
+    }
+  ],
+  "ip_analyses": [
+    {
+      "node_id": "ip-analysis",
+      "status": "Approved",
+      "warnings": []
+    }
+  ],
+  "database_validations": [
+    {
+      "node_id": "database-validation",
+      "status": "Approved",
+      "warnings": []
+    }
+  ],
+  "questionnaire_responses": [
+    {
+      "node_id": "questionnaire",
+      "status": "Approved",
+      "questionnaire_id": "b271880d-15f5-4621-a851-a193b4aebddd",
+      "questionnaire_group_id": "00000000-0000-4000-8000-000000000502",
+      "version": 2,
+      "sections": [
+        {
+          "title": "Personal and billing information",
+          "items": [
+            {
+              "uuid": "5ab7c537-32b2-4792-b522-b9065da0df3a",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "Ada"
+              }
+            },
+            {
+              "uuid": "6828a11b-1ebf-4999-a942-bfd77dfa948c",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "Example"
+              }
+            },
+            {
+              "uuid": "18777afd-6fb6-4a8e-817b-0d7be1229dc5",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "TEST-TIN-001"
+              }
+            },
+            {
+              "uuid": "fb48c0f2-46e8-4bcf-88f3-298c37178acb",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "1 Example Street"
+              }
+            },
+            {
+              "uuid": "b8d3600e-f281-4e2a-a964-8ccde079f40a",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "Rome"
+              }
+            },
+            {
+              "uuid": "ac420e57-2192-4457-9f72-8ebcf1615cba",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "00100"
+              }
+            },
+            {
+              "uuid": "9a0cbc08-9e41-4347-8ef3-5e0c0d4a5459",
+              "element_type": "SHORT_TEXT",
+              "is_required": true,
+              "answer": {
+                "value": "RM"
+              }
+            },
+            {
+              "uuid": "96646c0d-9650-4844-bd5e-85971060131e",
+              "element_type": "COUNTRY",
+              "is_required": true,
+              "answer": {
+                "value": "ITA"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "reviews": [
+    {
+      "comment": "Automated contract fixture",
+      "created_at": "2026-07-29T10:00:00Z",
+      "new_status": "Approved",
+      "user": null
+    }
+  ]
+}
