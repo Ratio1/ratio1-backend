@@ -9,7 +9,6 @@ require (
 	github.com/ElrondNetwork/elrond-go-crypto v1.0.1
 	github.com/ElrondNetwork/elrond-go-logger v1.0.6
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.4
-	github.com/GoRoadster/go-log v1.0.0
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -77,7 +76,6 @@ require (
 	github.com/relvacode/iso8601 v1.4.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spruceid/siwe-go v0.2.1
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect

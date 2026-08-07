@@ -8,7 +8,7 @@ ARG VERSION
 WORKDIR /src
 
 # Install build dependencies
-RUN apk add --no-cache gcc git musl-dev
+RUN apk add --no-cache gcc musl-dev
 
 # Grab deps first for better cache
 COPY go.mod go.sum ./
