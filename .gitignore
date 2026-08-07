@@ -23,6 +23,7 @@ config/private_key.pem
 
 .env
 .env.dev
+.env.prod
 .env.testing
 
 logs

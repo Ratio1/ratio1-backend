@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/GoRoadster/go-log"
 )
 
 const (
@@ -41,7 +40,7 @@ func HttpGet(url string, castTarget interface{}, headers ...HttpHeaderPair) erro
 	defer func() {
 		bodyCloseErr := resp.Body.Close()
 		if bodyCloseErr != nil {
-			log.Warn("HttpGet - error while trying to close response body", "err", bodyCloseErr.Error())
+			log.Printf("HttpGet - error while trying to close response body: %v", bodyCloseErr)
 		}
 	}()
 	respBytes, err := io.ReadAll(resp.Body)
@@ -73,7 +72,7 @@ func HttpPost(url string, payload interface{}, response interface{}, headers ...
 	defer func() {
 		bodyCloseErr := resp.Body.Close()
 		if bodyCloseErr != nil {
-			log.Warn("HttpPost - error while trying to close response body", "err", bodyCloseErr.Error())
+			log.Printf("HttpPost - error while trying to close response body: %v", bodyCloseErr)
 		}
 	}()
 	resBody, err := io.ReadAll(resp.Body)

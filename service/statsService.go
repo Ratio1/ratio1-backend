@@ -23,24 +23,6 @@ import (
 
 const rpcRequestTimeout = 2 * time.Minute
 
-const (
-	orphanedAllocationCsp   = "0x0b81c24153bfbB2C98813da8ac0ef7e8b83ba389"
-	orphanedAllocationOwner = "0xE75981c3fb2734F263cEa7F81fF2Dd6586c1BF9A"
-)
-
-var orphanedAllocationBlocksByTx = map[string]int64{
-	"0x76c49d7f85eaabd39f421d892bd494e74786e476e348ced8e9b4e6564fbe18d1": 48325341,
-	"0x8de4ff5b4fd1c430038de25aa8526818c1890982654c53df62dbe930ab3f236a": 48368545,
-	"0x216d523066a93bfa697a1bb47a0f43ff82458b74b0d6c37a295c490323357703": 48411751,
-}
-
-var orphanedAllocationNodes = map[string]struct{}{
-	"0x3795d06dcd5cb35e25e669978e51c1c60c5105bc": {},
-	"0x3fa6b8254057670c8ac0673f3abffa277e07f88f": {},
-	"0xbca7a87c4730fb7e04e7858cd0152eea65b82492": {},
-	"0xca35c471dbb7296384ec448e8dc1757b0715200f": {},
-}
-
 func DailyGetStats() {
 	oldStats, err := storage.GetLatestStats()
 	if err != nil {
@@ -109,11 +91,6 @@ func DailyGetStats() {
 
 	for i, a := range allocEvents {
 		if owner, ok := nodeToOwner[a.NodeAddress]; ok {
-			if overrideOwner, overridden := orphanedAllocationOwnerOverride(a, owner); overridden {
-				owner = overrideOwner
-				fmt.Printf("Applied orphaned allocation owner override: tx=%s job=%s node=%s owner=%s\n",
-					a.TxHash, a.JobId, a.NodeAddress, owner)
-			}
 			allocEvents[i].UserAddress = owner
 		}
 	}
@@ -337,21 +314,6 @@ func DailyGetStats() {
 	manageEndingJobsAndSendEmails(allJobsDetails)
 }
 
-func orphanedAllocationOwnerOverride(allocation model.Allocation, resolvedOwner string) (string, bool) {
-	expectedBlock, ok := orphanedAllocationBlocksByTx[strings.ToLower(allocation.TxHash)]
-	if !ok || allocation.BlockNumber != expectedBlock {
-		return resolvedOwner, false
-	}
-	if !strings.EqualFold(allocation.CspAddress, orphanedAllocationCsp) {
-		return resolvedOwner, false
-	}
-	if _, ok := orphanedAllocationNodes[strings.ToLower(allocation.NodeAddress)]; !ok {
-		return resolvedOwner, false
-	}
-
-	return orphanedAllocationOwner, true
-}
-
 func getChainLastBlockNumber() (int64, error) {
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -505,15 +467,10 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 		addresses = append(addresses, common.HexToAddress(k))
 	}
 
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	eventSignatureAsBytes := []byte(ratio1abi.AllocationEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: addresses,
 		Topics:    [][]common.Hash{{eventHash}},
 	}
@@ -526,7 +483,7 @@ func fetchAllocationEvents(cspOwners map[string]string, from, to int64) ([]model
 
 	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
 	defer cancel()
-	logs, err := client.FilterLogs(ctx, query)
+	logs, err := filterLogsInChunks(ctx, client, query, from, to)
 	if err != nil {
 		return nil, errors.New("error while filtering logs: " + err.Error())
 	}
@@ -587,15 +544,10 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 		addresses = append(addresses, common.HexToAddress(k))
 	}
 
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	eventSignatureAsBytes := []byte(ratio1abi.BurnEventSignature)
 	eventHash := crypto.Keccak256Hash(eventSignatureAsBytes)
 
 	query := ethereum.FilterQuery{
-		FromBlock: fromBlock,
-		ToBlock:   toBlock,
 		Addresses: addresses,
 		Topics:    [][]common.Hash{{eventHash}},
 	}
@@ -608,7 +560,7 @@ func fetchBurnEvents(cspOwners map[string]string, from, to int64) ([]model.BurnE
 
 	ctx, cancel := context.WithTimeout(context.Background(), rpcRequestTimeout)
 	defer cancel()
-	logs, err := client.FilterLogs(ctx, query)
+	logs, err := filterLogsInChunks(ctx, client, query, from, to)
 	if err != nil {
 		return nil, errors.New("error while filtering logs: " + err.Error())
 	}
