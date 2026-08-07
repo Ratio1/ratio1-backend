@@ -54,9 +54,6 @@ func CalcCircSupply(teamSupply, totalSupply string) string {
 }
 
 func getPeriodMintedAmount(from, to int64) (*big.Int, error) {
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -73,52 +70,37 @@ func getPeriodMintedAmount(from, to int64) (*big.Int, error) {
 	mintedTotal := big.NewInt(0)
 	alreadySeen := make(map[string]bool)
 
-	for {
-		mintedQuery := ethereum.FilterQuery{
-			FromBlock: fromBlock,
-			ToBlock:   toBlock,
-			Addresses: []common.Address{tokenAddress},
-			Topics: [][]common.Hash{
-				{transferEventSigHash},
-				{zeroTopic}, // This is the "to" address, which we don't filter on
-			},
+	mintedQuery := ethereum.FilterQuery{
+		Addresses: []common.Address{tokenAddress},
+		Topics: [][]common.Hash{
+			{transferEventSigHash},
+			{zeroTopic}, // This is the "to" address, which we don't filter on
+		},
+	}
+
+	mintedLogs, err := filterLogsInChunks(context.Background(), client, mintedQuery, from, to)
+	if err != nil {
+		return big.NewInt(0), errors.New("error while filtering minted logs: " + err.Error())
+	}
+
+	for _, vLog := range mintedLogs {
+		if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
+			continue
 		}
 
-		mintedLogs, err := client.FilterLogs(context.Background(), mintedQuery)
-		if err != nil {
-			return big.NewInt(0), errors.New("error while filtering minted logs")
+		if len(vLog.Data) != 32 {
+			return big.NewInt(0), errors.New("unexpected data length in minted log")
 		}
 
-		for _, vLog := range mintedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
-				continue
-			}
-
-			if len(vLog.Data) != 32 {
-				return big.NewInt(0), errors.New("unexpected data length in minted log")
-			}
-
-			amount := new(big.Int).SetBytes(vLog.Data)
-			mintedTotal.Add(mintedTotal, amount)
-			alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
-
-			if vLog.BlockNumber > fromBlock.Uint64() {
-				fromBlock = big.NewInt(int64(vLog.BlockNumber))
-			}
-		}
-
-		if len(mintedLogs) < 10000 {
-			break
-		}
+		amount := new(big.Int).SetBytes(vLog.Data)
+		mintedTotal.Add(mintedTotal, amount)
+		alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
 	}
 
 	return mintedTotal, nil
 }
 
 func getPeriodBurnedAmount(from, to int64) (*big.Int, error) {
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -135,53 +117,38 @@ func getPeriodBurnedAmount(from, to int64) (*big.Int, error) {
 	burnedTotal := big.NewInt(0)
 	alreadySeen := make(map[string]bool)
 
-	for {
-		burnedQuery := ethereum.FilterQuery{
-			FromBlock: fromBlock,
-			ToBlock:   toBlock,
-			Addresses: []common.Address{tokenAddress},
-			Topics: [][]common.Hash{
-				{transferEventSigHash},
-				{},
-				{zeroTopic},
-			},
+	burnedQuery := ethereum.FilterQuery{
+		Addresses: []common.Address{tokenAddress},
+		Topics: [][]common.Hash{
+			{transferEventSigHash},
+			{},
+			{zeroTopic},
+		},
+	}
+
+	burnedLogs, err := filterLogsInChunks(context.Background(), client, burnedQuery, from, to)
+	if err != nil {
+		return big.NewInt(0), errors.New("error while filtering burned logs: " + err.Error())
+	}
+
+	for _, vLog := range burnedLogs {
+		if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
+			continue
 		}
 
-		burnedLogs, err := client.FilterLogs(context.Background(), burnedQuery)
-		if err != nil {
-			return big.NewInt(0), errors.New("error while filtering burned logs: " + err.Error())
+		if len(vLog.Data) != 32 {
+			return big.NewInt(0), errors.New("unexpected data length in burned log")
 		}
 
-		for _, vLog := range burnedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
-				continue
-			}
-
-			if len(vLog.Data) != 32 {
-				return big.NewInt(0), errors.New("unexpected data length in burned log")
-			}
-
-			amount := new(big.Int).SetBytes(vLog.Data)
-			burnedTotal.Add(burnedTotal, amount)
-			alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
-
-			if vLog.BlockNumber > fromBlock.Uint64() {
-				fromBlock = big.NewInt(int64(vLog.BlockNumber))
-			}
-		}
-
-		if len(burnedLogs) < 10000 {
-			break
-		}
+		amount := new(big.Int).SetBytes(vLog.Data)
+		burnedTotal.Add(burnedTotal, amount)
+		alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
 	}
 
 	return burnedTotal, nil
 }
 
 func getPeriodNdContractBurnedAmount(from, to int64) (*big.Int, error) {
-	fromBlock := big.NewInt(from)
-	toBlock := big.NewInt(to)
-
 	tokenAddress := common.HexToAddress(config.Config.R1ContractAddress)
 	client, err := ethclient.Dial(config.Config.Infura.ApiUrl + config.Config.Infura.Secret)
 	if err != nil {
@@ -201,44 +168,32 @@ func getPeriodNdContractBurnedAmount(from, to int64) (*big.Int, error) {
 	burnedTotal := big.NewInt(0)
 	alreadySeen := make(map[string]bool)
 
-	for {
-		burnedQuery := ethereum.FilterQuery{
-			FromBlock: fromBlock,
-			ToBlock:   toBlock,
-			Addresses: []common.Address{tokenAddress},
-			Topics: [][]common.Hash{
-				{transferEventSigHash},
-				{ndContractTopic},
-				{zeroTopic},
-			},
+	burnedQuery := ethereum.FilterQuery{
+		Addresses: []common.Address{tokenAddress},
+		Topics: [][]common.Hash{
+			{transferEventSigHash},
+			{ndContractTopic},
+			{zeroTopic},
+		},
+	}
+
+	burnedLogs, err := filterLogsInChunks(context.Background(), client, burnedQuery, from, to)
+	if err != nil {
+		return big.NewInt(0), errors.New("error while filtering burned logs: " + err.Error())
+	}
+
+	for _, vLog := range burnedLogs {
+		if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
+			continue
 		}
 
-		burnedLogs, err := client.FilterLogs(context.Background(), burnedQuery)
-		if err != nil {
-			return big.NewInt(0), errors.New("error while filtering burned logs: " + err.Error())
+		if len(vLog.Data) != 32 {
+			return big.NewInt(0), errors.New("unexpected data length in burned log")
 		}
 
-		for _, vLog := range burnedLogs {
-			if _, exist := alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))]; exist {
-				continue
-			}
-
-			if len(vLog.Data) != 32 {
-				return big.NewInt(0), errors.New("unexpected data length in burned log")
-			}
-
-			amount := new(big.Int).SetBytes(vLog.Data)
-			burnedTotal.Add(burnedTotal, amount)
-			alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
-
-			if vLog.BlockNumber > fromBlock.Uint64() {
-				fromBlock = big.NewInt(int64(vLog.BlockNumber))
-			}
-		}
-
-		if len(burnedLogs) < 10000 {
-			break
-		}
+		amount := new(big.Int).SetBytes(vLog.Data)
+		burnedTotal.Add(burnedTotal, amount)
+		alreadySeen[vLog.TxHash.String()+strconv.Itoa(int(vLog.TxIndex))+strconv.Itoa(int(vLog.Index))] = true
 	}
 
 	return burnedTotal, nil
