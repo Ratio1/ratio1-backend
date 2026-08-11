@@ -11,7 +11,7 @@
     "DbName": "",
     "MaxOpenConns": 100,
     "MaxIdleConns": 50,
-    "SslMode": "disable"
+    "SslMode": "require"
   },
   "Jwt": {
     "ExpiryMins": 1440,
