@@ -14,8 +14,9 @@ separate, explicit mainnet migration approval is given.
   private key, initializes external configuration and templates, and starts the
   HTTP server.
 - Run initial schema creation only against an empty target. Before enabling
-  normal startup migration, verify the exact GORM and PostgreSQL-driver versions
-  with repeated `AutoMigrate` runs against the target CockroachDB version.
+  the one-shot migration command, verify the exact GORM and PostgreSQL-driver
+  versions with repeated `AutoMigrate` runs against the target CockroachDB
+  version.
 - The validated application combination is `gorm.io/gorm v1.31.2` with
   `gorm.io/driver/postgres v1.6.0`. Because the application supplies a
   `lib/pq` `*sql.DB`, `postgres.Config.DriverName` must be set to `postgres`.
@@ -115,35 +116,73 @@ tables and zero application sequences.
 
 ## 4. Create the target schema from GORM models
 
-Use the existing `storage.Connect()` / `storage.TryMigrate()` path through a
-temporary one-shot Go program. Configure `config.Config.Database` directly and
-do not load the full application configuration.
-
-The temporary runner must use at least two open connections. One connection
-deadlocks with GORM v1.23.2 because its existing-table inspection can keep a
-catalog result open while issuing a second catalog query.
-
-Use:
-
-```text
-MaxOpenConns: 2
-MaxIdleConns: 1
-SslMode: require
-```
-
-Run it with this session option so GORM's explicit `integer` columns retain
-PostgreSQL-compatible 32-bit width:
+Use the backend image's dedicated one-shot migration command. It loads only the
+network JSON's database section and the five `DATABASE_*` environment variables;
+it does not initialize the HTTP server, node identity, templates, cron jobs, or
+external services:
 
 ```sh
-PGOPTIONS='-c default_int_size=4 -c statement_timeout=120000' \
-  ./temporary-automigrate-runner
+EE_EVM_NET=devnet \
+  ./ratio1-backend migrate
 ```
+
+If the config directory is not the default `./config/`, the global option must
+precede the command:
+
+```sh
+./ratio1-backend --general-config /app/config/ migrate
+```
+
+The command probes `SELECT version()` before opening its bounded migration pool.
+It uses two open and one idle connection, a 10-second connection timeout, a
+120-second per-statement timeout, and a 15-minute overall timeout. CockroachDB
+connections additionally receive `default_int_size=4`, while PostgreSQL
+connections do not receive that Cockroach-only setting.
+
+Normal API startup never calls `AutoMigrate`. Run the migration command exactly
+once per database before rolling out application replicas. Gate it with the
+deployment environment's exclusive lock, and do not deploy the new replicas if
+the command exits non-zero.
+
+The workflows in `.github/workflows/` only build and publish images; they do not
+deploy an application or have database credentials. The external deployment
+owner must add this release gate before relying on startup without migrations:
+
+1. Select one immutable image digest for the release.
+2. Take and verify the environment backup.
+3. Acquire the environment's exclusive migration/deployment lock.
+4. Run that image once with `migrate` and the target database's normal secret
+   injection.
+5. Require exit zero; the command verifies all 12 application tables and the
+   critical query-index definitions before reporting success.
+6. Roll out API replicas using the same image digest, then release the lock.
+
+Do not treat a successful image build or push as evidence that this gate ran.
 
 Run the initial `AutoMigrate` once against the clean target. If initial schema
 creation fails or is interrupted, reset the target again before retrying rather
 than resuming against a partial schema. After loading and verifying data, run
 the same migration path at least twice and confirm it emits no DDL before
-allowing normal application startup.
+allowing application rollout.
+
+### Existing-database failure recovery
+
+`AutoMigrate` is not atomic across the full model list. A timeout or failure can
+leave earlier DDL committed even though the command exits non-zero. On failure:
+
+1. Stop the release and keep the previous API replicas serving traffic.
+2. Keep the exclusive migration lock; do not start a second migration actor.
+3. Inspect CockroachDB schema-change jobs and compare tables, indexes, and
+   constraints with the pre-release snapshot and the release's expected schema.
+4. If the completed DDL is valid and the failure is transient, rerun the same
+   immutable image; GORM's named operations are expected to be idempotent.
+5. Otherwise apply the release-specific rollback deliberately. For an
+   index-only release, revert the model tags and drop only the exact named
+   indexes after confirming they were introduced by that release.
+6. Re-run schema and data verification before either retrying the rollout or
+   releasing the deployment lock.
+
+Never interpret a non-zero migration exit as an automatic schema rollback.
 
 The previous GORM v1.23.2/PostgreSQL-driver v1.3.1 combination was unsafe on
 repeat startup. CockroachDB exposes the columns in the composite partial unique index
@@ -156,8 +195,8 @@ runs, two one-shot CockroachDB DEV runs, and a full backend startup.
 
 The modern migrator performs many per-column catalog queries. Against the
 remote DEV CockroachDB cluster, a no-op migration took a few minutes and logged
-many slow catalog queries. Treat this as expected startup latency, keep a
-per-statement timeout, and ensure deployments allow enough startup time.
+many slow catalog queries. Treat this as expected migration-job latency and
+ensure deployments allow enough time for the one-shot job.
 
 CockroachDB v23.1 translates GORM's `bigserial` columns to `INT8 DEFAULT
 unique_rowid()` in its default `rowid` mode. This is an intentional
@@ -287,6 +326,6 @@ As of 2026-08-06:
 - A full local backend process using CockroachDB DEV reached HTTP readiness,
   served a read-only branding lookup with HTTP 200, emitted zero DDL, and was
   stopped gracefully. The data remained byte-identical afterward.
-- Repeated automatic migration is no longer a DEV cutover blocker. Deploying
-  the changed backend configuration remains an operational deployment step.
+- Schema migration is now an explicit one-shot deployment step; normal backend
+  startup only opens the database connection.
 - Mainnet has not been accessed or changed.

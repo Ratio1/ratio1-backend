@@ -11,13 +11,13 @@ import (
 )
 
 type Allocation struct {
-	Id                 uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	AllocationCreation time.Time `json:"allocationCreation"`
-	BlockNumber        int64     `gorm:"type:bigint;not null" json:"blockNumber"`
+	Id                 uint      `gorm:"primaryKey;autoIncrement;index:idx_allocations_job_latest,sort:desc,priority:4" json:"id"`
+	AllocationCreation time.Time `gorm:"index:idx_allocations_draft_creation,priority:2;index:idx_allocations_job_latest,sort:desc,priority:3" json:"allocationCreation"`
+	BlockNumber        int64     `gorm:"type:bigint;not null;index:idx_allocations_job_latest,sort:desc,priority:2" json:"blockNumber"`
 	TxHash             string    `gorm:"type:varchar(66);not null;uniqueIndex:idx_allocation_tx_log,priority:1,where:log_index IS NOT NULL" json:"txHash"`
 	LogIndex           *uint     `gorm:"type:bigint;uniqueIndex:idx_allocation_tx_log,priority:2,where:log_index IS NOT NULL" json:"logIndex"`
 
-	JobId       string  `gorm:"type:text;not null" json:"jobId"`
+	JobId       string  `gorm:"type:text;not null;index:idx_allocations_job_latest,priority:1,where:job_name IS NOT NULL AND job_name <> ''" json:"jobId"`
 	JobName     string  `gorm:"type:text;default:null" json:"jobName"`
 	JobType     JobType `gorm:"type:numeric;default:null" json:"jobType"`
 	ProjectName string  `gorm:"type:text;default:null" json:"projectName"`
@@ -27,7 +27,7 @@ type Allocation struct {
 	CspAddress      string     `gorm:"type:varchar(66);not null;index" json:"cspAddress"`
 	CspOwner        string     `gorm:"type:varchar(66);not null" json:"cspOwner"`
 	UsdcAmountPayed string     `gorm:"type:numeric;default:null" json:"usdcAmountPayed"`
-	DraftId         *uuid.UUID `gorm:"type:uuid;default:null" json:"draftId"`
+	DraftId         *uuid.UUID `gorm:"type:uuid;default:null;index:idx_allocations_draft_creation,priority:1" json:"draftId"`
 
 	CspProfile  UserInfo `gorm:"foreignKey:CspOwner;references:BlockchainAddress" json:"cspProfile"`
 	UserProfile UserInfo `gorm:"foreignKey:UserAddress;references:BlockchainAddress" json:"userProfile"`

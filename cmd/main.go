@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,9 +19,17 @@ import (
 )
 
 func main() {
+	app := newApp()
+	if err := app.Run(os.Args); err != nil {
+		panic(errors.New("error while running application: " + err.Error()))
+	}
+}
+
+func newApp() *cli.App {
 	app := cli.NewApp()
 	cli.AppHelpTemplate = cliHelpTemplate
 	app.Name = "ratio1-api"
+	app.Usage = "Ratio1 backend API"
 	app.Flags = []cli.Flag{
 		generalConfigFile,
 		workingDirectory,
@@ -32,12 +41,15 @@ func main() {
 		},
 	}
 	app.Action = startApi
-
-	err := app.Run(os.Args)
-	if err != nil {
-		err = errors.New("error while running application: " + err.Error())
-		panic(err)
+	app.Commands = []cli.Command{
+		{
+			Name:   "migrate",
+			Usage:  "run database migrations and exit",
+			Action: runMigrations,
+		},
 	}
+
+	return app
 }
 
 func startApi(ctx *cli.Context) error {
@@ -121,8 +133,38 @@ func startApi(ctx *cli.Context) error {
 	return nil
 }
 
+func runMigrations(ctx *cli.Context) error {
+	configPath, err := networkConfigPath(ctx)
+	if err != nil {
+		return err
+	}
+
+	databaseConfig, err := config.LoadDatabaseConfig(configPath)
+	if err != nil {
+		return errors.New("error while loading database config: " + err.Error())
+	}
+
+	migrationCtx, cancel := context.WithTimeout(context.Background(), migrationContextTimeout)
+	defer cancel()
+	if err := storage.Migrate(migrationCtx, *databaseConfig); err != nil {
+		return errors.New("error while migrating database: " + err.Error())
+	}
+	fmt.Fprintln(ctx.App.Writer, "database migration completed")
+
+	return nil
+}
+
+func networkConfigPath(ctx *cli.Context) (string, error) {
+	network := os.Getenv("EE_EVM_NET")
+	if network == "" {
+		return "", errors.New("EE_EVM_NET environment variable not set, cannot load config")
+	}
+
+	return ctx.GlobalString(generalConfigFile.Name) + "config." + network + ".json", nil
+}
+
 func waitForGracefulShutdown(server *http.Server) {
-	quit := make(chan os.Signal)
+	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Kill)
 	<-quit
 

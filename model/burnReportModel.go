@@ -8,11 +8,11 @@ import (
 type BurnEvent struct {
 	Id            uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	BurnTimestamp time.Time `json:"burnTimestamp"`
-	BlockNumber   int64     `gorm:"type:bigint;not null" json:"blockNumber"`
+	BlockNumber   int64     `gorm:"type:bigint;not null;index:idx_burn_events_owner_block,sort:desc,priority:2" json:"blockNumber"`
 	TxHash        string    `gorm:"type:varchar(66);not null" json:"txHash"`
 
 	CspAddress        string  `gorm:"type:varchar(66);not null;index" json:"cspAddress"`
-	CspOwner          string  `gorm:"type:varchar(66);not null" json:"cspOwner"`
+	CspOwner          string  `gorm:"type:varchar(66);not null;index:idx_burn_events_owner_block,priority:1" json:"cspOwner"`
 	UsdcAmountSwapped string  `gorm:"type:numeric;default:null" json:"usdcAmountSwapped"`
 	R1AmountBurned    string  `gorm:"type:numeric;default:null" json:"r1AmountBurned"`
 	LocalCurrency     string  `gorm:"type:varchar(3);" json:"localCurrency"`
