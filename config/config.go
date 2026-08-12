@@ -138,6 +138,21 @@ func (d DatabaseConfig) Url() string {
 	format := "host=%s port=%d user=%s password=%s dbname=%s sslmode=%s"
 	return fmt.Sprintf(format, d.Host, d.Port, d.User, d.Password, d.DbName, d.SslMode)
 }
+
+func LoadDatabaseConfig(filePath string) (*DatabaseConfig, error) {
+	cfg := &struct {
+		Database DatabaseConfig
+	}{}
+	if err := core.LoadJsonFile(cfg, filePath); err != nil {
+		return nil, errors.New("error while loading config file: " + err.Error())
+	}
+	if err := loadDatabaseEnvironment(&cfg.Database); err != nil {
+		return nil, err
+	}
+
+	return &cfg.Database, nil
+}
+
 func LoadNodes(filePath string) (map[string]string, error) {
 	var nodes = make(map[string]string)
 	err := core.LoadJsonFile(&nodes, filePath)
@@ -155,28 +170,8 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 		return nil, errors.New("error while loading config from file: " + err.Error())
 	}
 
-	/*	DATABASE ENV VARIABLES	*/
-	cfg.Database.DbName = os.Getenv("DATABASE_NAME")
-	if cfg.Database.DbName == "" {
-		return nil, errors.New("DATABASE_NAME is not set")
-	}
-	cfg.Database.User = os.Getenv("DATABASE_USER")
-	if cfg.Database.User == "" {
-		return nil, errors.New("DATABASE_USER is not set")
-	}
-	cfg.Database.Host = os.Getenv("DATABASE_HOST")
-	if cfg.Database.Host == "" {
-		return nil, errors.New("DATABASE_HOST is not set")
-	}
-	portAsString := os.Getenv("DATABASE_PORT")
-	portAsInt, err := strconv.Atoi(portAsString)
-	if err != nil {
-		return nil, errors.New("DATABASE_PORT return error: " + err.Error())
-	}
-	cfg.Database.Port = portAsInt
-	cfg.Database.Password = os.Getenv("DATABASE_PASSWORD")
-	if cfg.Database.Password == "" {
-		return nil, errors.New("DATABASE_PASSWORD is not set")
+	if err := loadDatabaseEnvironment(&cfg.Database); err != nil {
+		return nil, err
 	}
 
 	/*	JWT ENV VARIABLES	*/
@@ -278,6 +273,32 @@ func LoadConfig(filePath string) (*GeneralConfig, error) {
 	cfg.R1fsClient = r1fsClient
 
 	return cfg, nil
+}
+
+func loadDatabaseEnvironment(cfg *DatabaseConfig) error {
+	cfg.DbName = os.Getenv("DATABASE_NAME")
+	if cfg.DbName == "" {
+		return errors.New("DATABASE_NAME is not set")
+	}
+	cfg.User = os.Getenv("DATABASE_USER")
+	if cfg.User == "" {
+		return errors.New("DATABASE_USER is not set")
+	}
+	cfg.Host = os.Getenv("DATABASE_HOST")
+	if cfg.Host == "" {
+		return errors.New("DATABASE_HOST is not set")
+	}
+	port, err := strconv.Atoi(os.Getenv("DATABASE_PORT"))
+	if err != nil {
+		return errors.New("DATABASE_PORT return error: " + err.Error())
+	}
+	cfg.Port = port
+	cfg.Password = os.Getenv("DATABASE_PASSWORD")
+	if cfg.Password == "" {
+		return errors.New("DATABASE_PASSWORD is not set")
+	}
+
+	return nil
 }
 
 func (c *GeneralConfig) GetBuyLicenseInvoiceCronJobTiming(nodeAddress string) (string, bool) {

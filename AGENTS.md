@@ -39,7 +39,9 @@ DATABASE_LINK=<host>:<port>:<database>:<user>:<password>
 
 - Never print, log, paste, commit, or otherwise expose `DATABASE_LINK` or its password.
 - Keep `.env.prod` ignored with permissions set to `600`.
-- Never start the backend with `.env.prod` merely to test connectivity. Startup calls `storage.Connect()`, which runs GORM `AutoMigrate` and can modify the production schema.
+- Never start the backend with `.env.prod` merely to test connectivity. Use the read-only client wrapper below instead of initializing the API and its external dependencies.
+- Normal API startup only connects to the database. Schema changes run through the explicit one-shot `ratio1-backend migrate` command, once per database before application rollout.
+- The checked-in GitHub workflows publish images but do not run deployments. The external deployment owner must enforce backup, an exclusive one-shot migration using the release image digest, successful schema verification, and only then API rollout.
 - Default agent-initiated production sessions to one connection, a read-only transaction, SSL, and a short timeout.
 - Avoid PII when aggregate or metadata queries are sufficient.
 - Production writes, migrations, status resets, or corrections require explicit authorization for the exact operation, plus a backup, dry run, bounded transaction, and rollback plan.

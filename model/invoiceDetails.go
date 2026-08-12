@@ -26,7 +26,7 @@ type InvoiceClient struct {
 	InvoiceUrl         *string `gorm:"default:null"`
 	InvoiceNumber      *string `gorm:"default:null"`
 	TxHash             *string `gorm:"default:null"`
-	BlockNumber        *int64  `gorm:"default:null"`
+	BlockNumber        *int64  `gorm:"default:null;index:idx_invoice_clients_block,sort:desc"`
 	ReverseCharge      bool
 	IsUe               bool
 	NumLicenses        *int `gorm:"default:null"`
