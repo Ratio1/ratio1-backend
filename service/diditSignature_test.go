@@ -269,9 +269,33 @@ func TestCanonicalizeDiditWebhookJSON(t *testing.T) {
 		string(canonical),
 	)
 
-	canonical, err = CanonicalizeDiditWebhookJSON([]byte(`{"small":1e-7,"large":1e21}`))
+	canonical, err = CanonicalizeDiditWebhookJSON([]byte(`{
+		"small":1e-7,
+		"fixed":1e-5,
+		"large":1e21,
+		"largestFixed":1e20,
+		"smallestFixed":1e-6,
+		"roundedInteger":9007199254740993,
+		"roundedFixed":1000000000000000128,
+		"negativeSmall":-1e-7,
+		"negativeFixed":-1e-5
+	}`))
 	require.NoError(t, err)
-	require.Equal(t, `{"large":1000000000000000000000,"small":1e-07}`, string(canonical))
+	require.Equal(
+		t,
+		`{"fixed":0.00001,"large":1e+21,"largestFixed":100000000000000000000,"negativeFixed":-0.00001,"negativeSmall":-1e-7,"roundedFixed":1000000000000000100,"roundedInteger":9007199254740992,"small":1e-7,"smallestFixed":0.000001}`,
+		string(canonical),
+	)
+
+	firstRetry, err := canonicalizeDiditWebhookForIdempotency(
+		[]byte(`{"event_id":"event","timestamp":1774970000,"status":"Approved"}`),
+	)
+	require.NoError(t, err)
+	secondRetry, err := canonicalizeDiditWebhookForIdempotency(
+		[]byte(`{"status":"Approved","timestamp":1774970060,"event_id":"event"}`),
+	)
+	require.NoError(t, err)
+	require.Equal(t, firstRetry, secondRetry)
 }
 
 func TestDiditSignatureVectorsAreStable(t *testing.T) {

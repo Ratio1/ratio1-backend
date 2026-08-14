@@ -192,7 +192,10 @@ func (s *VerificationService) ReceiveDiditWebhook(
 		return DiditWebhookReceipt{}, ErrDiditWebhookEnvelope
 	}
 	if _, allowed := supportedDiditVerificationEvents[payload.WebhookType]; !allowed {
-		return DiditWebhookReceipt{}, errors.New("unsupported Didit verification event")
+		return DiditWebhookReceipt{}, fmt.Errorf(
+			"%w: unsupported Didit verification event",
+			ErrDiditWebhookEnvelope,
+		)
 	}
 	expectedApplicationId, _ := uuid.Parse(s.cfg.Didit.ApplicationId)
 	if payload.ApplicationId != expectedApplicationId {
@@ -220,7 +223,11 @@ func (s *VerificationService) ReceiveDiditWebhook(
 		return DiditWebhookReceipt{}, ErrDiditWebhookEnvelope
 	}
 
-	digest := sha256.Sum256(body)
+	idempotencyPayload, err := canonicalizeDiditWebhookForIdempotency(body)
+	if err != nil {
+		return DiditWebhookReceipt{}, err
+	}
+	digest := sha256.Sum256(idempotencyPayload)
 	occurredAt := time.Unix(payload.CreatedAt, 0).UTC()
 	created, err := storage.CreateVerificationWebhookEvent(&model.VerificationWebhookEvent{
 		Provider:              model.VerificationProviderDidit,
@@ -236,6 +243,9 @@ func (s *VerificationService) ReceiveDiditWebhook(
 		ProcessingStatus:      model.VerificationEventReceived,
 	})
 	if err != nil {
+		if errors.Is(err, storage.ErrVerificationEventPayloadMismatch) {
+			return DiditWebhookReceipt{}, fmt.Errorf("%w: %v", ErrDiditWebhookEnvelope, err)
+		}
 		return DiditWebhookReceipt{}, err
 	}
 	return DiditWebhookReceipt{Duplicate: !created}, nil
@@ -340,28 +350,6 @@ func (s *VerificationService) createOrResumeDiditSession(
 	if err != nil {
 		return nil, err
 	}
-
-	var result *VerificationSessionResponse
-	err = storage.WithVerificationCreationLock(
-		ctx,
-		kyc.Uuid,
-		model.VerificationProviderDidit,
-		s.cfg.Didit.Environment,
-		func() error {
-			var lockedErr error
-			result, lockedErr = s.createOrResumeDiditSessionLocked(ctx, kyc, applicantType, policy)
-			return lockedErr
-		},
-	)
-	return result, err
-}
-
-func (s *VerificationService) createOrResumeDiditSessionLocked(
-	ctx context.Context,
-	kyc *model.Kyc,
-	applicantType string,
-	policy DiditVerificationPolicy,
-) (*VerificationSessionResponse, error) {
 	latest, found, err := storage.GetLatestVerificationSession(
 		kyc.Uuid,
 		applicantType,
@@ -417,6 +405,43 @@ func (s *VerificationService) createOrResumeDiditSessionLocked(
 			return nil, errors.New("verification is final rejected and cannot be retried")
 		}
 		if !diditTerminalSessionWasReconciledAsRetryable(latest, decision, reconciledKyc) {
+			replacement, replacementFound, replacementErr := storage.GetLatestVerificationSession(
+				kyc.Uuid,
+				applicantType,
+				model.VerificationProviderDidit,
+				s.cfg.Didit.Environment,
+			)
+			if replacementErr != nil {
+				return nil, replacementErr
+			}
+			if replacementFound && replacement.Uuid != latest.Uuid {
+				replacementId, parseErr := uuid.Parse(replacement.ProviderSessionId)
+				if parseErr != nil {
+					return nil, errors.New("stored Didit replacement session id is invalid")
+				}
+				replacementDecision, retrieveErr := s.didit.RetrieveDecision(
+					ctx,
+					replacementId,
+					model.DiditDecisionExpectation{
+						VendorData:  kyc.Uuid.String(),
+						WorkflowId:  policy.ApprovalPolicy.WorkflowId,
+						SessionKind: policy.ApprovalPolicy.SessionKind,
+					},
+				)
+				if retrieveErr != nil {
+					return nil, retrieveErr
+				}
+				if diditSessionCanResume(replacementDecision.Status) &&
+					isAllowedDiditHostedURL(replacementDecision.SessionUrl) {
+					return &VerificationSessionResponse{
+						Provider:      model.VerificationProviderDidit,
+						ApplicantType: applicantType,
+						Status:        replacement.KycStatus,
+						SessionId:     replacementId.String(),
+						Url:           replacementDecision.SessionUrl,
+					}, nil
+				}
+			}
 			return nil, ErrVerificationReconciliationPending
 		}
 		kyc = reconciledKyc
@@ -431,7 +456,9 @@ func (s *VerificationService) createOrResumeDiditSessionLocked(
 	if err != nil {
 		return nil, err
 	}
-	session, err := storage.AssignVerificationSession(&model.VerificationSession{
+	// Concurrent callers can both reach Didit; its session API reuses the same
+	// unfinished vendor_data/workflow session, and assignment converges on its ID.
+	session, err := storage.AssignVerificationSession(ctx, &model.VerificationSession{
 		KycUuid:           kyc.Uuid,
 		Provider:          model.VerificationProviderDidit,
 		Environment:       s.cfg.Didit.Environment,
@@ -497,7 +524,6 @@ func diditSessionCanResume(status model.DiditSessionStatus) bool {
 	case model.DiditStatusNotStarted,
 		model.DiditStatusInProgress,
 		model.DiditStatusAwaitingUser,
-		model.DiditStatusInReview,
 		model.DiditStatusResubmitted:
 		return true
 	default:

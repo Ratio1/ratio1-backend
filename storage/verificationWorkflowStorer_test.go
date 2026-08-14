@@ -2,61 +2,63 @@ package storage
 
 import (
 	"context"
-	"sync"
-	"sync/atomic"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
 
-func TestWithVerificationCreationLockSerializesSameVerification(t *testing.T) {
-	requireStorageTestDatabase(t)
+func TestIsSerializationRetryRecognizesWrappedCockroachError(t *testing.T) {
+	require.True(t, isSerializationRetry(fmt.Errorf(
+		"transaction failed: %w",
+		&pq.Error{Code: pq.ErrorCode("40001")},
+	)))
+	require.False(t, isSerializationRetry(&pq.Error{Code: pq.ErrorCode("23505")}))
+	require.False(t, isSerializationRetry(fmt.Errorf("connection unavailable")))
+}
 
-	kycUuid := uuid.New()
-	var active atomic.Int32
-	var maximum atomic.Int32
-	start := make(chan struct{})
-	errorsChannel := make(chan error, 2)
-	var waitGroup sync.WaitGroup
-	waitGroup.Add(2)
+func TestRetryVerificationSessionAssignmentRetriesSerializationFailures(t *testing.T) {
+	expected := &model.VerificationSession{Uuid: uuid.New()}
+	attempts := 0
+	stored, err := retryVerificationSessionAssignment(func() (*model.VerificationSession, error) {
+		attempts++
+		if attempts < 3 {
+			return nil, &pq.Error{Code: pq.ErrorCode("40001")}
+		}
+		return expected, nil
+	})
 
-	for index := 0; index < 2; index++ {
-		go func() {
-			defer waitGroup.Done()
-			<-start
-			err := WithVerificationCreationLock(
-				context.Background(),
-				kycUuid,
-				model.VerificationProviderDidit,
-				model.VerificationEnvironmentSandbox,
-				func() error {
-					current := active.Add(1)
-					for {
-						observed := maximum.Load()
-						if current <= observed || maximum.CompareAndSwap(observed, current) {
-							break
-						}
-					}
-					time.Sleep(50 * time.Millisecond)
-					active.Add(-1)
-					return nil
-				},
-			)
-			errorsChannel <- err
-		}()
-	}
-	close(start)
-	waitGroup.Wait()
-	close(errorsChannel)
+	require.NoError(t, err)
+	require.Same(t, expected, stored)
+	require.Equal(t, 3, attempts)
+}
 
-	for err := range errorsChannel {
-		require.NoError(t, err)
-	}
-	require.Equal(t, int32(1), maximum.Load())
+func TestRetryVerificationSessionAssignmentStopsAfterBoundedAttempts(t *testing.T) {
+	attempts := 0
+	_, err := retryVerificationSessionAssignment(func() (*model.VerificationSession, error) {
+		attempts++
+		return nil, &pq.Error{Code: pq.ErrorCode("40001")}
+	})
+
+	require.ErrorContains(t, err, "failed after 5 serialization attempts")
+	require.Equal(t, verificationSessionAssignmentMaxAttempts, attempts)
+}
+
+func TestRetryVerificationSessionAssignmentDoesNotRetryOtherFailures(t *testing.T) {
+	attempts := 0
+	expected := fmt.Errorf("connection unavailable")
+	_, err := retryVerificationSessionAssignment(func() (*model.VerificationSession, error) {
+		attempts++
+		return nil, expected
+	})
+
+	require.ErrorIs(t, err, expected)
+	require.Equal(t, 1, attempts)
 }
 
 func TestAssignVerificationSessionIsIdempotentAndClaimsProviderOwnership(t *testing.T) {
@@ -76,9 +78,9 @@ func TestAssignVerificationSessionIsIdempotentAndClaimsProviderOwnership(t *test
 		model.VerificationEnvironmentSandbox,
 	)
 	session.WorkflowVersion = "1"
-	first, err := AssignVerificationSession(session)
+	first, err := AssignVerificationSession(context.Background(), session)
 	require.NoError(t, err)
-	second, err := AssignVerificationSession(session)
+	second, err := AssignVerificationSession(context.Background(), session)
 	require.NoError(t, err)
 	require.Equal(t, first.Uuid, second.Uuid)
 
@@ -122,7 +124,7 @@ func TestAssignVerificationSessionResetsOnlyNewDiditReplacementToInit(t *testing
 		model.VerificationEnvironmentSandbox,
 	)
 	session.WorkflowVersion = "1"
-	_, err = AssignVerificationSession(session)
+	_, err = AssignVerificationSession(context.Background(), session)
 	require.NoError(t, err)
 
 	var kyc model.Kyc
@@ -132,7 +134,7 @@ func TestAssignVerificationSessionResetsOnlyNewDiditReplacementToInit(t *testing
 	require.NoError(t, db.Model(&model.Kyc{}).
 		Where("uuid = ?", kycUuid).
 		Update("kyc_status", model.StatusRejected).Error)
-	_, err = AssignVerificationSession(session)
+	_, err = AssignVerificationSession(context.Background(), session)
 	require.NoError(t, err)
 	require.NoError(t, db.Where("uuid = ?", kycUuid).First(&kyc).Error)
 	require.Equal(t, model.StatusRejected, kyc.KycStatus)

@@ -9,9 +9,12 @@ import (
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+const verificationSessionAssignmentMaxAttempts = 5
 
 type VerificationProjectionUpdate struct {
 	EventUuid                 uuid.UUID
@@ -28,46 +31,55 @@ type VerificationProjectionUpdate struct {
 	NotificationTransitionKey string
 }
 
-func WithVerificationCreationLock(
+func AssignVerificationSession(
 	ctx context.Context,
-	kycUuid uuid.UUID,
-	provider, environment string,
-	action func() error,
-) error {
-	db, err := GetDB()
-	if err != nil {
-		return err
-	}
-	sqlDb, err := db.DB()
-	if err != nil {
-		return err
-	}
-	connection, err := sqlDb.Conn(ctx)
-	if err != nil {
-		return err
-	}
-	defer connection.Close()
-
-	lockKey := strings.Join([]string{
-		"verification-session",
-		kycUuid.String(),
-		provider,
-		environment,
-	}, ":")
-	if _, err := connection.ExecContext(ctx, "SELECT pg_advisory_lock(hashtext($1))", lockKey); err != nil {
-		return err
-	}
-	defer func() {
-		_, _ = connection.ExecContext(context.Background(), "SELECT pg_advisory_unlock(hashtext($1))", lockKey)
-	}()
-	return action()
-}
-
-func AssignVerificationSession(session *model.VerificationSession) (*model.VerificationSession, error) {
+	session *model.VerificationSession,
+) (*model.VerificationSession, error) {
 	db, err := GetDB()
 	if err != nil {
 		return nil, err
 	}
+	return retryVerificationSessionAssignment(func() (*model.VerificationSession, error) {
+		var stored *model.VerificationSession
+		err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			var assignErr error
+			stored, assignErr = assignVerificationSession(tx, session)
+			return assignErr
+		})
+		return stored, err
+	})
+}
+
+func retryVerificationSessionAssignment(
+	action func() (*model.VerificationSession, error),
+) (*model.VerificationSession, error) {
+	var lastErr error
+	for attempt := 0; attempt < verificationSessionAssignmentMaxAttempts; attempt++ {
+		stored, err := action()
+		lastErr = err
+		if lastErr == nil {
+			return stored, nil
+		}
+		if !isSerializationRetry(lastErr) {
+			return nil, lastErr
+		}
+	}
+	return nil, fmt.Errorf(
+		"verification session assignment failed after %d serialization attempts: %w",
+		verificationSessionAssignmentMaxAttempts,
+		lastErr,
+	)
+}
+
+func isSerializationRetry(err error) bool {
+	var postgresError *pq.Error
+	return errors.As(err, &postgresError) && postgresError.Code == pq.ErrorCode("40001")
+}
+
+func assignVerificationSession(
+	tx *gorm.DB,
+	session *model.VerificationSession,
+) (*model.VerificationSession, error) {
 	if session == nil {
 		return nil, errors.New("verification session is nil")
 	}
@@ -75,75 +87,72 @@ func AssignVerificationSession(session *model.VerificationSession) (*model.Verif
 		return nil, err
 	}
 
+	var kyc model.Kyc
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("uuid = ?", session.KycUuid).
+		First(&kyc).Error; err != nil {
+		return nil, err
+	}
+	if kyc.VerificationProvider != "" && kyc.VerificationProvider != session.Provider {
+		return nil, fmt.Errorf(
+			"kyc is owned by verification provider %q",
+			kyc.VerificationProvider,
+		)
+	}
+	if kyc.ApplicantType != "" && kyc.ApplicantType != session.ApplicantType {
+		return nil, errors.New("kyc applicant type cannot be changed after verification starts")
+	}
+
+	if session.Uuid == uuid.Nil {
+		session.Uuid = uuid.New()
+	}
+	now := time.Now().UTC()
+	if session.CreatedAt.IsZero() {
+		session.CreatedAt = now
+	}
+	session.UpdatedAt = now
+
+	create := tx.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "provider"},
+			{Name: "environment"},
+			{Name: "provider_session_id"},
+		},
+		DoNothing: true,
+	}).Create(session)
+	if create.Error != nil {
+		return nil, create.Error
+	}
 	var stored model.VerificationSession
-	err = db.Transaction(func(tx *gorm.DB) error {
-		var kyc model.Kyc
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("uuid = ?", session.KycUuid).
-			First(&kyc).Error; err != nil {
-			return err
-		}
-		if kyc.VerificationProvider != "" && kyc.VerificationProvider != session.Provider {
-			return fmt.Errorf(
-				"kyc is owned by verification provider %q",
-				kyc.VerificationProvider,
-			)
-		}
-		if kyc.ApplicantType != "" && kyc.ApplicantType != session.ApplicantType {
-			return errors.New("kyc applicant type cannot be changed after verification starts")
-		}
+	if err := tx.Where(
+		"provider = ? AND environment = ? AND provider_session_id = ?",
+		session.Provider,
+		session.Environment,
+		session.ProviderSessionId,
+	).First(&stored).Error; err != nil {
+		return nil, err
+	}
+	if stored.KycUuid != session.KycUuid ||
+		stored.ApplicantType != session.ApplicantType ||
+		stored.WorkflowId != session.WorkflowId {
+		return nil, errors.New("existing provider session belongs to a different verification")
+	}
 
-		if session.Uuid == uuid.Nil {
-			session.Uuid = uuid.New()
-		}
-		now := time.Now().UTC()
-		if session.CreatedAt.IsZero() {
-			session.CreatedAt = now
-		}
-		session.UpdatedAt = now
-
-		create := tx.Clauses(clause.OnConflict{
-			Columns: []clause.Column{
-				{Name: "provider"},
-				{Name: "environment"},
-				{Name: "provider_session_id"},
-			},
-			DoNothing: true,
-		}).Create(session)
-		if create.Error != nil {
-			return create.Error
-		}
-		if err := tx.Where(
-			"provider = ? AND environment = ? AND provider_session_id = ?",
-			session.Provider,
-			session.Environment,
-			session.ProviderSessionId,
-		).First(&stored).Error; err != nil {
-			return err
-		}
-		if stored.KycUuid != session.KycUuid ||
-			stored.ApplicantType != session.ApplicantType ||
-			stored.WorkflowId != session.WorkflowId {
-			return errors.New("existing provider session belongs to a different verification")
-		}
-
-		updates := map[string]interface{}{
-			"verification_provider": session.Provider,
-			"applicant_type":        session.ApplicantType,
-		}
-		newlyCreatedReplacement := create.RowsAffected == 1 &&
-			session.Provider == model.VerificationProviderDidit &&
-			kyc.KycStatus == model.StatusRejected &&
-			session.KycStatus == model.StatusInit
-		if kyc.KycStatus == model.StatusAccountCreated || newlyCreatedReplacement {
-			updates["kyc_status"] = session.KycStatus
-			updates["last_updated"] = now
-		}
-		return tx.Model(&model.Kyc{}).
-			Where("uuid = ?", session.KycUuid).
-			Updates(updates).Error
-	})
-	if err != nil {
+	updates := map[string]interface{}{
+		"verification_provider": session.Provider,
+		"applicant_type":        session.ApplicantType,
+	}
+	newlyCreatedReplacement := create.RowsAffected == 1 &&
+		session.Provider == model.VerificationProviderDidit &&
+		kyc.KycStatus == model.StatusRejected &&
+		session.KycStatus == model.StatusInit
+	if kyc.KycStatus == model.StatusAccountCreated || newlyCreatedReplacement {
+		updates["kyc_status"] = session.KycStatus
+		updates["last_updated"] = now
+	}
+	if err := tx.Model(&model.Kyc{}).
+		Where("uuid = ?", session.KycUuid).
+		Updates(updates).Error; err != nil {
 		return nil, err
 	}
 	return &stored, nil

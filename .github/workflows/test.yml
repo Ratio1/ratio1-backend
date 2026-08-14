@@ -52,12 +52,12 @@ jobs:
                   go test ./proxy/handlers -run 'Test(DiditWebhook|SumsubWebhook)' -count=1
 
             - name: Run verification workflow database tests
-              run: go test ./service -run 'Test(RetryableTerminalDiditSessionCreatesOneReplacementConcurrently|StoredSumsubMonitoringEventIsRestartRecoverable)' -count=1
+              run: go test ./service -run 'Test(RetryableTerminalDiditSessionConvergesOnOneProviderReplacementConcurrently|StoredSumsubMonitoringEventIsRestartRecoverable)' -count=1
 
             - name: Compile runtime packages
               run: go test ./model ./config ./storage ./service ./proxy/handlers ./proxy -run '^$'
 
             - name: Run persistence contention tests
               run: |
-                  go test -race ./storage -run 'Test(UpdateAccountAndCreateKyc|CreateOrUpdateKycConcurrentCreateKeepsOneRow|CreateVerificationWebhookEventConcurrentDuplicateHasOneWinner|WithVerificationCreationLockSerializesSameVerification)' -count=3
-                  go test -race ./service -run '^TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently$' -count=3
+                  go test -race ./storage -run 'Test(UpdateAccountAndCreateKyc|CreateOrUpdateKycConcurrentCreateKeepsOneRow|CreateVerificationWebhookEventConcurrentDuplicateHasOneWinner)' -count=3
+                  go test -race ./service -run '^TestRetryableTerminalDiditSessionConvergesOnOneProviderReplacementConcurrently$' -count=3

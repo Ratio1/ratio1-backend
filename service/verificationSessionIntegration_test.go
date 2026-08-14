@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -22,7 +23,7 @@ var (
 	serviceTestDatabaseErr  error
 )
 
-func TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently(t *testing.T) {
+func TestRetryableTerminalDiditSessionConvergesOnOneProviderReplacementConcurrently(t *testing.T) {
 	requireServiceTestDatabase(t)
 
 	db, err := storage.GetDB()
@@ -68,10 +69,11 @@ func TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently(t *testi
 	})
 
 	client := &retryableDiditSessionClient{
-		oldSessionId: oldSessionId,
-		newSessionId: newSessionId,
-		workflowId:   workflowId,
-		kycUuid:      kycUuid,
+		oldSessionId:     oldSessionId,
+		newSessionId:     newSessionId,
+		workflowId:       workflowId,
+		kycUuid:          kycUuid,
+		oldDecisionReady: make(chan struct{}),
 	}
 	verificationService := &VerificationService{
 		cfg: config.GeneralConfig{
@@ -127,7 +129,9 @@ func TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently(t *testi
 		require.Equal(t, newSessionId.String(), result.SessionId)
 		require.Equal(t, "https://verify.didit.me/session/retry-token", result.Url)
 	}
-	require.Equal(t, int32(1), client.createCalls.Load())
+	require.Equal(t, int32(2), client.oldDecisionCalls.Load())
+	require.GreaterOrEqual(t, client.createCalls.Load(), int32(1))
+	require.LessOrEqual(t, client.createCalls.Load(), int32(2))
 
 	var sessionCount int64
 	require.NoError(t, db.Model(&model.VerificationSession{}).
@@ -138,6 +142,65 @@ func TestRetryableTerminalDiditSessionCreatesOneReplacementConcurrently(t *testi
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, model.StatusInit, persistedKyc.KycStatus)
+}
+
+func TestDiditWebhookRetryWithRefreshedTimestampIsIdempotent(t *testing.T) {
+	requireServiceTestDatabase(t)
+
+	db, err := storage.GetDB()
+	require.NoError(t, err)
+	eventId := uuid.New()
+	applicationId := "00000000-0000-4000-8000-000000000501"
+	sessionId := "00000000-0000-4000-8000-000000000101"
+	vendorData := "00000000-0000-4000-8000-000000000301"
+	createdAt := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC).Unix()
+	t.Cleanup(func() {
+		require.NoError(t, db.Where("event_id = ?", eventId.String()).
+			Delete(&model.VerificationWebhookEvent{}).Error)
+	})
+
+	verificationService := diditWebhookValidationService()
+	receive := func(now time.Time) DiditWebhookReceipt {
+		timestamp := now.Unix()
+		body := fmt.Sprintf(`{
+			"event_id":"%s",
+			"webhook_type":"status.updated",
+			"timestamp":%d,
+			"created_at":%d,
+			"application_id":"%s",
+			"environment":"sandbox",
+			"session_id":"%s",
+			"session_kind":"user",
+			"vendor_data":"%s",
+			"status":"In Progress"
+		}`, eventId, timestamp, createdAt, applicationId, sessionId, vendorData)
+		simplePayload := fmt.Sprintf(
+			"%d:%s:In Progress:status.updated",
+			timestamp,
+			sessionId,
+		)
+		receipt, receiveErr := verificationService.ReceiveDiditWebhook(
+			[]byte(body),
+			DiditWebhookHeaders{
+				Timestamp: fmt.Sprintf("%d", timestamp),
+				Simple:    signDiditWebhookValidationPayload(simplePayload),
+			},
+			now,
+		)
+		require.NoError(t, receiveErr)
+		return receipt
+	}
+
+	first := receive(time.Unix(createdAt, 0))
+	require.False(t, first.Duplicate)
+	second := receive(time.Unix(createdAt+60, 0))
+	require.True(t, second.Duplicate)
+
+	var count int64
+	require.NoError(t, db.Model(&model.VerificationWebhookEvent{}).
+		Where("event_id = ?", eventId.String()).
+		Count(&count).Error)
+	require.Equal(t, int64(1), count)
 }
 
 func TestStoredSumsubMonitoringEventIsRestartRecoverable(t *testing.T) {
@@ -221,11 +284,13 @@ func TestStoredSumsubMonitoringEventIsRestartRecoverable(t *testing.T) {
 }
 
 type retryableDiditSessionClient struct {
-	oldSessionId uuid.UUID
-	newSessionId uuid.UUID
-	workflowId   uuid.UUID
-	kycUuid      uuid.UUID
-	createCalls  atomic.Int32
+	oldSessionId     uuid.UUID
+	newSessionId     uuid.UUID
+	workflowId       uuid.UUID
+	kycUuid          uuid.UUID
+	createCalls      atomic.Int32
+	oldDecisionCalls atomic.Int32
+	oldDecisionReady chan struct{}
 }
 
 func (client *retryableDiditSessionClient) CreateSession(
@@ -250,6 +315,10 @@ func (client *retryableDiditSessionClient) RetrieveDecision(
 	_ model.DiditDecisionExpectation,
 ) (*model.DiditDecision, error) {
 	if sessionId == client.oldSessionId {
+		if client.oldDecisionCalls.Add(1) == 2 {
+			close(client.oldDecisionReady)
+		}
+		<-client.oldDecisionReady
 		return &model.DiditDecision{
 			SessionId:   sessionId,
 			SessionKind: model.DiditSessionKindUser,
@@ -279,7 +348,7 @@ func (*retryableDiditSessionClient) RetrieveEntity(
 func requireServiceTestDatabase(t *testing.T) {
 	t.Helper()
 	if os.Getenv("RATIO1_SERVICE_TEST_DATABASE") != "1" {
-		t.Skip("set RATIO1_SERVICE_TEST_DATABASE=1 to run PostgreSQL service tests")
+		t.Skip("set RATIO1_SERVICE_TEST_DATABASE=1 to run database-backed service tests")
 	}
 	host := serviceTestEnvOrDefault("RATIO1_TEST_DATABASE_HOST", "127.0.0.1")
 	if host != "127.0.0.1" && host != "localhost" && host != "::1" {

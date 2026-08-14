@@ -100,7 +100,7 @@ func (h verificationHandler) processDiditWebhook(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxDiditWebhookBodyBytes)
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		status := http.StatusBadRequest
+		status := http.StatusInternalServerError
 		var maxBytesError *http.MaxBytesError
 		if errors.As(err, &maxBytesError) {
 			status = http.StatusRequestEntityTooLarge
@@ -116,10 +116,13 @@ func (h verificationHandler) processDiditWebhook(c *gin.Context) {
 		TestWebhook: c.GetHeader("X-Didit-Test-Webhook") == "true",
 	}, time.Now().UTC())
 	if err != nil {
-		status := http.StatusBadRequest
+		status := http.StatusInternalServerError
 		if errors.Is(err, service.ErrDiditInvalidSignature) ||
 			errors.Is(err, service.ErrDiditStaleWebhook) {
 			status = http.StatusUnauthorized
+		} else if errors.Is(err, service.ErrDiditWebhookEnvelope) ||
+			errors.Is(err, service.ErrDiditEnvironmentMismatch) {
+			status = http.StatusBadRequest
 		}
 		c.JSON(status, gin.H{"accepted": false})
 		return

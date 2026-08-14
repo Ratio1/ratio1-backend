@@ -131,6 +131,27 @@ func TestDiditReplacementRequiresReconciledRetryableSessionAndKyc(t *testing.T) 
 	require.False(t, diditTerminalSessionWasReconciledAsRetryable(session, decision, kyc))
 }
 
+func TestDiditSessionCanResumeOnlyUnfinishedUserActionStates(t *testing.T) {
+	for _, status := range []model.DiditSessionStatus{
+		model.DiditStatusNotStarted,
+		model.DiditStatusInProgress,
+		model.DiditStatusAwaitingUser,
+		model.DiditStatusResubmitted,
+	} {
+		require.True(t, diditSessionCanResume(status), string(status))
+	}
+	for _, status := range []model.DiditSessionStatus{
+		model.DiditStatusInReview,
+		model.DiditStatusApproved,
+		model.DiditStatusDeclined,
+		model.DiditStatusAbandoned,
+		model.DiditStatusExpired,
+		model.DiditStatusKycExpired,
+	} {
+		require.False(t, diditSessionCanResume(status), string(status))
+	}
+}
+
 func TestMapDiditDecisionToUserInfoRequiresStructuredKybBillingAnswers(t *testing.T) {
 	var decision model.DiditDecision
 	require.NoError(t, json.Unmarshal(readDiditFixture(t, "decision_business_approved.json"), &decision))

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/big"
 	"sort"
 	"strconv"
 	"strings"
@@ -105,6 +104,27 @@ func VerifyDiditWebhookSignatures(
 }
 
 func CanonicalizeDiditWebhookJSON(body []byte) ([]byte, error) {
+	value, err := decodeDiditJSON(body)
+	if err != nil {
+		return nil, err
+	}
+	return canonicalizeDiditJSONValue(value)
+}
+
+func canonicalizeDiditWebhookForIdempotency(body []byte) ([]byte, error) {
+	value, err := decodeDiditJSON(body)
+	if err != nil {
+		return nil, err
+	}
+	fields, ok := value.(map[string]interface{})
+	if !ok {
+		return nil, ErrDiditWebhookEnvelope
+	}
+	delete(fields, "timestamp")
+	return canonicalizeDiditJSONValue(fields)
+}
+
+func decodeDiditJSON(body []byte) (interface{}, error) {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
 
@@ -116,7 +136,10 @@ func CanonicalizeDiditWebhookJSON(body []byte) ([]byte, error) {
 	if err := decoder.Decode(&trailing); err != io.EOF {
 		return nil, ErrDiditWebhookEnvelope
 	}
+	return value, nil
+}
 
+func canonicalizeDiditJSONValue(value interface{}) ([]byte, error) {
 	var canonical bytes.Buffer
 	if err := writeDiditCanonicalJSON(&canonical, value); err != nil {
 		return nil, ErrDiditWebhookEnvelope
@@ -276,23 +299,63 @@ func writeDiditCanonicalJSONString(destination *bytes.Buffer, value string) {
 }
 
 func normalizeDiditJSONNumber(number json.Number) (string, error) {
-	value := number.String()
-	if !strings.ContainsAny(value, ".eE") {
-		if _, ok := new(big.Int).SetString(value, 10); !ok {
-			return "", errors.New("invalid JSON number")
-		}
-		return value, nil
-	}
-
-	floatValue, err := strconv.ParseFloat(value, 64)
+	floatValue, err := strconv.ParseFloat(number.String(), 64)
 	if err != nil || math.IsInf(floatValue, 0) || math.IsNaN(floatValue) {
 		return "", errors.New("invalid JSON number")
 	}
-	if math.Trunc(floatValue) == floatValue {
-		if floatValue == 0 {
-			return "0", nil
-		}
-		return strconv.FormatFloat(floatValue, 'f', -1, 64), nil
+	if floatValue == 0 {
+		return "0", nil
 	}
-	return strconv.FormatFloat(floatValue, 'g', -1, 64), nil
+
+	absoluteValue := math.Abs(floatValue)
+	shortestValue := strconv.FormatFloat(floatValue, 'g', -1, 64)
+	// JSON.stringify uses fixed notation in [1e-6, 1e21) and scientific notation outside it.
+	if absoluteValue >= 1e-6 && absoluteValue < 1e21 {
+		return expandDiditScientificNumber(shortestValue)
+	}
+
+	mantissa, exponent, found := strings.Cut(shortestValue, "e")
+	if !found {
+		return "", errors.New("invalid JSON number")
+	}
+	exponentValue, err := strconv.Atoi(exponent)
+	if err != nil {
+		return "", errors.New("invalid JSON number")
+	}
+	exponentSign := ""
+	if exponentValue >= 0 {
+		exponentSign = "+"
+	}
+	return fmt.Sprintf("%se%s%d", mantissa, exponentSign, exponentValue), nil
+}
+
+func expandDiditScientificNumber(value string) (string, error) {
+	mantissa, exponent, found := strings.Cut(value, "e")
+	if !found {
+		return value, nil
+	}
+	exponentValue, err := strconv.Atoi(exponent)
+	if err != nil {
+		return "", errors.New("invalid JSON number")
+	}
+
+	sign := ""
+	if strings.HasPrefix(mantissa, "-") {
+		sign = "-"
+		mantissa = strings.TrimPrefix(mantissa, "-")
+	}
+	integerPart, fractionalPart, hasFraction := strings.Cut(mantissa, ".")
+	if !hasFraction {
+		fractionalPart = ""
+	}
+	digits := integerPart + fractionalPart
+	decimalPosition := len(integerPart) + exponentValue
+	switch {
+	case decimalPosition <= 0:
+		return sign + "0." + strings.Repeat("0", -decimalPosition) + digits, nil
+	case decimalPosition >= len(digits):
+		return sign + digits + strings.Repeat("0", decimalPosition-len(digits)), nil
+	default:
+		return sign + digits[:decimalPosition] + "." + digits[decimalPosition:], nil
+	}
 }
