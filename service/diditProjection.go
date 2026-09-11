@@ -560,14 +560,14 @@ func ProjectDiditLifecycle(input DiditLifecycleProjectionInput) DiditLifecyclePr
 	switch input.SessionStatus {
 	case model.DiditStatusNotStarted:
 		return DiditLifecycleProjection{KycStatus: model.StatusInit, Reason: DiditReasonSessionNotStarted}
-	case model.DiditStatusInProgress, model.DiditStatusAwaitingUser:
+	case model.DiditStatusInProgress, model.DiditStatusAwaitingUser, model.DiditStatusResubmitted:
 		// These sessions still need user action, so keep the profile's resume
 		// path available instead of presenting them as submitted for review.
+		// Resubmission reuses this session; it is not another rejected outcome.
 		return DiditLifecycleProjection{KycStatus: model.StatusInit, Reason: DiditReasonSessionPending}
 	case model.DiditStatusInReview:
 		return DiditLifecycleProjection{KycStatus: model.StatusOnHold, Reason: DiditReasonSessionInReview}
-	case model.DiditStatusResubmitted,
-		model.DiditStatusExpired,
+	case model.DiditStatusExpired,
 		model.DiditStatusAbandoned,
 		model.DiditStatusKycExpired:
 		return DiditLifecycleProjection{KycStatus: model.StatusRejected, Reason: DiditReasonSessionNeedsRetry}

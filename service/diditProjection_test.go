@@ -667,12 +667,12 @@ func TestProjectDiditLifecycle(t *testing.T) {
 			expectedReason: DiditReasonDeclineFinal,
 		},
 		{
-			name: "resubmitted",
+			name: "resubmitted remains actionable in the same session",
 			input: DiditLifecycleProjectionInput{
 				SessionStatus: model.DiditStatusResubmitted,
 			},
-			expectedStatus: model.StatusRejected,
-			expectedReason: DiditReasonSessionNeedsRetry,
+			expectedStatus: model.StatusInit,
+			expectedReason: DiditReasonSessionPending,
 		},
 		{
 			name: "expired",
@@ -744,6 +744,35 @@ func TestProjectDiditLifecycle(t *testing.T) {
 			require.Equal(t, test.expectedStatus, projection.KycStatus)
 			require.Equal(t, test.expectedReason, projection.Reason)
 			require.Equal(t, test.grantsAccess, projection.GrantsAccess())
+		})
+	}
+}
+
+func TestDiditSameSessionResubmissionExposesAnotherRejection(t *testing.T) {
+	for _, entity := range []DiditEntityStatus{DiditEntityActive, DiditEntityFlagged, DiditEntityBlocked} {
+		t.Run(string(entity), func(t *testing.T) {
+			var statuses []string
+			for _, status := range []model.DiditSessionStatus{
+				model.DiditStatusDeclined,
+				model.DiditStatusResubmitted,
+				model.DiditStatusDeclined,
+			} {
+				projection := ProjectDiditLifecycle(DiditLifecycleProjectionInput{
+					SessionStatus:      status,
+					EntityStatus:       entity,
+					DeclineDisposition: DiditDeclineRetryable,
+				})
+				require.False(t, projection.GrantsAccess())
+				statuses = append(statuses, projection.KycStatus)
+			}
+			switch entity {
+			case DiditEntityActive:
+				require.Equal(t, []string{model.StatusRejected, model.StatusInit, model.StatusRejected}, statuses)
+			case DiditEntityFlagged:
+				require.Equal(t, []string{model.StatusOnHold, model.StatusOnHold, model.StatusOnHold}, statuses)
+			case DiditEntityBlocked:
+				require.Equal(t, []string{model.StatusFinalRejected, model.StatusFinalRejected, model.StatusFinalRejected}, statuses)
+			}
 		})
 	}
 }
