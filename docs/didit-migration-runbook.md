@@ -7,6 +7,7 @@ This runbook prepares the one-time Ratio1 cutover from Sumsub onboarding to Didi
 - New applicants use exactly one provider. Sumsub session creation is disabled when Didit is activated.
 - Existing `approved` and `finalRejected` records are preserved and marked as Sumsub.
 - Every other KYC state is reset to `accCreated`, marked as Didit, and starts a new Didit session.
+- Only the reset cohort clears Sumsub applicant lifecycle flags (`is_active=true`, `has_been_deleted=false`), so a subsequent Didit approval can satisfy license eligibility. Approved/final-rejected records retain these flags, and account blacklist restrictions are unchanged.
 - `user_infos` are preserved for the approved/final-rejected cohort and deleted only for the reset cohort, so stale invoicing identities cannot survive a new verification.
 - The internal KYC UUID is Didit `vendor_data`.
 - Webhook arrival order is never state truth. Store and deduplicate `event_id`, then reconcile the authoritative Didit decision.

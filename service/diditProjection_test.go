@@ -526,6 +526,36 @@ func diditIntPointer(value int) *int {
 	return &value
 }
 
+func TestDiditUnfinishedSessionsRemainResumableWithoutGrantingAccess(t *testing.T) {
+	for _, status := range []model.DiditSessionStatus{
+		model.DiditStatusInProgress,
+		model.DiditStatusAwaitingUser,
+	} {
+		t.Run(string(status), func(t *testing.T) {
+			projection := ProjectDiditLifecycle(DiditLifecycleProjectionInput{SessionStatus: status})
+			require.Equal(t, model.StatusInit, projection.KycStatus)
+			require.True(t, diditSessionCanResume(status))
+			require.False(t, projection.GrantsAccess())
+			require.Empty(t, diditNotificationType(projection.KycStatus))
+
+			for _, entityStatus := range []DiditEntityStatus{DiditEntityFlagged, DiditEntityBlocked} {
+				blocked := ProjectDiditLifecycle(DiditLifecycleProjectionInput{
+					SessionStatus: status,
+					EntityStatus:  entityStatus,
+				})
+				require.NotEqual(t, model.StatusInit, blocked.KycStatus)
+				require.False(t, blocked.GrantsAccess())
+			}
+		})
+	}
+
+	review := ProjectDiditLifecycle(DiditLifecycleProjectionInput{SessionStatus: model.DiditStatusInReview})
+	require.Equal(t, model.StatusOnHold, review.KycStatus)
+	require.False(t, diditSessionCanResume(model.DiditStatusInReview))
+	require.False(t, review.GrantsAccess())
+	require.Empty(t, diditNotificationType(review.KycStatus))
+}
+
 func TestProjectDiditLifecycle(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -549,19 +579,19 @@ func TestProjectDiditLifecycle(t *testing.T) {
 			expectedReason: DiditReasonSessionNotStarted,
 		},
 		{
-			name: "in progress",
+			name: "in progress remains resumable",
 			input: DiditLifecycleProjectionInput{
 				SessionStatus: model.DiditStatusInProgress,
 			},
-			expectedStatus: model.StatusPending,
+			expectedStatus: model.StatusInit,
 			expectedReason: DiditReasonSessionPending,
 		},
 		{
-			name: "awaiting user",
+			name: "awaiting user remains resumable",
 			input: DiditLifecycleProjectionInput{
 				SessionStatus: model.DiditStatusAwaitingUser,
 			},
-			expectedStatus: model.StatusPending,
+			expectedStatus: model.StatusInit,
 			expectedReason: DiditReasonSessionPending,
 		},
 		{

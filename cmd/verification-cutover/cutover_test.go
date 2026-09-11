@@ -139,6 +139,10 @@ func TestValidatePostCutoverAggregate(t *testing.T) {
 	}
 	require.NoError(t, validatePostCutoverAggregate(before, after))
 
+	after.ResetRowsWithLegacyData = 1
+	require.ErrorContains(t, validatePostCutoverAggregate(before, after), "reset rows still contain legacy fields")
+	after.ResetRowsWithLegacyData = 0
+
 	after.UserInfos = 3
 	require.Error(t, validatePostCutoverAggregate(before, after))
 }

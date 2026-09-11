@@ -276,6 +276,8 @@ func runApply(ctx context.Context, db *sql.DB, opts cutoverOptions, output io.Wr
 		     applicant_type = '',
 		     country = '',
 		     vies_registered = FALSE,
+		     is_active = TRUE,
+		     has_been_deleted = FALSE,
 		     verification_provider = $2
 		 WHERE kyc_status NOT IN ($3, $4)`,
 		model.StatusAccountCreated,
@@ -362,6 +364,8 @@ func collectCutoverAggregate(ctx context.Context, q queryer) (cutoverAggregate, 
 		         OR COALESCE(applicant_type, '') <> ''
 		         OR COALESCE(country, '') <> ''
 		         OR vies_registered
+		         OR NOT is_active
+		         OR has_been_deleted
 		       )
 		   ),
 		   COUNT(*) FILTER (

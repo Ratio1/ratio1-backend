@@ -81,8 +81,9 @@ func TestCutoverApplyIntegration(t *testing.T) {
 		emails = append(emails, email)
 		_, err = db.Exec(
 			`INSERT INTO kycs (
-			   uuid, applicant_id, applicant_type, email, kyc_status, country, vies_registered
-			 ) VALUES ($1, $2, $3, $4, $5, $6, TRUE)`,
+			   uuid, applicant_id, applicant_type, email, kyc_status, country, vies_registered,
+			   is_active, has_been_deleted
+			 ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, FALSE, TRUE)`,
 			uuid.NewString(),
 			fmt.Sprintf("sumsub-%d", index),
 			model.IndividualCustomer,
@@ -120,7 +121,8 @@ func TestCutoverApplyIntegration(t *testing.T) {
 	var preserved, reset, userInfos, resetWithLegacyFields int64
 	require.NoError(t, db.QueryRow(
 		`SELECT COUNT(*) FROM kycs
-		 WHERE kyc_status IN ($1, $2) AND verification_provider = $3`,
+		 WHERE kyc_status IN ($1, $2) AND verification_provider = $3
+		   AND is_active = FALSE AND has_been_deleted = TRUE`,
 		model.StatusApproved,
 		model.StatusFinalRejected,
 		model.VerificationProviderSumsub,
@@ -132,7 +134,9 @@ func TestCutoverApplyIntegration(t *testing.T) {
 		   AND applicant_id = ''
 		   AND applicant_type = ''
 		   AND country = ''
-		   AND vies_registered = FALSE`,
+		   AND vies_registered = FALSE
+		   AND is_active = TRUE
+		   AND has_been_deleted = FALSE`,
 		model.StatusAccountCreated,
 		model.VerificationProviderDidit,
 	).Scan(&reset))
@@ -140,7 +144,8 @@ func TestCutoverApplyIntegration(t *testing.T) {
 	require.NoError(t, db.QueryRow(
 		`SELECT COUNT(*) FROM kycs
 		 WHERE kyc_status = $1
-		   AND (applicant_id <> '' OR applicant_type <> '' OR country <> '' OR vies_registered)`,
+		   AND (applicant_id <> '' OR applicant_type <> '' OR country <> '' OR vies_registered
+		        OR NOT is_active OR has_been_deleted)`,
 		model.StatusAccountCreated,
 	).Scan(&resetWithLegacyFields))
 
