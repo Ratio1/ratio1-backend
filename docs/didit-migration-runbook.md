@@ -69,7 +69,11 @@ Before scheduling the cutover:
 
 ## Production secrets and provider configuration
 
-Keep all values in the production secret store. Never put values in Git, a PR, Notion, chat, shell history or frontend `VITE_` variables.
+Keep API keys and signing secrets in the production secret store. Never put credentials in Git, a PR, Notion, chat, shell history or frontend `VITE_` variables.
+
+Public Live configuration is checked into `config/config.mainnet.json`: API/callback URLs, environment/application ID, workflow IDs/versions, and KYC/KYB questionnaire IDs/versions/item mappings. These identifiers are not credentials. Deploy this file with the release and select `EE_EVM_NET=mainnet`. Only `DIDIT_API_KEY` and `DIDIT_WEBHOOK_SECRET` are required Didit secrets; `DIDIT_PREVIOUS_WEBHOOK_SECRET` is optional during signing-secret rotation.
+
+Environment overrides remain supported. Remove stale non-secret `DIDIT_*` overrides, especially Sandbox values, before using the checked-in mainnet configuration. JSON deliberately retains `Verification.Provider=sumsub` and `LegacySumsubWebhooksEnabled=true`; set `VERIFICATION_PROVIDER=didit` only at the approved cutover. Publishing or copying a questionnaire can change its identifiers/version: review and update the pinned JSON mappings before adopting the new version.
 
 Required runtime configuration:
 

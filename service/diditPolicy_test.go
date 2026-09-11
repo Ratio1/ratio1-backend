@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -10,6 +11,33 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMainnetJSONBuildsDiditPoliciesWithoutQuestionEnvironment(t *testing.T) {
+	data, err := os.ReadFile("../config/config.mainnet.json")
+	require.NoError(t, err)
+	var raw map[string]json.RawMessage
+	// Inspect Didit directly: its secret fields are deliberately ignored by JSON decoding.
+	var document map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(data, &document))
+	require.NoError(t, json.Unmarshal(document["Didit"], &raw))
+	for _, key := range []string{"ApiKey", "WebhookSecret", "PreviousWebhookSecret"} {
+		require.NotContains(t, raw, key)
+	}
+	var cfg config.GeneralConfig
+	require.NoError(t, json.Unmarshal(data, &cfg))
+	require.Equal(t, "sumsub", cfg.Verification.Provider)
+	require.True(t, cfg.Verification.LegacySumsubWebhooksEnabled)
+	require.Equal(t, "production", cfg.Didit.Environment)
+	_, err = uuid.Parse(cfg.Didit.ApplicationId)
+	require.NoError(t, err)
+	require.Empty(t, cfg.Didit.ApiKey)
+	require.Empty(t, cfg.Didit.WebhookSecret)
+	require.Empty(t, cfg.Didit.PreviousWebhookSecret)
+	policies, err := NewDiditPolicySet(cfg.Didit)
+	require.NoError(t, err)
+	require.Len(t, policies.Kyc.ApprovalPolicy.RequiredQuestionnaireItems, 8)
+	require.Len(t, policies.Kyb.ApprovalPolicy.RequiredQuestionnaireItems, 9)
+}
 
 func TestNewDiditPolicySetBuildsRuntimeKycAndKybPolicies(t *testing.T) {
 	cfg := diditPolicyTestConfig()
