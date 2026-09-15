@@ -138,14 +138,9 @@ func confirmPrimaryEmail(account *model.Account, email string) (*model.Account, 
 	}
 	account.PendingReceiveUpdates = false
 
-	err := storage.UpdateAccount(account)
+	err := storage.UpdateAccountAndCreateKyc(account, &kyc)
 	if err != nil {
-		return nil, errors.New("error while updating account on storage: " + err.Error())
-	}
-
-	err = storage.CreateOrUpdateKyc(&kyc)
-	if err != nil {
-		return nil, errors.New("error while updating kyc on storage: " + err.Error())
+		return nil, errors.New("error while confirming account email on storage: " + err.Error())
 	}
 
 	if *kyc.ReceiveUpdates {

@@ -10,10 +10,11 @@ import (
 
 func TestQueryIndexes(t *testing.T) {
 	tests := []struct {
-		name    string
-		model   any
-		indexes map[string][]string
-		where   map[string]string
+		name              string
+		model             any
+		indexes           map[string][]string
+		where             map[string]string
+		uniqueConstraints map[string]string
 	}{
 		{
 			name:  "allocations",
@@ -36,8 +37,15 @@ func TestQueryIndexes(t *testing.T) {
 		{
 			name:  "KYC",
 			model: &Kyc{},
-			indexes: map[string][]string{
-				"idx_kycs_email": {"email"},
+			uniqueConstraints: map[string]string{
+				"uni_kycs_email": "email",
+			},
+		},
+		{
+			name:  "verification notifications",
+			model: &VerificationNotification{},
+			uniqueConstraints: map[string]string{
+				"uni_verification_notifications_transition_key": "transition_key",
 			},
 		},
 		{
@@ -72,6 +80,12 @@ func TestQueryIndexes(t *testing.T) {
 			}
 			for name, where := range test.where {
 				require.Equal(t, where, parsed.LookIndex(name).Where, name)
+			}
+			constraints := parsed.ParseUniqueConstraints()
+			for name, field := range test.uniqueConstraints {
+				constraint, found := constraints[name]
+				require.True(t, found, name)
+				require.Equal(t, field, constraint.Field.DBName, name)
 			}
 		})
 	}

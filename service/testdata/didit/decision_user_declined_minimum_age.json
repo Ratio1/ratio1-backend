@@ -1,0 +1,28 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000111",
+  "session_kind": "user",
+  "status": "Declined",
+  "workflow_id": "00000000-0000-4000-8000-000000000201",
+  "vendor_data": "00000000-0000-4000-8000-000000000311",
+  "environment": "sandbox",
+  "id_verifications": [
+    {
+      "node_id": "id-document",
+      "status": "Declined",
+      "issuing_state": "CAN",
+      "warnings": [
+        {
+          "feature": "ID_VERIFICATION",
+          "risk": "MINIMUM_AGE_NOT_MET",
+          "additional_data": {
+            "configured_minimum_age": 19
+          },
+          "log_type": "error",
+          "short_description": "Minimum age not met",
+          "long_description": "The holder is below the configured minimum age.",
+          "node_id": "id-document"
+        }
+      ]
+    }
+  ]
+}

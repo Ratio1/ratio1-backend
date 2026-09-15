@@ -27,6 +27,13 @@
     "ConfirmUrl": "https://app.ratio1.ai/confirm-email?token=%s",
     "FromEmail": "noreply@ratio1.ai"
   },
+  "Verification": {
+    "Provider": "sumsub",
+    "LegacySumsubWebhooksEnabled": true,
+    "WorkerPollSeconds": 2,
+    "WorkerBatchSize": 20,
+    "WorkerMaxAttempts": 10
+  },
   "Sumsub": {
     "ApiUrl": "https://api.sumsub.com",
     "ApiEndpoint": "/resources/accessTokens/sdk",
@@ -35,6 +42,43 @@
     "SumsubAppToken": "",
     "SumsubSecretKey": "",
     "SumsubJwtSecretKey": ""
+  },
+  "Didit": {
+    "ApiUrl": "https://verification.didit.me",
+    "Environment": "production",
+    "CallbackUrl": "https://app.ratio1.ai/profile",
+    "KycWorkflowId": "24ddd26f-9087-4465-97aa-effb63e809dd",
+    "KycWorkflowVersion": 1,
+    "KybWorkflowId": "24eb230d-b5c4-435a-b1cd-759585e0daab",
+    "KybWorkflowVersion": 1,
+    "ApplicationId": "89d1fa6b-09cb-4b65-94b8-3e0029a8348b",
+    "KycQuestionnaire": {
+      "QuestionnaireId": "9ebea068-8c0f-48f4-998e-58a0d41a0552",
+      "QuestionnaireVersion": 1,
+      "FirstNameQuestionId": "caa68e89-e9d2-47be-adbf-e24326f9bf5d",
+      "LastNameQuestionId": "0d1f7a63-35cd-46e7-ba53-dd2960a62591",
+      "TaxIdQuestionId": "73794a39-58b2-4cd6-980a-5f9980d28bc1",
+      "AddressQuestionId": "19f7a194-eacc-48f7-8ce7-ba817ed55d3f",
+      "CityQuestionId": "96f4ebd1-fa7d-4a75-b10e-7af212606b00",
+      "PostalCodeQuestionId": "629b1f9b-255b-4112-bf88-d91b18b537d5",
+      "StateQuestionId": "975806e6-68df-4cfe-b25d-cdbcb76c05a2",
+      "CountryQuestionId": "1e4d4bcf-d157-47f5-8144-6f7672adf075"
+    },
+    "KybQuestionnaire": {
+      "QuestionnaireId": "830cdf1d-f6d0-4551-8f3f-320506200f98",
+      "QuestionnaireVersion": 1,
+      "AdditionalRequiredQuestionIds": [
+        "7447e818-8fcd-441f-bf88-6eccafd7db41",
+        "a09ef3b1-5d26-4b78-a331-fd706c4a33d5",
+        "80b8389f-8fb7-4763-ab9a-77e429b1da5b",
+        "5e4a964e-7ee8-4323-8385-c93d3e1a0091",
+        "667f7a3d-fb4e-4fa7-a8ff-666e78ed16cf",
+        "66ce6f91-36e0-41b2-baf0-3e641d463343",
+        "8953622c-3863-4118-b5bd-bdde5443dd12",
+        "14a65809-0c65-4f0c-bc64-a6047a2d7ed5",
+        "19ed5ea6-4b88-4dcc-9145-3868184ba44d"
+      ]
+    }
   },
   "MailerLite": {
     "Url": "https://connect.mailerlite.com/api",

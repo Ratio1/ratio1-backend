@@ -57,10 +57,31 @@ func Migrate(ctx context.Context, databaseConfig config.DatabaseConfig) error {
 	}
 	defer sqlDB.Close()
 
-	if err := conn.WithContext(ctx).AutoMigrate(
+	return migrateDatabase(ctx, conn)
+}
+
+func migrateDatabase(ctx context.Context, conn *gorm.DB) error {
+	kycTableExists := conn.Migrator().HasTable(&model.Kyc{})
+	if err := validateExistingKycEmailsAreUnique(conn.WithContext(ctx)); err != nil {
+		return err
+	}
+	if kycTableExists {
+		if err := ensureKycEmailUniqueIndex(ctx, conn); err != nil {
+			return err
+		}
+		if err := migrateExistingKycSchema(ctx, conn); err != nil {
+			return err
+		}
+	}
+
+	migrationModels := []interface{}{
 		&model.Account{},
 		&model.AccountNotificationEmail{},
-		&model.Kyc{},
+	}
+	if !kycTableExists {
+		migrationModels = append(migrationModels, &model.Kyc{})
+	}
+	migrationModels = append(migrationModels,
 		&model.InvoiceClient{},
 		&model.Seller{},
 		&model.Stats{},
@@ -70,11 +91,34 @@ func Migrate(ctx context.Context, databaseConfig config.DatabaseConfig) error {
 		&model.UserInfo{},
 		&model.BurnEvent{},
 		&model.Branding{},
-	); err != nil {
+		&model.VerificationSession{},
+		&model.VerificationWebhookEvent{},
+		&model.VerificationNotification{},
+	)
+	if err := conn.WithContext(ctx).AutoMigrate(migrationModels...); err != nil {
+		return err
+	}
+	if err := ensureKycEmailUniqueIndex(ctx, conn); err != nil {
 		return err
 	}
 
 	return verifyMigrationSchema(ctx, conn)
+}
+
+func migrateExistingKycSchema(ctx context.Context, db *gorm.DB) error {
+	migrator := db.WithContext(ctx).Migrator()
+	if !migrator.HasColumn(&model.Kyc{}, "VerificationProvider") {
+		if err := migrator.AddColumn(&model.Kyc{}, "VerificationProvider"); err != nil {
+			return fmt.Errorf("add KYC verification provider column: %w", err)
+		}
+	}
+	if !migrator.HasIndex(&model.Kyc{}, "idx_kycs_verification_provider") {
+		if err := migrator.CreateIndex(&model.Kyc{}, "VerificationProvider"); err != nil {
+			return fmt.Errorf("add KYC verification provider index: %w", err)
+		}
+	}
+
+	return nil
 }
 
 var requiredMigrationTables = []string{
@@ -90,12 +134,16 @@ var requiredMigrationTables = []string{
 	"sellers",
 	"stats",
 	"user_infos",
+	"verification_sessions",
+	"verification_webhook_events",
+	"verification_notifications",
 }
 
 var requiredMigrationIndexes = map[string]struct {
 	table         string
 	keyDefinition string
 	predicate     string
+	unique        bool
 }{
 	"idx_allocations_draft_creation": {
 		table:         "allocations",
@@ -114,9 +162,15 @@ var requiredMigrationIndexes = map[string]struct {
 		table:         "invoice_clients",
 		keyDefinition: "using btree (block_number desc)",
 	},
-	"idx_kycs_email": {
+	"uni_kycs_email": {
 		table:         "kycs",
 		keyDefinition: "using btree (email)",
+		unique:        true,
+	},
+	"uni_verification_notifications_transition_key": {
+		table:         "verification_notifications",
+		keyDefinition: "using btree (transition_key)",
+		unique:        true,
 	},
 }
 
@@ -165,7 +219,13 @@ func verifyMigrationSchema(ctx context.Context, conn *gorm.DB) error {
 		if !ok {
 			return fmt.Errorf("verify migrated schema: missing index %s on table %s", indexName, required.table)
 		}
-		if err := verifyMigrationIndexDefinition(indexName, index.Definition, required.keyDefinition, required.predicate); err != nil {
+		if err := verifyMigrationIndexDefinition(
+			indexName,
+			index.Definition,
+			required.keyDefinition,
+			required.predicate,
+			required.unique,
+		); err != nil {
 			return err
 		}
 	}
@@ -177,10 +237,14 @@ func migrationIndexKey(tableName, indexName string) string {
 	return tableName + "\x00" + indexName
 }
 
-func verifyMigrationIndexDefinition(indexName, definition, expectedKey, expectedPredicate string) error {
+func verifyMigrationIndexDefinition(indexName, definition, expectedKey, expectedPredicate string, expectedUnique bool) error {
 	definition = normalizeIndexDefinition(definition)
-	if strings.HasPrefix(definition, "create unique index ") {
+	isUnique := strings.HasPrefix(definition, "create unique index ")
+	if isUnique && !expectedUnique {
 		return fmt.Errorf("verify migrated schema: index %s is unexpectedly unique", indexName)
+	}
+	if !isUnique && expectedUnique {
+		return fmt.Errorf("verify migrated schema: index %s is unexpectedly non-unique", indexName)
 	}
 
 	usingPosition := strings.Index(definition, " using btree ")
@@ -199,6 +263,73 @@ func verifyMigrationIndexDefinition(indexName, definition, expectedKey, expected
 	}
 	if predicate != expectedPredicate {
 		return fmt.Errorf("verify migrated schema: index %s has unexpected predicate", indexName)
+	}
+
+	return nil
+}
+
+func validateExistingKycEmailsAreUnique(db *gorm.DB) error {
+	if !db.Migrator().HasTable(&model.Kyc{}) {
+		return nil
+	}
+
+	var duplicateGroups int64
+	err := db.Raw(`
+		SELECT COUNT(*)
+		FROM (
+			SELECT email
+			FROM kycs
+			WHERE email IS NOT NULL
+			GROUP BY email
+			HAVING COUNT(*) > 1
+		) duplicate_emails
+	`).Scan(&duplicateGroups).Error
+	if err != nil {
+		return fmt.Errorf("preflight KYC email uniqueness: %w", err)
+	}
+	if duplicateGroups > 0 {
+		return fmt.Errorf(
+			"cannot add the KYC email unique index: found %d duplicate email groups; run a reviewed data migration first",
+			duplicateGroups,
+		)
+	}
+
+	return nil
+}
+
+func ensureKycEmailUniqueIndex(ctx context.Context, db *gorm.DB) error {
+	const (
+		constraintName  = "uni_kycs_email"
+		legacyIndexName = "idx_kycs_email"
+	)
+
+	var constraintCount int64
+	if err := db.WithContext(ctx).Raw(
+		`SELECT COUNT(*) FROM information_schema.table_constraints
+		 WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'kycs' AND constraint_name = ? AND constraint_type = 'UNIQUE'`,
+		constraintName,
+	).Scan(&constraintCount).Error; err != nil {
+		return fmt.Errorf("inspect KYC email unique constraint: %w", err)
+	}
+	if constraintCount == 0 {
+		if err := db.WithContext(ctx).Exec(
+			`ALTER TABLE "kycs" ADD CONSTRAINT "uni_kycs_email" UNIQUE ("email")`,
+		).Error; err != nil {
+			return fmt.Errorf("add KYC email unique constraint: %w", err)
+		}
+	}
+
+	var legacyIndexCount int64
+	if err := db.WithContext(ctx).Raw(
+		"SELECT COUNT(*) FROM pg_indexes WHERE schemaname = CURRENT_SCHEMA() AND tablename = 'kycs' AND indexname = ?",
+		legacyIndexName,
+	).Scan(&legacyIndexCount).Error; err != nil {
+		return fmt.Errorf("inspect legacy KYC email index: %w", err)
+	}
+	if legacyIndexCount > 0 {
+		if err := db.WithContext(ctx).Exec(`DROP INDEX "idx_kycs_email"`).Error; err != nil {
+			return fmt.Errorf("drop legacy KYC email index: %w", err)
+		}
 	}
 
 	return nil
