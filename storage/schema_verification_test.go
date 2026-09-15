@@ -10,6 +10,7 @@ func TestVerifyMigrationIndexDefinition(t *testing.T) {
 	tests := []struct {
 		name       string
 		definition string
+		unique     bool
 		wantError  string
 	}{
 		{
@@ -32,6 +33,21 @@ func TestVerifyMigrationIndexDefinition(t *testing.T) {
 			wantError: "verify migrated schema: index idx_allocations_job_latest is unexpectedly unique",
 		},
 		{
+			name: "expected unique index",
+			definition: "CREATE UNIQUE INDEX idx_allocations_job_latest ON public.allocations USING btree " +
+				"(job_id, block_number DESC, allocation_creation DESC, id DESC) " +
+				"WHERE ((job_name IS NOT NULL) AND ((job_name)::text <> ''::text))",
+			unique: true,
+		},
+		{
+			name: "expected unique index is non-unique",
+			definition: "CREATE INDEX idx_allocations_job_latest ON public.allocations USING btree " +
+				"(job_id, block_number DESC, allocation_creation DESC, id DESC) " +
+				"WHERE ((job_name IS NOT NULL) AND ((job_name)::text <> ''::text))",
+			unique:    true,
+			wantError: "verify migrated schema: index idx_allocations_job_latest is unexpectedly non-unique",
+		},
+		{
 			name: "additional predicate",
 			definition: "CREATE INDEX idx_allocations_job_latest ON public.allocations USING btree " +
 				"(job_id, block_number DESC, allocation_creation DESC, id DESC) " +
@@ -47,6 +63,7 @@ func TestVerifyMigrationIndexDefinition(t *testing.T) {
 				test.definition,
 				"using btree (job_id, block_number desc, allocation_creation desc, id desc)",
 				"job_name is not null and job_name != ''",
+				test.unique,
 			)
 			if test.wantError == "" {
 				require.NoError(t, err)

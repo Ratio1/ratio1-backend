@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"errors"
+
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"gorm.io/gorm"
 )
@@ -77,6 +79,28 @@ func UpdateAccount(account *model.Account) error {
 	}
 
 	return nil
+}
+
+func UpdateAccountAndCreateKyc(account *model.Account, kyc *model.Kyc) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+	if account == nil {
+		return errors.New("account is nil")
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		txUpdate := tx.Save(account)
+		if txUpdate.Error != nil {
+			return txUpdate.Error
+		}
+		if txUpdate.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+
+		return createOrUpdateKyc(tx, kyc)
+	})
 }
 
 func GetAccountsBySellerCode(sellerCode string) (*[]model.Account, error) {
