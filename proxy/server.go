@@ -51,7 +51,9 @@ func NewWebServer() (*WebServer, error) {
 	handlers.NewVerificationHandler(groupHandler, verificationService)
 	handlers.NewTokenHandler(groupHandler)
 	handlers.NewSellerHandler(groupHandler)
-	handlers.NewAdminHandler(groupHandler)
+	// Admin routes (POST /admin/news) are disabled: the newsletter endpoint mails
+	// arbitrary HTML to every user and returns all user emails.
+	// handlers.NewAdminHandler(groupHandler)
 	handlers.NewInvoiceDraftHandler(groupHandler)
 	handlers.NewBurnReportHandler(groupHandler)
 	handlers.NewBrandingHandler(groupHandler)
