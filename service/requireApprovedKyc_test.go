@@ -68,3 +68,13 @@ func TestRequireApprovedKyc_ShouldNotCreateAccountForUnknownWallet(t *testing.T)
 	require.ErrorIs(t, RequireApprovedKyc(newTestWalletAddress(t)), ErrorKycNotApproved)
 	require.Equal(t, before, countAccounts(t))
 }
+
+func TestRequireApprovedKyc_ShouldResolveAnyCasingToTheStoredAccount(t *testing.T) {
+	requireServiceTestDatabase(t)
+	approved := createKybTestAccount(t, model.IndividualCustomer, model.StatusApproved)
+
+	for _, input := range []string{approved, strings.ToLower(approved), "0x" + strings.ToUpper(approved[2:])} {
+		require.NoError(t, RequireApprovedKyc(input), "input %q", input)
+	}
+	require.ErrorIs(t, RequireApprovedKyc("notanaddress"), ErrorKycNotApproved)
+}

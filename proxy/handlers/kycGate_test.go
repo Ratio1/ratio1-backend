@@ -29,7 +29,6 @@ import (
 var (
 	handlerTestDatabaseOnce sync.Once
 	handlerTestDatabaseErr  error
-	handlerTestKeyOnce      sync.Once
 )
 
 func handlerTestEnvOrDefault(key, fallback string) string {
@@ -78,29 +77,28 @@ func requireHandlerTestDatabase(t *testing.T) {
 }
 
 // useTestBackendKey points NAEURAL_PEM_FILE at a throwaway secp256k1 key in the
-// PKCS#8 layout service.LoadPrivateKeyFromPemFile reads. service caches the key
-// for the process, so it is written once.
+// PKCS#8 layout service.LoadPrivateKeyFromPemFile reads. The file and the env
+// var only live for this test; service caches the key in memory on first load.
 func useTestBackendKey(t *testing.T) {
 	t.Helper()
-	handlerTestKeyOnce.Do(func() {
-		key, err := ethcrypto.GenerateKey()
-		require.NoError(t, err)
-		ecKey, err := asn1.Marshal(struct {
-			Version    int
-			PrivateKey []byte
-		}{1, ethcrypto.FromECDSA(key)})
-		require.NoError(t, err)
-		pkcs8, err := asn1.Marshal(struct {
-			Version             int
-			PrivateKeyAlgorithm pkix.AlgorithmIdentifier
-			PrivateKey          []byte
-		}{0, pkix.AlgorithmIdentifier{Algorithm: asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}}, ecKey})
-		require.NoError(t, err)
-		path := filepath.Join(os.TempDir(), "ratio1-backend-handler-test-"+uuid.NewString()+".pem")
-		require.NoError(t, os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8}), 0o600))
-		require.NoError(t, os.Setenv("NAEURAL_PEM_FILE", path))
-	})
-	_, err := service.GetAddress()
+	key, err := ethcrypto.GenerateKey()
+	require.NoError(t, err)
+	ecKey, err := asn1.Marshal(struct {
+		Version    int
+		PrivateKey []byte
+	}{1, ethcrypto.FromECDSA(key)})
+	require.NoError(t, err)
+	pkcs8, err := asn1.Marshal(struct {
+		Version             int
+		PrivateKeyAlgorithm pkix.AlgorithmIdentifier
+		PrivateKey          []byte
+	}{0, pkix.AlgorithmIdentifier{Algorithm: asn1.ObjectIdentifier{1, 2, 840, 10045, 2, 1}}, ecKey})
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "backend.pem")
+	require.NoError(t, os.WriteFile(path, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8}), 0o600))
+	t.Setenv("NAEURAL_PEM_FILE", path)
+
+	_, err = service.GetAddress()
 	require.NoError(t, err)
 }
 

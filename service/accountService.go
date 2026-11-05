@@ -22,9 +22,13 @@ var ErrorKycNotApproved = errors.New("an approved KYC is required for this actio
 
 // RequireApprovedKyc returns nil when the account at address is not blacklisted
 // and has an active, approved, non-deleted KYC: the bar the license endpoints
-// apply. It only reads storage and never creates an account.
+// apply. Any casing of a valid address resolves to the checksummed account. It
+// only reads storage and never creates an account.
 func RequireApprovedKyc(address string) error {
-	account, found, err := storage.GetAccountByAddress(address)
+	if !common.IsHexAddress(address) {
+		return ErrorKycNotApproved
+	}
+	account, found, err := storage.GetAccountByAddress(common.HexToAddress(address).Hex())
 	if err != nil {
 		return errors.New("error while retrieving account information: " + err.Error())
 	}
