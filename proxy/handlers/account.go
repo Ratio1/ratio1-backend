@@ -497,28 +497,21 @@ func (h *accountHandler) blackListAccount(c *gin.Context) {
 		return
 	}
 
-	account, err := service.GetOrCreateAccount(blockAccount.Address)
+	account, err := service.BlacklistAccount(blockAccount.Address, blockAccount.Reasons)
 	if err != nil {
 		log.Error("error while retrieving account information: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
 	}
 
-	account.IsBlacklisted = true
-	account.BlacklistedReason = &blockAccount.Reasons
-
-	err = service.SendBlacklistedEmail(*account.Email)
-	if err != nil {
-		log.Error("error while sending blacklisted email: " + err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
-	}
-
-	kyc, _, err := storage.GetKycByEmail(*account.Email)
-	if err != nil {
-		log.Error("error while retrieving kyc information from storage: " + err.Error())
-		model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
-		return
+	var kyc *model.Kyc
+	if account.Email != nil && *account.Email != "" {
+		kyc, _, err = storage.GetKycByEmail(*account.Email)
+		if err != nil {
+			log.Error("error while retrieving kyc information from storage: " + err.Error())
+			model.JsonResponse(c, http.StatusInternalServerError, nil, nodeAddress, err.Error())
+			return
+		}
 	}
 
 	accountDto, err := service.NewAccountDto(account, kyc)

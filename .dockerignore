@@ -1,0 +1,25 @@
+# Only Go source and the required runtime assets enter the build context.
+**
+!go.mod
+!go.sum
+!cmd/**/*.go
+!config/**/*.go
+!crypto/**/*.go
+!model/**/*.go
+!process/**/*.go
+!proxy/**/*.go
+!ratio1abi/**/*.go
+!service/**/*.go
+!storage/**/*.go
+!templates/**/*.go
+!config/config.*.json
+!templates/html/**/*.html
+
+# Test fixtures and tests are not part of the production image.
+**/*_test.go
+**/testdata
+**/.env*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
