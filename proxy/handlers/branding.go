@@ -72,7 +72,7 @@ func NewBrandingHandler(groupHandler *groupHandler) {
 	auth := middleware.Authorization(config.Config.Jwt.Secret)
 	authEndpointGroupHandler := EndpointGroupHandler{
 		Root:             baseBrandingEndpoint,
-		Middleware:       []gin.HandlerFunc{auth},
+		Middleware:       []gin.HandlerFunc{auth, middleware.RequireApprovedKyc()},
 		EndpointHandlers: authEndpoints,
 	}
 	groupHandler.AddEndpointGroupHandler(authEndpointGroupHandler)

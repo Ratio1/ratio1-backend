@@ -76,7 +76,6 @@ func NewAccountHandler(groupHandler *groupHandler) {
 		{Method: http.MethodGet, Path: subscribeEndpoint, HandlerFunc: h.subscribe},
 		{Method: http.MethodGet, Path: unsubscribeEndpoint, HandlerFunc: h.unsubscribe},
 		{Method: http.MethodPost, Path: blacklistEndpoint, HandlerFunc: h.blackListAccount},
-		{Method: http.MethodPost, Path: addSellerCodeEndpoint, HandlerFunc: h.addSellerCode},
 		{Method: http.MethodGet, Path: getKycinfoEndpoint, HandlerFunc: h.getKycinfo},
 	}
 
@@ -87,6 +86,13 @@ func NewAccountHandler(groupHandler *groupHandler) {
 		EndpointHandlers: authEndpoints,
 	}
 	groupHandler.AddEndpointGroupHandler(authEndpointGroupHandler)
+
+	kycEndpointGroupHandler := EndpointGroupHandler{
+		Root:             baseAccountEndpoint,
+		Middleware:       []gin.HandlerFunc{auth, middleware.RequireApprovedKyc()},
+		EndpointHandlers: []EndpointHandler{{Method: http.MethodPost, Path: addSellerCodeEndpoint, HandlerFunc: h.addSellerCode}},
+	}
+	groupHandler.AddEndpointGroupHandler(kycEndpointGroupHandler)
 }
 
 func (h *accountHandler) getOrCreateAccount(c *gin.Context) {

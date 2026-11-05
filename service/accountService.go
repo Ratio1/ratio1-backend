@@ -18,6 +18,30 @@ var ErrorAccountNotFound = errors.New("account not found")
 
 var ErrorInvalidWalletAddress = errors.New("empty or invalid wallet address query")
 
+var ErrorKycNotApproved = errors.New("an approved KYC is required for this action")
+
+// RequireApprovedKyc returns nil when the account at address is not blacklisted
+// and has an active, approved, non-deleted KYC: the bar the license endpoints
+// apply. It only reads storage and never creates an account.
+func RequireApprovedKyc(address string) error {
+	account, found, err := storage.GetAccountByAddress(address)
+	if err != nil {
+		return errors.New("error while retrieving account information: " + err.Error())
+	}
+	if !found || account.IsBlacklisted || account.Email == nil || *account.Email == "" {
+		return ErrorKycNotApproved
+	}
+
+	kyc, found, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		return errors.New("error while retrieving kyc information from storage: " + err.Error())
+	}
+	if !found || !kyc.IsActive || kyc.HasBeenDeleted || kyc.KycStatus != model.StatusApproved {
+		return ErrorKycNotApproved
+	}
+	return nil
+}
+
 // IsWalletKyb reports whether walletAddress belongs to a KYC-approved business
 // customer. It backs an unauthenticated endpoint, so it only reads storage and
 // never creates an account. Accounts are keyed by the checksummed address SIWE
