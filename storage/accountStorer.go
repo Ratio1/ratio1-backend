@@ -81,6 +81,24 @@ func UpdateAccount(account *model.Account) error {
 	return nil
 }
 
+func BlacklistAccount(address, reason string) error {
+	db, err := GetDB()
+	if err != nil {
+		return err
+	}
+	result := db.Model(&model.Account{}).Where("address = ?", address).Updates(map[string]interface{}{
+		"is_blacklisted":     true,
+		"blacklisted_reason": reason,
+	})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func UpdateAccountAndCreateKyc(account *model.Account, kyc *model.Kyc) error {
 	db, err := GetDB()
 	if err != nil {

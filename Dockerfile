@@ -1,7 +1,7 @@
 ###################
 # Builder stage   #
 ###################
-FROM golang:1.21-alpine AS builder
+FROM golang:1.26.10-alpine AS builder
 
 ARG VERSION
 
@@ -18,7 +18,7 @@ RUN go mod download
 COPY . .
 
 # Build the application for Alpine
-RUN CGO_ENABLED=1 go build -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o ratio1-backend ./cmd
+RUN CGO_ENABLED=1 go build -mod=readonly -ldflags="-X 'github.com/NaeuralEdgeProtocol/ratio1-backend/config.BackendVersion=${VERSION}'" -o ratio1-backend ./cmd
 
 ###################
 # Runtime image   #
@@ -40,7 +40,6 @@ COPY --from=builder /src/ratio1-backend /app/ratio1-backend
 # Copy other necessary files
 COPY templates/html /app/templates/html
 COPY config /app/config
-COPY cmd /app/cmd
 
 # Make executable
 RUN chmod +x /app/ratio1-backend
