@@ -10,10 +10,42 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/crypto"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/model"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 )
 
 var ErrorAccountNotFound = errors.New("account not found")
+
+var ErrorInvalidWalletAddress = errors.New("empty or invalid wallet address query")
+
+// IsWalletKyb reports whether walletAddress belongs to a KYC-approved business
+// customer. It backs an unauthenticated endpoint, so it only reads storage and
+// never creates an account. Accounts are keyed by the checksummed address SIWE
+// produces, so any casing of a valid address resolves to the same account.
+func IsWalletKyb(walletAddress string) (bool, error) {
+	if !common.IsHexAddress(walletAddress) {
+		return false, ErrorInvalidWalletAddress
+	}
+	account, found, err := storage.GetAccountByAddress(common.HexToAddress(walletAddress).Hex())
+	if err != nil {
+		return false, errors.New("error while retrieving account information: " + err.Error())
+	}
+	if !found || account.Email == nil {
+		return false, errors.New("account or account email is nil")
+	}
+
+	kyc, found, err := storage.GetKycByEmail(*account.Email)
+	if err != nil {
+		return false, errors.New("error while retrieving kyc information from storage: " + err.Error())
+	}
+	if !found {
+		return false, errors.New("user email not found")
+	}
+	if kyc.KycStatus != model.StatusApproved {
+		return false, errors.New("kyc status is not approved, cannot retrieve client infos")
+	}
+	return kyc.ApplicantType == model.BusinessCustomer, nil
+}
 
 func BlacklistAccount(address, reason string) (*model.Account, error) {
 	account, err := GetOrCreateAccount(address)

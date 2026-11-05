@@ -47,7 +47,7 @@ jobs:
 
             - name: Run security regression tests
               run: |
-                  go test ./service -run 'Test(NormalizeBrandLogo|BlacklistAccount)' -count=1
+                  go test ./service -run 'Test(NormalizeBrandLogo|BlacklistAccount|IsWalletKyb)' -count=1
                   go test ./crypto -run '^Test(GenerateJwt_Should|GetClaims|GenerateConfirmJwt_Should|ValidateConfirmJwt_Should)' -count=1
 
             - name: Check for reachable Go vulnerabilities
