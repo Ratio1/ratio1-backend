@@ -57,18 +57,27 @@ func NewInvoiceDraftHandler(groupHandler *groupHandler) {
 		{Method: http.MethodGet, Path: downloadNodeOwnerDraftJSONEndpoint, HandlerFunc: h.downloadNodeOwnerDraftJSON},
 		{Method: http.MethodGet, Path: downloadCspDraftEndpoint, HandlerFunc: h.downloadCspDraft},
 		{Method: http.MethodGet, Path: downloadCspDraftJSONEndpoint, HandlerFunc: h.downloadCspDraftJSON},
+	}
 
+	auth := middleware.Authorization(config.Config.Jwt.Secret)
+	endpointGroupHandler := EndpointGroupHandler{
+		Root:             invoiceDraftBaseEndpoint,
+		Middleware:       []gin.HandlerFunc{auth},
+		EndpointHandlers: endpoints,
+	}
+	groupHandler.AddEndpointGroupHandler(endpointGroupHandler)
+
+	// Invoice preferences (including the invoice series) need an approved KYC.
+	kycEndpoints := []EndpointHandler{
 		{Method: http.MethodPost, Path: changePreferencesEndpoint, HandlerFunc: h.changePreferences},
 		{Method: http.MethodPost, Path: createPreferenceEndpoint, HandlerFunc: h.createPreferences},
 	}
-
-	endpointGroupHandler := EndpointGroupHandler{
+	kycEndpointGroupHandler := EndpointGroupHandler{
 		Root:             invoiceDraftBaseEndpoint,
-		Middleware:       []gin.HandlerFunc{middleware.Authorization(config.Config.Jwt.Secret)},
-		EndpointHandlers: endpoints,
+		Middleware:       []gin.HandlerFunc{auth, middleware.RequireApprovedKyc()},
+		EndpointHandlers: kycEndpoints,
 	}
-
-	groupHandler.AddEndpointGroupHandler(endpointGroupHandler)
+	groupHandler.AddEndpointGroupHandler(kycEndpointGroupHandler)
 }
 
 /*
