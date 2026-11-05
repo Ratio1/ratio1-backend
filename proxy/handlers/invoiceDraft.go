@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/service"
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/storage"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -283,6 +285,10 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraft(c *gin.Context) {
 	}
 
 	drafts, err := storage.GetDraftByReportId(draftId, userAddress)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "draft not found")
+		return
+	}
 	if err != nil {
 		log.Error("error while retrieving report: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -356,6 +362,10 @@ func (h *invoiceDraftHandler) downloadNodeOwnerDraftJSON(c *gin.Context) {
 	}
 
 	drafts, err := storage.GetDraftByReportId(draftId, userAddress)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "draft not found")
+		return
+	}
 	if err != nil {
 		log.Error("error while retrieving report: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -430,6 +440,10 @@ func (h *invoiceDraftHandler) downloadCspDraft(c *gin.Context) {
 	}
 
 	drafts, err := storage.GetCspDraftByReportId(draftId, userAddress)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "draft not found")
+		return
+	}
 	if err != nil {
 		log.Error("error while retrieving report: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
@@ -505,6 +519,10 @@ func (h *invoiceDraftHandler) downloadCspDraftJSON(c *gin.Context) {
 	}
 
 	drafts, err := storage.GetCspDraftByReportId(draftId, userAddress)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "draft not found")
+		return
+	}
 	if err != nil {
 		log.Error("error while retrieving report: " + err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())

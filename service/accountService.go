@@ -15,6 +15,25 @@ import (
 
 var ErrorAccountNotFound = errors.New("account not found")
 
+func BlacklistAccount(address, reason string) (*model.Account, error) {
+	account, err := GetOrCreateAccount(address)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.BlacklistAccount(account.Address, reason); err != nil {
+		return nil, err
+	}
+	account.IsBlacklisted = true
+	account.BlacklistedReason = &reason
+	// Notification failure must not prevent or undo the security action.
+	if account.Email != nil && *account.Email != "" {
+		if err := SendBlacklistedEmail(*account.Email); err != nil {
+			log.Warn("blacklist saved, but notification email failed: " + err.Error())
+		}
+	}
+	return account, nil
+}
+
 func GetOrCreateAccount(address string) (*model.Account, error) {
 	account, err := getAcocunt(address)
 	if err != nil {

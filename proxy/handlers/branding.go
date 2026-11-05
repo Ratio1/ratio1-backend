@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/NaeuralEdgeProtocol/ratio1-backend/config"
@@ -161,18 +161,16 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 	}
 	userAddress = strings.ToLower(userAddress)
 
-	//get file
+	// Bound the entire multipart request as well as the decoded image below.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.MaxBrandLogoBytes+(1<<20))
 	file, err := c.FormFile("logo")
 	if err != nil {
+		var sizeError *http.MaxBytesError
+		if errors.As(err, &sizeError) {
+			model.JsonResponse(c, http.StatusRequestEntityTooLarge, nil, nodeAddress, "logo request is too large")
+			return
+		}
 		err = errors.New("error while retrieving logo: " + err.Error())
-		log.Error(err.Error())
-		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
-		return
-	}
-
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if !isAllowedExt(ext) {
-		err = errors.New("invalid extension")
 		log.Error(err.Error())
 		model.JsonResponse(c, http.StatusBadRequest, nil, nodeAddress, err.Error())
 		return
@@ -188,6 +186,20 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 	}
 	defer fileReader.Close()
 
+	logo, contentType, err := service.NormalizeBrandLogo(fileReader)
+	if err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, service.ErrBrandLogoTooLarge) {
+			status = http.StatusRequestEntityTooLarge
+		}
+		model.JsonResponse(c, status, nil, nodeAddress, err.Error())
+		return
+	}
+	filename := "logo.png"
+	if contentType == "image/jpeg" {
+		filename = "logo.jpg"
+	}
+
 	brand, err := storage.GetBrandByAddress(userAddress)
 	if err != nil {
 		err = errors.New("error while retrieving brand: " + err.Error())
@@ -201,7 +213,7 @@ func (h *brandingHandler) editBrandLogo(c *gin.Context) {
 		}
 	}
 
-	err = brand.SetLogoBase64(fileReader, file.Filename)
+	err = brand.SetLogoBase64(bytes.NewReader(logo), filename)
 	if err != nil {
 		err = errors.New("error while setting brand logo: " + err.Error())
 		log.Error(err.Error())
@@ -308,8 +320,14 @@ func (h *brandingHandler) getBrandLogo(c *gin.Context) {
 		return
 	}
 
-	ct := http.DetectContentType(logo)
-	c.Data(http.StatusOK, ct, logo)
+	// Validate legacy stored uploads too; never serve their sniffed content type.
+	logo, contentType, err := service.NormalizeBrandLogo(bytes.NewReader(logo))
+	if err != nil {
+		model.JsonResponse(c, http.StatusNotFound, nil, nodeAddress, "logo is unavailable")
+		return
+	}
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Data(http.StatusOK, contentType, logo)
 }
 
 func (h *brandingHandler) getPlatforms(c *gin.Context) {
@@ -321,13 +339,4 @@ func (h *brandingHandler) getPlatforms(c *gin.Context) {
 	}
 	response := model.Platform(0).GetPlatforms()
 	model.JsonResponse(c, http.StatusOK, response, nodeAddress, "")
-}
-
-func isAllowedExt(ext string) bool {
-	switch ext {
-	case ".jpg", ".jpeg", ".png":
-		return true
-	default:
-		return false
-	}
 }
